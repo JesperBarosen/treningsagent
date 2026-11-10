@@ -1,0 +1,18 @@
+[project]
+name = "treningsagent"
+version = "0.1.0"
+description = "AI training agent for climbing and running"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=2.8.0",
+    "python-dotenv>=1.2.4",
+]
+
+[tool.pytest.ini_options]
+# Lets tests do `import tools` from backend/ without packaging the project.
+pythonpath = ["."]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
