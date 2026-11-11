@@ -24,8 +24,9 @@ supabase link --project-ref <project-ref>
 supabase db push
 ```
 
-This creates `sessions` and `model_calls`, both with Row Level Security: a user
-can only read and insert their own rows. The backend runs its queries as the
+This creates `sessions`, `climbs` and `model_calls`, all with Row Level
+Security: a user can only read and insert their own rows (and can only add
+climbs to their own sessions). The backend runs its queries as the
 `authenticated` role with the user's id in the JWT claims, so the policies apply
 to it too. Until login exists, everything runs as one fixed test user
 (`db.TEST_USER_ID`).
@@ -67,3 +68,30 @@ from model_calls
 group by conversation_id
 order by max(created_at) desc;
 ```
+
+## What the agent can do
+
+| Tool | Use |
+| --- | --- |
+| `log_session` | Store a run or a climbing session. A climbing session can include its individual climbs in the same call. |
+| `get_history` | Sessions from the last N days, with load, running pace, and each session's climbs, number sent and hardest sent grade. |
+| `get_training_load` | Load per day and per week across sports, plus the acute:chronic workload ratio. |
+
+**Climbs.** Each climb has a colour grade on the gym's scale, from easiest to
+hardest: yellow, green, blue, purple, red, black, white. It also has a style
+(`boulder`, `kilter` or `rope`), whether it was sent, and optionally the number
+of attempts and notes. The grade is stored with its position on the scale
+(`grade_ordinal`, 1-7) so progression is a plain SQL query:
+
+```sql
+select s.date, max(c.grade_ordinal) filter (where c.sent) as hardest_sent
+from climbs c join sessions s on s.id = c.session_id
+group by s.date order by s.date;
+```
+
+**Training load** uses session-RPE (Foster et al. 2001): load = duration in
+minutes x perceived effort (1-10), so runs and climbing sessions add up on one
+scale. The acute:chronic ratio is the average daily load over the last 7 days
+divided by the average over the last 28. It is a rough guide and means little
+until about four weeks are logged. Load and the other derived values are
+computed when read and never stored.
