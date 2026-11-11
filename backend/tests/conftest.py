@@ -11,15 +11,23 @@ class FakeStore:
 
     def __init__(self):
         self.rows: list[dict] = []
+        self.climbs: list[dict] = []
         self.model_calls: list[dict] = []
 
-    def insert_session(self, row: dict) -> int:
-        self.rows.append({"id": len(self.rows) + 1, **row})
-        return len(self.rows)
+    def insert_session(self, row: dict, climbs: list[dict] = ()) -> int:
+        session_id = len(self.rows) + 1
+        self.rows.append({"id": session_id, **row})
+        for climb in climbs:
+            self.climbs.append({"id": len(self.climbs) + 1, "session_id": session_id, **climb})
+        return session_id
 
     def sessions_since(self, since: str) -> list[dict]:
         rows = [r for r in self.rows if r["date"] >= since]  # ISO dates sort as strings
         return sorted(rows, key=lambda r: (r["date"], r["id"]))
+
+    def climbs_since(self, since: str) -> list[dict]:
+        ids = {r["id"] for r in self.sessions_since(since)}
+        return [c for c in self.climbs if c["session_id"] in ids]
 
     def log_model_call(self, call: dict) -> None:
         self.model_calls.append(call)

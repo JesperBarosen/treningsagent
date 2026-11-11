@@ -11,16 +11,18 @@ from datetime import date, timedelta
 from typing import Protocol
 
 SPORTS = ("running", "climbing")
-CLIMBING_STYLES = ("boulder", "lead", "top_rope")
 RUNNING_FIELDS = ("distance_km", "elevation_m")
-CLIMBING_FIELDS = ("climbing_style", "hardest_grade", "routes_count")
+# The gym's colour scale, easiest first. A grade's ordinal is its position + 1.
+GRADES = ("yellow", "green", "blue", "purple", "red", "black", "white")
+CLIMB_STYLES = ("boulder", "kilter", "rope")
 
 
 class Store(Protocol):
     """Where sessions are kept. db.PostgresStore in the app, a fake in tests."""
 
-    def insert_session(self, row: dict) -> int: ...
+    def insert_session(self, row: dict, climbs: list[dict] = ()) -> int: ...
     def sessions_since(self, since: str) -> list[dict]: ...
+    def climbs_since(self, since: str) -> list[dict]: ...
     def log_model_call(self, call: dict) -> None: ...
 
 
@@ -31,9 +33,11 @@ def log_session(
     duration_min: int,
     effort: int,
     notes: str | None = None,
+    climbs: list[dict] | None = None,
     **sport_fields,
 ) -> dict:
-    """Validate and store one session. Returns the stored session with its id."""
+    """Validate and store one session, and for climbing its individual climbs,
+    in one go. Returns the stored session with its id."""
     if sport not in SPORTS:
         raise ValueError(f"sport must be one of {SPORTS}, got {sport!r}")
     _parse_date(date)
@@ -42,17 +46,41 @@ def log_session(
     if not 1 <= effort <= 10:
         raise ValueError("effort must be between 1 and 10")
 
-    allowed = RUNNING_FIELDS if sport == "running" else CLIMBING_FIELDS
+    allowed = RUNNING_FIELDS if sport == "running" else ()
     unexpected = set(sport_fields) - set(allowed)
     if unexpected:
         raise ValueError(f"fields not valid for {sport}: {sorted(unexpected)}")
-    style = sport_fields.get("climbing_style")
-    if style is not None and style not in CLIMBING_STYLES:
-        raise ValueError(f"climbing_style must be one of {CLIMBING_STYLES}")
+    if climbs and sport != "climbing":
+        raise ValueError("climbs can only be logged for climbing sessions")
+    climb_rows = [_climb_row(c) for c in climbs or []]
 
     row = {"sport": sport, "date": date, "duration_min": duration_min,
            "effort": effort, "notes": notes, **sport_fields}
-    return {"id": store.insert_session(row), **row}
+    session_id = store.insert_session(row, climb_rows)
+    result = {"id": session_id, **row}
+    if climb_rows:
+        result["climbs"] = climb_rows
+    return result
+
+
+def _climb_row(climb: dict) -> dict:
+    """Validate one climb and add its grade ordinal."""
+    unexpected = set(climb) - {"grade", "attempts", "sent", "style", "notes"}
+    if unexpected:
+        raise ValueError(f"unknown climb fields: {sorted(unexpected)}")
+    grade = str(climb.get("grade", "")).strip().lower()
+    if grade not in GRADES:
+        raise ValueError(f"climb grade must be one of {GRADES}, got {climb.get('grade')!r}")
+    if climb.get("style") not in CLIMB_STYLES:
+        raise ValueError(f"climb style must be one of {CLIMB_STYLES}, got {climb.get('style')!r}")
+    if not isinstance(climb.get("sent"), bool):
+        raise ValueError("climb sent must be true or false")
+    attempts = climb.get("attempts")
+    if attempts is not None and (not isinstance(attempts, int) or attempts < 1):
+        raise ValueError("climb attempts must be a positive integer")
+    return {"grade": grade, "grade_ordinal": GRADES.index(grade) + 1,
+            "attempts": attempts, "sent": climb["sent"], "style": climb["style"],
+            "notes": climb.get("notes")}
 
 
 def get_history(store: Store, days: int, today: date | None = None) -> list[dict]:
@@ -62,11 +90,16 @@ def get_history(store: Store, days: int, today: date | None = None) -> list[dict
         raise ValueError("days must be at least 1")
     today = today or date.today()
     since = (today - timedelta(days=days - 1)).isoformat()
-    rows = store.sessions_since(since)
+    climbs_by_session: dict[int, list[dict]] = {}
+    for c in store.climbs_since(since):
+        climb = {k: v for k, v in c.items() if v is not None and k not in ("id", "session_id")}
+        climbs_by_session.setdefault(c["session_id"], []).append(climb)
 
     sessions = []
-    for row in rows:
+    for row in store.sessions_since(since):
         s = {k: v for k, v in row.items() if v is not None}
+        if s["id"] in climbs_by_session:
+            s["climbs"] = climbs_by_session[s["id"]]
         s.update(derived_metrics(s))
         sessions.append(s)
     return sessions
@@ -80,6 +113,12 @@ def derived_metrics(session: dict) -> dict:
     }
     if session.get("distance_km"):
         metrics["pace_min_per_km"] = round(session["duration_min"] / session["distance_km"], 2)
+    climbs = session.get("climbs", [])
+    if climbs:
+        sent = [c for c in climbs if c["sent"]]
+        metrics["climbs_sent"] = len(sent)
+        if sent:
+            metrics["hardest_sent_grade"] = max(sent, key=lambda c: c["grade_ordinal"])["grade"]
     return metrics
 
 
@@ -98,8 +137,8 @@ TOOLS = [
         "description": (
             "Store one completed training session. Call this when the user describes "
             "a workout they did. Only include fields the user actually stated; never "
-            "guess numbers. Use running fields only for running and climbing fields "
-            "only for climbing."
+            "guess numbers. Use running fields only for running. For climbing, list "
+            "each climb the user mentions in `climbs`, all in this one call."
         ),
         "input_schema": {
             "type": "object",
@@ -112,12 +151,29 @@ TOOLS = [
                 "notes": {"type": "string"},
                 "distance_km": {"type": "number", "description": "Running only"},
                 "elevation_m": {"type": "integer", "description": "Running only: elevation gain"},
-                "climbing_style": {"type": "string", "enum": list(CLIMBING_STYLES),
-                                   "description": "Climbing only"},
-                "hardest_grade": {"type": "string",
-                                  "description": "Climbing only, e.g. '6b+' or 'V4'"},
-                "routes_count": {"type": "integer",
-                                 "description": "Climbing only: routes or problems sent"},
+                "climbs": {
+                    "type": "array",
+                    "description": "Climbing only: one item per climb the user mentions. "
+                                   "'3 blues' is three items.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "grade": {"type": "string", "enum": list(GRADES),
+                                      "description": "Gym colour, easiest to hardest: "
+                                                     + ", ".join(GRADES)},
+                            "style": {"type": "string", "enum": list(CLIMB_STYLES),
+                                      "description": "boulder = gym boulder, kilter = Kilter "
+                                                     "board, rope = top rope or lead"},
+                            "sent": {"type": "boolean",
+                                     "description": "true if topped, false if not (yet)"},
+                            "attempts": {"type": "integer", "minimum": 1,
+                                         "description": "Only if the user said; a flash is 1"},
+                            "notes": {"type": "string"},
+                        },
+                        "required": ["grade", "style", "sent"],
+                        "additionalProperties": False,
+                    },
+                },
             },
             "required": ["sport", "date", "duration_min", "effort"],
             "additionalProperties": False,
@@ -127,8 +183,9 @@ TOOLS = [
         "name": "get_history",
         "description": (
             "Get logged sessions from the last N days, including computed load "
-            "(minutes x effort) and running pace. Use this before answering questions "
-            "about past training."
+            "(minutes x effort), running pace, and for climbing the individual climbs "
+            "with the hardest sent grade. Use this before answering questions about "
+            "past training or climbing progression."
         ),
         "input_schema": {
             "type": "object",
