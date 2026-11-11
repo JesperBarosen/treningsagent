@@ -10,6 +10,8 @@ import json
 from datetime import date, timedelta
 from typing import Protocol
 
+import progression
+
 SPORTS = ("running", "climbing")
 RUNNING_FIELDS = ("distance_km", "elevation_m")
 # The gym's colour scale, easiest first. A grade's ordinal is its position + 1.
@@ -150,6 +152,24 @@ def get_training_load(store: Store, weeks: int = 4, today: date | None = None) -
         "chronic_28d_avg": round(chronic, 1),
         "acute_chronic_ratio": round(acute / chronic, 2) if chronic else None,
     }
+
+
+def calculate_progression(store: Store, weeks: int = 8, today: date | None = None) -> dict:
+    """Per-sport progression for the current calendar week (Monday start,
+    partial) and the `weeks - 1` before it, with a trend per metric. See
+    progression.py for the metrics and the trend rule."""
+    if not 1 <= weeks <= 26:
+        raise ValueError("weeks must be between 1 and 26")
+    today = today or date.today()
+    start = today - timedelta(days=today.weekday() + 7 * (weeks - 1))
+    windows = progression.Windows(today)
+    since = min(start, windows.baseline_start).isoformat()
+    shown = [start + timedelta(days=7 * i) for i in range(weeks)]
+    result = progression.calculate(store.sessions_since(since), store.climbs_since(since),
+                                   shown, today)
+    result["climbing"]["grade_scale"] = list(GRADES)
+    return {"weeks": weeks, "today": today.isoformat(),
+            "trend_rule": progression.TREND_RULE, **result}
 
 
 def derived_metrics(session: dict) -> dict:
