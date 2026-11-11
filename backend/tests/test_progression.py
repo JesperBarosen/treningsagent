@@ -181,7 +181,28 @@ def test_sport_modules_are_pluggable(store, monkeypatch):
     def strength(sessions, climbs_by_session, weeks, windows):
         return {"sessions": 0, "weekly": [], "trends": {}}
     monkeypatch.setitem(progression.SPORT_MODULES, "strength", strength)
-    assert progress(store)["strength"] == {"sessions": 0, "weekly": [], "trends": {}}
+    assert progress(store)["strength"] == {
+        "last_session": None, "days_since_last_session": None,
+        "sessions": 0, "weekly": [], "trends": {}}
+
+
+def test_last_session_per_sport(store):
+    run(store, "2026-11-02", 10, 50)
+    run(store, "2026-11-09", 8, 42)
+    session(store, "2026-11-05", climb("blue", True))
+    session(store, "2026-11-12", climb("blue", True))  # after today: ignored
+    p = progress(store)
+    assert (p["running"]["last_session"], p["running"]["days_since_last_session"]) == (
+        "2026-11-09", 2)
+    assert (p["climbing"]["last_session"], p["climbing"]["days_since_last_session"]) == (
+        "2026-11-05", 6)
+
+
+def test_last_session_today_is_zero_days_and_none_without_data(store):
+    run(store, "2026-11-11", 5, 30)
+    p = progress(store)
+    assert p["running"]["days_since_last_session"] == 0
+    assert p["climbing"]["last_session"] is None
 
 
 def test_run_tool_dispatches_progression(store):

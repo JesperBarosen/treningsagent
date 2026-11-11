@@ -243,15 +243,24 @@ SPORT_MODULES: dict[str, Callable[..., dict]] = {
 
 def calculate(sessions: list[dict], climbs: list[dict], weeks: list[date],
               today: date) -> dict:
-    """Weekly rows for `weeks` and trends per metric, for every sport module.
-    `sessions` and `climbs` must cover the shown weeks and the trend windows."""
+    """Weekly rows for `weeks` and trends per metric, for every sport module,
+    plus each sport's last session date (sessions whose `sport` matches the
+    module's key). `sessions` and `climbs` must cover the shown weeks and the
+    trend windows; a sport with no session in that range has last_session None."""
     windows = Windows(today)
     climbs_by_session: dict[int, list[dict]] = {}
     for c in climbs:
         climbs_by_session.setdefault(c["session_id"], []).append(c)
     sessions = [s for s in sessions if _date(s) <= today]
-    return {sport: module(sessions, climbs_by_session, weeks, windows)
-            for sport, module in SPORT_MODULES.items()}
+    result = {}
+    for sport, module in SPORT_MODULES.items():
+        last = max((_date(s) for s in sessions if s["sport"] == sport), default=None)
+        result[sport] = {
+            "last_session": last and last.isoformat(),
+            "days_since_last_session": last and (today - last).days,
+            **module(sessions, climbs_by_session, weeks, windows),
+        }
+    return result
 
 
 def _in_week(sessions: list[dict], start: date) -> list[dict]:
