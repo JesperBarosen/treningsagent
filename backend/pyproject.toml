@@ -5,8 +5,10 @@ description = "AI training agent for climbing and running"
 requires-python = ">=3.12"
 dependencies = [
     "anthropic>=2.8.0",
+    "fastapi>=0.162.4",
     "psycopg[binary]>=3.3.8",
     "python-dotenv>=1.2.4",
+    "uvicorn>=0.54.0",
 ]
 
 [tool.pytest.ini_options]

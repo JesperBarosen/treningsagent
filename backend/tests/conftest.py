@@ -1,4 +1,9 @@
+import json
+
 import pytest
+from anthropic.types import Message
+
+import chat
 
 
 class FakeStore:
@@ -23,3 +28,24 @@ class FakeStore:
 @pytest.fixture
 def store():
     return FakeStore()
+
+
+def make_message(stop_reason: str, content: list[dict]) -> Message:
+    return Message.model_validate({
+        "id": "msg_test", "type": "message", "role": "assistant", "model": chat.MODEL,
+        "content": content, "stop_reason": stop_reason, "stop_sequence": None,
+        "usage": {"input_tokens": 100, "output_tokens": 20},
+    })
+
+
+class FakeClient:
+    """Returns canned responses in order and records each request."""
+
+    def __init__(self, *responses: Message):
+        self.responses = list(responses)
+        self.requests: list[dict] = []
+        self.messages = self  # so client.messages.create(...) works
+
+    def create(self, **kwargs):
+        self.requests.append(json.loads(json.dumps(kwargs["messages"])))  # snapshot
+        return self.responses.pop(0)
