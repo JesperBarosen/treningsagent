@@ -13,6 +13,7 @@ class FakeStore:
         self.rows: list[dict] = []
         self.climbs: list[dict] = []
         self.model_calls: list[dict] = []
+        self.chat_requests = 0
 
     def insert_session(self, row: dict, climbs: list[dict] = ()) -> int:
         session_id = len(self.rows) + 1
@@ -31,6 +32,12 @@ class FakeStore:
     def climbs_since(self, since: str) -> list[dict]:
         ids = {r["id"] for r in self.sessions_since(since)}
         return [c for c in self.climbs if c["session_id"] in ids]
+
+    def claim_chat_request(self, daily_limit: int) -> bool:
+        if self.chat_requests >= daily_limit:
+            return False
+        self.chat_requests += 1
+        return True
 
     def log_model_call(self, call: dict) -> None:
         self.model_calls.append(call)

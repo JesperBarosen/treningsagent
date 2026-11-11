@@ -1,6 +1,7 @@
 """HTTP API for the training agent. Run: uv run uvicorn api:app --reload"""
 
 import json
+import os
 import uuid
 from collections.abc import Iterator
 from functools import cache
@@ -11,11 +12,15 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+import auth
 import chat
 import db
 import tools
 
-load_dotenv()  # ANTHROPIC_API_KEY and DATABASE_URL from .env
+load_dotenv()  # ANTHROPIC_API_KEY, DATABASE_URL and SUPABASE_URL from .env
+
+# /chat requests per user in any 24 hours, to cap what one account can spend.
+CHAT_DAILY_LIMIT = int(os.environ.get("CHAT_DAILY_LIMIT", "50"))
 
 app = FastAPI(title="treningsagent")
 
@@ -24,7 +29,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
     allow_methods=["GET", "POST"],
-    allow_headers=["content-type"],
+    allow_headers=["content-type", "authorization"],
 )
 
 
@@ -51,11 +56,11 @@ def get_client() -> anthropic.Anthropic:
     return anthropic.Anthropic()  # one client (and connection pool) for the process
 
 
-def get_store() -> Iterator[db.PostgresStore]:
+def get_store(user_id: str = Depends(auth.get_user_id)) -> Iterator[db.PostgresStore]:
+    """A store for the signed-in user: RLS limits every query to their rows."""
     conn = db.connect()
     try:
-        # TODO: take the user id from the verified Supabase JWT once login exists.
-        yield db.PostgresStore(conn, db.TEST_USER_ID)
+        yield db.PostgresStore(conn, user_id)
     finally:
         conn.close()
 
@@ -66,6 +71,9 @@ def post_chat(
     client: anthropic.Anthropic = Depends(get_client),
     store: db.PostgresStore = Depends(get_store),
 ) -> ChatResponse:
+    if not store.claim_chat_request(CHAT_DAILY_LIMIT):
+        raise HTTPException(429, f"You've reached the limit of {CHAT_DAILY_LIMIT} messages "
+                                 "in 24 hours. Try again later.")
     conversation_id = req.conversation_id or uuid.uuid4()
     messages = [*req.history, {"role": "user", "content": req.message}]
     turn_start = len(req.history)
