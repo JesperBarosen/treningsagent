@@ -1,0 +1,16 @@
+{
+  "id": "progression_no_overstated_summary",
+  "note": "Caught on 2026-11-11 while re-running progression_no_false_gap: in 2 of 3 answers the climbing heading said 'improving on every measure' while the list below it had red and black send rates at 'not enough data'. The details were right but the summary overstated them. Fixed with a system prompt line: headings and summaries must not go beyond the metrics; if any metric is declining or 'not enough data', say 'mixed' or name the exception. A one-sentence version of that line still failed 2 of 3 runs ('improving on every measure shown', 'yes in climbing'); the version that passed 3 of 3 tells the model to check every band and grade first, gives an example heading and lists the forbidden phrases.",
+  "seed_from": "progression_no_false_gap",
+  "question": "Am I improving? Both running and climbing.",
+  "expect": {
+    "tools_called": ["calculate_progression"],
+    "must": [
+      "Every heading or summary line per sport says 'mixed' or names the exception, because each sport has metrics at 'not enough data' (running: under-7 km and over-15 km pace; climbing: send rate for some grades)"
+    ],
+    "must_not": [
+      "Say a sport is 'improving on every measure', 'improving across the board' or similar",
+      "Give an overall 'yes' to improving without qualification"
+    ]
+  }
+}
