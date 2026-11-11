@@ -106,6 +106,10 @@ export type TrainingLoad = {
   acute_7d_avg: number;
   chronic_28d_avg: number;
   acute_chronic_ratio: number | null;
+  /** "not_enough_data" under 28 days since the first logged session. */
+  ratio_status: "ok" | "not_enough_data";
+  /** Days since the first logged session, today included. */
+  history_days: number;
 };
 
 export type TrendWord = "improving" | "flat" | "declining" | "not enough data";
