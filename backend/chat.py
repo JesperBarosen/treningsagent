@@ -1,6 +1,7 @@
 """The tool-use loop, shared by the terminal script and the API."""
 
 import logging
+import time
 from datetime import date
 
 import anthropic
@@ -19,8 +20,12 @@ Today is {today}."""
 log = logging.getLogger(__name__)
 
 
-def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list) -> str:
+def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list,
+             conversation_id: str) -> str:
     """Run the tool-use loop for one user message (already appended to `messages`).
+
+    Every model call's token usage and latency is logged to the store under
+    `conversation_id`.
 
     Appends Claude's replies and the tool results to `messages` as plain,
     JSON-serializable dicts, so the history can be sent over HTTP and replayed.
@@ -30,6 +35,7 @@ def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list) ->
     system = SYSTEM_PROMPT.format(today=date.today().isoformat())
 
     for _ in range(MAX_STEPS):
+        start = time.perf_counter()
         response = client.messages.create(
             model=MODEL,
             max_tokens=16000,
@@ -37,6 +43,7 @@ def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list) ->
             tools=tools.TOOLS,
             messages=messages,
         )
+        _log_model_call(store, conversation_id, response, time.perf_counter() - start)
 
         if response.stop_reason == "refusal":
             del messages[turn_start:]  # drop the refused turn so history stays valid
@@ -68,3 +75,18 @@ def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list) ->
         messages.append({"role": "user", "content": results})
 
     return f"(stopped after {MAX_STEPS} tool rounds)"
+
+
+def _log_model_call(store: tools.Store, conversation_id: str,
+                    response: anthropic.types.Message, seconds: float) -> None:
+    usage = response.usage
+    store.log_model_call({
+        "conversation_id": conversation_id,
+        "model": response.model,
+        "input_tokens": usage.input_tokens,
+        "output_tokens": usage.output_tokens,
+        "cache_creation_input_tokens": usage.cache_creation_input_tokens or 0,
+        "cache_read_input_tokens": usage.cache_read_input_tokens or 0,
+        "latency_ms": round(seconds * 1000),
+        "stop_reason": response.stop_reason,
+    })

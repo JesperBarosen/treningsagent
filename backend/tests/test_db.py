@@ -21,7 +21,8 @@ def conn():
     user_ids = []
     yield conn, user_ids
     # Clean up as the connection's own role, which RLS doesn't restrict.
-    conn.execute("delete from public.sessions where user_id = any(%s)", (user_ids,))
+    for table in ("sessions", "model_calls"):
+        conn.execute(f"delete from public.{table} where user_id = any(%s)", (user_ids,))
     conn.close()
 
 
@@ -53,3 +54,14 @@ def test_users_only_see_their_own_rows(conn):
 def test_constraint_violation_becomes_value_error(conn):
     with pytest.raises(ValueError):
         make_store(conn).insert_session({**ROW, "effort": 11})
+
+
+def test_model_calls_are_private_too(conn):
+    alice, bob = make_store(conn), make_store(conn)
+    alice.log_model_call({"conversation_id": str(uuid.uuid4()), "model": "claude-haiku-5-5",
+                          "input_tokens": 100, "output_tokens": 20, "latency_ms": 900,
+                          "stop_reason": "end_turn"})
+    with bob._as_user() as c:
+        assert c.execute("select count(*) as n from public.model_calls").fetchone()["n"] == 0
+    with alice._as_user() as c:
+        assert c.execute("select count(*) as n from public.model_calls").fetchone()["n"] == 1

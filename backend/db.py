@@ -46,14 +46,18 @@ class PostgresStore:
             self.conn.execute("select set_config('request.jwt.claims', %s, true)", (claims,))
             yield self.conn
 
-    def insert_session(self, row: dict) -> int:
-        query = sql.SQL("insert into public.sessions ({}) values ({}) returning id").format(
+    def _insert(self, table: str, row: dict) -> int:
+        query = sql.SQL("insert into public.{} ({}) values ({}) returning id").format(
+            sql.Identifier(table),
             sql.SQL(", ").join(map(sql.Identifier, row)),
             sql.SQL(", ").join(sql.Placeholder() * len(row)),
         )
+        with self._as_user() as conn:
+            return conn.execute(query, tuple(row.values())).fetchone()["id"]
+
+    def insert_session(self, row: dict) -> int:
         try:
-            with self._as_user() as conn:
-                return conn.execute(query, tuple(row.values())).fetchone()["id"]
+            return self._insert("sessions", row)
         except psycopg.errors.IntegrityError as e:
             # A check constraint the tool's own validation missed: report it to Claude.
             raise ValueError(e.diag.message_primary) from None
@@ -65,3 +69,6 @@ class PostgresStore:
         with self._as_user() as conn:
             rows = conn.execute(query, (since,)).fetchall()
         return [{**r, "date": r["date"].isoformat()} for r in rows]
+
+    def log_model_call(self, call: dict) -> None:
+        self._insert("model_calls", call)

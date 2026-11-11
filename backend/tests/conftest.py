@@ -6,6 +6,7 @@ class FakeStore:
 
     def __init__(self):
         self.rows: list[dict] = []
+        self.model_calls: list[dict] = []
 
     def insert_session(self, row: dict) -> int:
         self.rows.append({"id": len(self.rows) + 1, **row})
@@ -14,6 +15,9 @@ class FakeStore:
     def sessions_since(self, since: str) -> list[dict]:
         rows = [r for r in self.rows if r["date"] >= since]  # ISO dates sort as strings
         return sorted(rows, key=lambda r: (r["date"], r["id"]))
+
+    def log_model_call(self, call: dict) -> None:
+        self.model_calls.append(call)
 
 
 @pytest.fixture
