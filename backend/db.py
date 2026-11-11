@@ -77,6 +77,11 @@ class PostgresStore:
             rows = conn.execute(query, (since,)).fetchall()
         return [{**r, "date": r["date"].isoformat()} for r in rows]
 
+    def first_session_date(self) -> str | None:
+        with self._as_user() as conn:
+            row = conn.execute("select min(date) as first from public.sessions").fetchone()
+        return row["first"].isoformat() if row["first"] else None
+
     def climbs_since(self, since: str) -> list[dict]:
         """Climbs in sessions dated on or after `since`, in insertion order."""
         query = sql.SQL(

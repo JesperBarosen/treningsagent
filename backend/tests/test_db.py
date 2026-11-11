@@ -45,6 +45,15 @@ def test_insert_and_read_back(conn):
     assert row["date"] == "2026-11-10" and row["distance_km"] == 6.0
 
 
+def test_first_session_date(conn):
+    store = make_store(conn)
+    assert store.first_session_date() is None
+    store.insert_session(ROW)
+    store.insert_session({**ROW, "date": "2026-09-01"})
+    assert store.first_session_date() == "2026-09-01"
+    assert make_store(conn).first_session_date() is None  # another user's rows are hidden
+
+
 def test_users_only_see_their_own_rows(conn):
     alice, bob = make_store(conn), make_store(conn)
     alice.insert_session(ROW)

@@ -25,6 +25,9 @@ class FakeStore:
         rows = [r for r in self.rows if r["date"] >= since]  # ISO dates sort as strings
         return sorted(rows, key=lambda r: (r["date"], r["id"]))
 
+    def first_session_date(self) -> str | None:
+        return min((r["date"] for r in self.rows), default=None)
+
     def climbs_since(self, since: str) -> list[dict]:
         ids = {r["id"] for r in self.sessions_since(since)}
         return [c for c in self.climbs if c["session_id"] in ids]
