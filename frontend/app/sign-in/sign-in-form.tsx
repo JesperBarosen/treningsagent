@@ -16,7 +16,7 @@ export function SignInForm({ linkFailed = false }: { linkFailed?: boolean }) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>(
     linkFailed
-      ? { kind: "error", message: "That sign-in link has expired or was already used. Request a new one." }
+      ? { kind: "error", message: "That sign-in link didn't work. It may have expired or been used, or been opened in another browser. Request a new one here." }
       : { kind: "idle" },
   );
 
@@ -28,6 +28,8 @@ export function SignInForm({ linkFailed = false }: { linkFailed?: boolean }) {
     const { error } = await supabaseBrowser().auth.signInWithOtp({
       email: address,
       // Invite only: never create an account here (sign-ups are also off in Supabase).
+      // The link lands on /auth/confirm (http://localhost:3000/auth/confirm in dev),
+      // which must be in Supabase's redirect URL allow list.
       options: { shouldCreateUser: false, emailRedirectTo: `${window.location.origin}/auth/confirm` },
     });
     if (error?.status === 429) {
@@ -49,7 +51,7 @@ export function SignInForm({ linkFailed = false }: { linkFailed?: boolean }) {
         <h1 className="font-display text-xl font-semibold">Check your email</h1>
         <p className="mt-2 text-sm text-ink-muted">
           If <span className="font-medium text-ink">{status.email}</span> has access, a sign-in link is on its
-          way. Open it on this device.
+          way. Open it in this browser.
         </p>
         <Button variant="ghost" className="mt-6" onClick={() => setStatus({ kind: "idle" })}>
           Use another email

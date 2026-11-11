@@ -51,7 +51,7 @@ describe("SignInForm", () => {
 
   it("explains a failed link", () => {
     render(<SignInForm linkFailed />);
-    expect(screen.getByRole("alert")).toHaveTextContent("expired or was already used");
+    expect(screen.getByRole("alert")).toHaveTextContent("didn't work");
   });
 });
 

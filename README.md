@@ -46,9 +46,13 @@ In the Supabase dashboard:
 - **Authentication > Sign In / Providers**: turn off *Allow new users to sign up*.
 - **Authentication > URL Configuration**: Site URL `http://localhost:3000`, and
   add `http://localhost:3000/auth/confirm` to the redirect URLs.
-- **Authentication > Emails > Magic Link**: link to
-  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`, so the
-  link works in any browser.
+- The Magic Link email stays the default (`{{ .ConfirmationURL }}`; editing
+  templates needs custom SMTP). The form sends `emailRedirectTo` =
+  `<site>/auth/confirm`, which exchanges the `?code=` for a session (PKCE), so
+  open the link in the browser that asked for it. `/auth/confirm` also accepts
+  `?token_hash=...&type=email`, for a template edited later to
+  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`, which
+  works in any browser.
 - **Project Settings > JWT Keys**: the current key must be asymmetric (ECC or RSA),
   not the legacy shared secret.
 - Add people under **Authentication > Users > Add user > Create new user**
