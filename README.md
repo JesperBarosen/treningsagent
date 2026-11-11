@@ -61,6 +61,8 @@ and deletes rows).
 cd backend
 uv run python -m evals.run                          # all cases in evals/cases/
 uv run python -m evals.run progression_grade_names  # or just some
+uv run python -m evals.run --repeat 5               # pass rate per case, e.g. 4/5
+uv run python -m evals.run --judge-check            # check the judge itself
 ```
 
 Each case in `backend/evals/cases/` is a seed (sessions dated as days before
@@ -69,8 +71,18 @@ the bug it caught. The runner logs the seed for a new throwaway user, asks the
 question through the real chat loop, checks the expected tools were called,
 has `claude-haiku-5-5` grade the answer against the checklist (with the tool
 results as ground truth), and deletes that user's rows. It prints pass/fail
-per check and the cost; a full run of the current three cases costs about
-half a cent. It needs the API key and database, so it isn't part of `pytest`
+per run (with each check for failed runs, or all with `-v`), the pass rate per
+case and the cost: one run of the current three cases costs about half a
+cent, `--repeat 5` about 3 cents.
+
+Agent answers vary, so one pass proves little: use `--repeat` before
+trusting a fix. To trust the judge, each case also has a `known_bad` answer
+with one planted mistake (a real failing reply where there is one) and the
+check it must fail (`should_fail`). `--judge-check` grades only those, with
+tool results computed from the seed in memory, and fails unless the judge
+fails that exact check. It makes no agent calls and needs no database.
+
+The runner needs the API key and the database, so it isn't part of `pytest`
 or CI.
 
 ### Cost per conversation
