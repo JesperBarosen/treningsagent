@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+/* Design tokens. See DESIGN.md. Components use only these: the default
+   Tailwind palette is switched off below, so stray colours fail to compile
+   into anything. */
+
+:root {
+  --canvas: #f5f4ef;
+  --surface: #ffffff;
+  --sunken: #eceae3;
+  --line: #d9d6cc;
+  --ink: #15191b;
+  --ink-muted: #5a6166;
+  --accent: #0f6b5c;
+  --on-accent: #ffffff;
+  --accent-soft: #dcefea;
+  --climb: #9a5a17;
+  --climb-soft: #f6e8d6;
+  --danger: #b42318;
+  --danger-soft: #fdecea;
+  --grade-ring: #857f72;
+  --sheet-shadow: 0 -8px 32px rgb(21 25 27 / 0.12);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #0e1214;
+    --surface: #161b1e;
+    --sunken: #1e2529;
+    --line: #2c3439;
+    --ink: #eceeec;
+    --ink-muted: #9aa3a7;
+    --accent: #4fd1b5;
+    --on-accent: #062621;
+    --accent-soft: #13312c;
+    --climb: #e5a15a;
+    --climb-soft: #33271a;
+    --danger: #f97066;
+    --danger-soft: #3a1c1a;
+    --grade-ring: #6b767c;
+    --sheet-shadow: 0 -8px 32px rgb(0 0 0 / 0.5);
+    color-scheme: dark;
+  }
+}
+
+@theme {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  /* The gym's grades: physical hold colours, the same in both themes. */
+  --color-grade-yellow: #f2c230;
+  --color-grade-green: #2e9e5b;
+  --color-grade-blue: #2f6fd6;
+  --color-grade-purple: #7c4dc4;
+  --color-grade-red: #d63a3a;
+  --color-grade-black: #1a1a1a;
+  --color-grade-white: #ffffff;
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.625rem;
+  --text-xl: 1.375rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.75rem;
+  --text-2xl--line-height: 2.125rem;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+
+  --container-content: 42rem;
+  --animate-rise: rise 180ms ease-out;
+  --animate-fade: fade 150ms ease-out;
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+/* Theme colours switch with the system, so they map to variables. */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-climb: var(--climb);
+  --color-climb-soft: var(--climb-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-grade-ring: var(--grade-ring);
+  --color-focus: var(--accent);
+  --shadow-sheet: var(--sheet-shadow);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), var(--font-inter), ui-sans-serif, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
