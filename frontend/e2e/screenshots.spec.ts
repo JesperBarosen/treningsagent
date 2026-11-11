@@ -67,9 +67,19 @@ async function proxyApi(page: Page) {
   });
 }
 
-async function shot(page: Page, name: string, theme: string) {
+/** Saves docs/screenshots/<name>-<width>-<light|dark>.png. */
+async function shot(page: Page, name: string, project: string, fullPage = false) {
   await page.waitForTimeout(400); // let entry animations finish
-  await page.screenshot({ path: path.join(OUT, `${name}-375-${theme}.png`) });
+  const width = page.viewportSize()?.width ?? 375;
+  const theme = project.replace("desktop-", "");
+  if (fullPage) {
+    // Grow the viewport to the whole page, so fixed bars sit at its edges
+    // instead of over the middle of a stitched full-page image.
+    const height = await page.evaluate(() => document.documentElement.scrollHeight);
+    await page.setViewportSize({ width, height });
+    await page.waitForTimeout(400);
+  }
+  await page.screenshot({ path: path.join(OUT, `${name}-${width}-${theme}.png`), fullPage });
 }
 
 async function say(page: Page, text: string) {
@@ -135,4 +145,48 @@ test("sessions: loading, empty and error", async ({ page }, info) => {
   await page.reload();
   await expect(page.getByText("Can't reach the backend")).toBeVisible();
   await shot(page, "sessions-error", info.project.name);
+});
+
+test("dashboard @desktop", async ({ page }, info) => {
+  await page.goto("/dashboard");
+  await expect(page.getByRole("heading", { name: "Weekly load" })).toBeVisible();
+  await expect(page.locator(".recharts-surface").first()).toBeVisible();
+  await shot(page, "dashboard", info.project.name, true);
+});
+
+test("dashboard: loading, empty and error @desktop", async ({ page }, info) => {
+  const empty: Record<string, object> = {
+    "training-load": {
+      daily: [], acute_7d_avg: 0, chronic_28d_avg: 0, acute_chronic_ratio: null,
+      weekly: [{ week_start: iso(0), load: 0, sessions: 0, load_by_sport: {} }],
+    },
+    progression: {
+      weeks: 8, today: iso(0), trend_rule: "",
+      running: { sessions: 0, weekly: [], trends: {} },
+      climbing: { sessions: 0, weekly: [], trends: {}, grade_scale: [] },
+    },
+  };
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  const routes = [`${API}/training-load*`, `${API}/progression*`];
+  for (const url of routes) {
+    await page.route(url, async (route) => {
+      await held;
+      const key = new URL(route.request().url()).pathname.slice(1);
+      await route.fulfill({ json: empty[key], headers: { "access-control-allow-origin": "*" } });
+    });
+  }
+  await page.goto("/dashboard");
+  await expect(page.getByLabel("Loading dashboard")).toBeVisible();
+  await shot(page, "dashboard-loading", info.project.name);
+  release();
+  await expect(page.getByText("Nothing to chart yet")).toBeVisible();
+  await shot(page, "dashboard-empty", info.project.name);
+
+  for (const url of routes) await page.unroute(url);
+  await page.route(`${API}/progression*`, (route) => route.abort());
+  await page.reload();
+  await expect(page.getByText("Can't reach the backend")).toBeVisible();
+  await shot(page, "dashboard-error", info.project.name);
+  await page.unrouteAll({ behavior: "ignoreErrors" }); // /training-load may still be in flight
 });

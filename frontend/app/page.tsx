@@ -1,5 +1,9 @@
 import { Chat } from "./chat";
 
 export default function Home() {
-  return <Chat />;
+  return (
+    <div className="mx-auto max-w-content">
+      <Chat />
+    </div>
+  );
 }

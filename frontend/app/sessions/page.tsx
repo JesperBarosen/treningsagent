@@ -4,5 +4,9 @@ import { SessionsView } from "./sessions-view";
 export const metadata: Metadata = { title: "Sessions" };
 
 export default function SessionsPage() {
-  return <SessionsView />;
+  return (
+    <div className="mx-auto max-w-content">
+      <SessionsView />
+    </div>
+  );
 }

@@ -18,5 +18,17 @@ export default defineConfig({
   projects: [
     { name: "light", use: { colorScheme: "light" } },
     { name: "dark", use: { colorScheme: "dark" } },
+    // Desktop: only the tests tagged @desktop.
+    ...(["light", "dark"] as const).map((colorScheme) => ({
+      name: `desktop-${colorScheme}`,
+      grep: /@desktop/,
+      use: {
+        colorScheme,
+        viewport: { width: 1280, height: 800 },
+        deviceScaleFactor: 1,
+        hasTouch: false,
+        isMobile: false,
+      },
+    })),
   ],
 });

@@ -34,8 +34,30 @@ text, 3:1 for large text and UI outlines).
 | `--focus` | `ring-focus` | = accent | = accent | 2px focus ring, 2px offset |
 
 Two sport colours, spruce for running and ochre for climbing, are used for
-icons and (later) chart series. Neither is a gym grade colour, so a sport
-can never be mistaken for a grade.
+icons and chart series. Neither is a gym grade colour, so a sport can never
+be mistaken for a grade.
+
+### Chart colours
+
+Chart series use their own steps of the sport colours. `--accent` and
+`--climb` failed the chart palette checks (the light spruce reads too grey,
+and both dark values are too light for the dark band), so the series are
+re-stepped. Both pairs pass every check in the dataviz validator: lightness
+band, chroma floor, colour-blind separation (ΔE 11.5 light / 11.0 dark),
+normal-vision separation and 3:1 contrast with the surface.
+
+| Token | Tailwind | Light | Dark | Use |
+| --- | --- | --- | --- | --- |
+| `--chart-run` | `bg-chart-run` | `#008571` | `#21A589` | running series |
+| `--chart-climb` | `bg-chart-climb` | `#A85F12` | `#C98030` | climbing series |
+
+Chart rules: bars at most 24px wide with a rounded 4px top and a square
+baseline, a 2px surface gap between stacked segments, 2px lines, dots of at
+least 8px with a 2px surface ring, and solid hairline gridlines in `--line`.
+Text in charts uses the text tokens, never a series colour. A chart with two
+or more series has a legend. A single series has none, because the title
+names it. Every chart has a tooltip and a "Show the numbers" table. Grade
+charts use the grade colours for their dots and always print the grade name.
 
 ### Grade colours
 
@@ -133,3 +155,5 @@ Flat by default; separation comes from `--line` borders. One shadow,
 | Composer | `app/chat.tsx` | auto-growing textarea + send button, fixed to the bottom |
 | SessionSheet | `app/sessions/session-sheet.tsx` | details as a bottom sheet (mobile) / dialog (desktop) |
 | States | `components/states.tsx` | Skeleton, EmptyState, ErrorState (with retry) |
+| Dashboard charts | `app/dashboard/charts.tsx` | weekly load (stacked columns), pace per band (line), hardest send / flash (grade dots on a grade axis) |
+| TrendChip | `app/dashboard/dashboard-view.tsx` | the backend's trend word; accent-soft only for "improving" |

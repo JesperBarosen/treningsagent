@@ -19,6 +19,9 @@
   --danger: #b42318;
   --danger-soft: #fdecea;
   --grade-ring: #857f72;
+  /* Chart series: the sport colours, re-stepped to pass the chart palette checks. */
+  --chart-run: #008571;
+  --chart-climb: #a85f12;
   --sheet-shadow: 0 -8px 32px rgb(21 25 27 / 0.12);
   color-scheme: light;
 }
@@ -39,12 +42,14 @@
     --danger: #f97066;
     --danger-soft: #3a1c1a;
     --grade-ring: #6b767c;
+    --chart-run: #21a589;
+    --chart-climb: #c98030;
     --sheet-shadow: 0 -8px 32px rgb(0 0 0 / 0.5);
     color-scheme: dark;
   }
 }
 
-@theme {
+@theme static {
   --color-*: initial;
   --color-transparent: transparent;
   --color-current: currentColor;
@@ -105,6 +110,8 @@
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-grade-ring: var(--grade-ring);
+  --color-chart-run: var(--chart-run);
+  --color-chart-climb: var(--chart-climb);
   --color-focus: var(--accent);
   --shadow-sheet: var(--sheet-shadow);
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;

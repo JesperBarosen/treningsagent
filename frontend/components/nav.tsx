@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChatIcon, ListIcon } from "./icons";
+import { ChartIcon, ChatIcon, ListIcon } from "./icons";
 
 const LINKS = [
   { href: "/", label: "Coach", Icon: ChatIcon },
   { href: "/sessions", label: "Sessions", Icon: ListIcon },
+  { href: "/dashboard", label: "Dashboard", Icon: ChartIcon },
 ];
 
 function Wordmark() {

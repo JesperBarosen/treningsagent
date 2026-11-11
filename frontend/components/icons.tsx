@@ -103,6 +103,14 @@ export const OfflineIcon = (p: IconProps) => (
   </Icon>
 );
 
+/** Three columns of rising height: the dashboard. */
+export const ChartIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 20h16" />
+    <path d="M7 16v-4M12 16V8M17 16V5" strokeWidth={2.4} />
+  </Icon>
+);
+
 /** The sport's icon on its soft sport colour. */
 export function SportBadge({ sport, size = "md" }: { sport: Sport; size?: "sm" | "md" }) {
   const box = size === "sm" ? "size-8" : "size-10";

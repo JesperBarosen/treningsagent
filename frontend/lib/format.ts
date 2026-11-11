@@ -109,3 +109,13 @@ export function fullDate(iso: string): string {
 }
 
 export const nf = new Intl.NumberFormat("en-GB");
+
+/** "12 Oct". */
+export function shortDate(iso: string): string {
+  return parseDay(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+/** 0.67 -> "67%". */
+export function formatRate(rate: number): string {
+  return `${Math.round(rate * 100)}%`;
+}
