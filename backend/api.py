@@ -1,20 +1,31 @@
 """HTTP API for the training agent. Run: uv run uvicorn api:app --reload"""
 
+import json
 import uuid
 from collections.abc import Iterator
 from functools import cache
 
 import anthropic
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 import chat
 import db
+import tools
 
 load_dotenv()  # ANTHROPIC_API_KEY and DATABASE_URL from .env
 
 app = FastAPI(title="treningsagent")
+
+# The Next.js dev server in frontend/. No other origin may call the API from a browser.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["content-type"],
+)
 
 
 class ChatRequest(BaseModel):
@@ -30,6 +41,9 @@ class ChatResponse(BaseModel):
     reply: str
     history: list[dict]
     conversation_id: uuid.UUID
+    # Sessions stored by log_session during this turn, as the tool returned them,
+    # so a client can show what was logged without parsing `history`.
+    logged_sessions: list[dict] = []
 
 
 @cache
@@ -54,8 +68,57 @@ def post_chat(
 ) -> ChatResponse:
     conversation_id = req.conversation_id or uuid.uuid4()
     messages = [*req.history, {"role": "user", "content": req.message}]
+    turn_start = len(req.history)
     try:
         reply = chat.run_turn(client, store, messages, str(conversation_id))
     except anthropic.APIError as e:
         raise HTTPException(502, f"Claude API error: {e.message}") from e
-    return ChatResponse(reply=reply, history=messages, conversation_id=conversation_id)
+    return ChatResponse(reply=reply, history=messages, conversation_id=conversation_id,
+                        logged_sessions=logged_sessions(messages[turn_start:]))
+
+
+def logged_sessions(turn: list[dict]) -> list[dict]:
+    """The sessions log_session stored in these messages: the JSON results of
+    log_session calls that succeeded, in call order."""
+    log_calls = {block["id"] for m in turn if m["role"] == "assistant"
+                 for block in _blocks(m) if block.get("type") == "tool_use"
+                 and block.get("name") == "log_session"}
+    return [json.loads(block["content"]) for m in turn if m["role"] == "user"
+            for block in _blocks(m) if block.get("type") == "tool_result"
+            and block.get("tool_use_id") in log_calls and not block.get("is_error")]
+
+
+def _blocks(message: dict) -> list[dict]:
+    content = message["content"]
+    return content if isinstance(content, list) else []
+
+
+# Read-only views for the frontend. Each reuses the agent's own tool function,
+# so the app and the agent always show the same numbers, and runs through the
+# same store, so Row Level Security limits it to the user's own rows.
+
+@app.get("/health")
+def get_health() -> dict:
+    """Liveness check that touches neither the database nor Claude."""
+    return {"status": "ok"}
+
+
+@app.get("/sessions")
+def get_sessions(days: int = Query(56, ge=1, le=366),
+                 store: db.PostgresStore = Depends(get_store)) -> list[dict]:
+    """Sessions from the last `days` days, oldest first, as get_history returns them."""
+    return tools.get_history(store, days)
+
+
+@app.get("/training-load")
+def get_training_load(weeks: int = Query(8, ge=1, le=12),
+                      store: db.PostgresStore = Depends(get_store)) -> dict:
+    """get_training_load: weekly and daily load by sport and the acute:chronic ratio."""
+    return tools.get_training_load(store, weeks)
+
+
+@app.get("/progression")
+def get_progression(weeks: int = Query(8, ge=1, le=26),
+                    store: db.PostgresStore = Depends(get_store)) -> dict:
+    """calculate_progression: weekly running and climbing numbers with trends."""
+    return tools.calculate_progression(store, weeks)
