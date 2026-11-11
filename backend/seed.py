@@ -67,10 +67,10 @@ GRADES = tools.GRADES
 
 
 def _climb(day: date, progress: float, light: bool, rng: random.Random) -> dict:
-    top = 4 + round(progress * 1.4)  # hardest grade tried: purple early, red/black late
+    top = 4 + round(progress * 1.6)  # hardest grade tried: purple early, red/black late
     climbs = []
     for _ in range(rng.randint(4, 5) if light else rng.randint(7, 10)):
-        ordinal = max(2, min(top, top - int(rng.expovariate(0.8))))
+        ordinal = max(2, min(top, top - int(rng.expovariate(0.45))))
         hard = top - ordinal  # 0 = at the limit
         sent = rng.random() < (0.35, 0.7, 0.9, 0.97)[min(hard, 3)]
         attempts = 1 if sent and rng.random() < (0.1, 0.35, 0.7, 0.9)[min(hard, 3)] \
