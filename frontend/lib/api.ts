@@ -93,3 +93,90 @@ export function sendChat(
 export function getSessions(days = 56, signal?: AbortSignal): Promise<Session[]> {
   return request(`/sessions?days=${days}`, { signal });
 }
+
+/** GET /training-load (tools.get_training_load). */
+export type TrainingLoad = {
+  daily: { date: string; load: number }[];
+  weekly: {
+    week_start: string;
+    load: number;
+    sessions: number;
+    load_by_sport: Partial<Record<Sport, number>>;
+  }[];
+  acute_7d_avg: number;
+  chronic_28d_avg: number;
+  acute_chronic_ratio: number | null;
+};
+
+export type TrendWord = "improving" | "flat" | "declining" | "not enough data";
+
+export type Trend = {
+  recent: number | null;
+  baseline: number | null;
+  recent_sessions: number;
+  baseline_sessions: number;
+  trend: TrendWord;
+};
+
+export const DISTANCE_BANDS = ["under_7km", "7_to_15km", "over_15km"] as const;
+export type DistanceBand = (typeof DISTANCE_BANDS)[number];
+
+export type RunningProgression = {
+  last_session: string | null;
+  days_since_last_session: number | null;
+  sessions: number;
+  weekly: {
+    week_start: string;
+    runs: number;
+    distance_km: number;
+    duration_min: number;
+    pace_min_per_km: number | null;
+    pace_by_distance: Partial<Record<DistanceBand, { runs: number; pace_min_per_km: number | null }>>;
+  }[];
+  trends: {
+    distance_km_per_week: Trend;
+    duration_min_per_week: Trend;
+    pace_min_per_km: Trend;
+    pace_by_distance: Record<DistanceBand, Trend>;
+  };
+};
+
+export type SendRate = { sent: number; tried: number; rate: number };
+
+export type ClimbingProgression = {
+  last_session: string | null;
+  days_since_last_session: number | null;
+  sessions: number;
+  grade_scale: Grade[];
+  weekly: {
+    week_start: string;
+    sessions: number;
+    climbs: number;
+    hardest_sent: Grade | null;
+    flash_grade: Grade | null;
+    send_rate_by_grade: Partial<Record<Grade, SendRate>>;
+  }[];
+  trends: {
+    climbs_per_week: Trend;
+    avg_session_hardest_sent: Trend & { recent_grade: Grade | null; baseline_grade: Grade | null };
+    avg_session_flash_grade: Trend & { recent_grade: Grade | null; baseline_grade: Grade | null };
+    send_rate_by_grade: Partial<Record<Grade, Trend>>;
+  };
+};
+
+/** GET /progression (tools.calculate_progression). */
+export type Progression = {
+  weeks: number;
+  today: string;
+  trend_rule: string;
+  running: RunningProgression;
+  climbing: ClimbingProgression;
+};
+
+export function getTrainingLoad(weeks = 8, signal?: AbortSignal): Promise<TrainingLoad> {
+  return request(`/training-load?weeks=${weeks}`, { signal });
+}
+
+export function getProgression(weeks = 8, signal?: AbortSignal): Promise<Progression> {
+  return request(`/progression?weeks=${weeks}`, { signal });
+}
