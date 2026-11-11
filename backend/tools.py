@@ -1,47 +1,30 @@
-"""Training-session storage and the tool functions the agent can call.
+"""The tool functions the agent can call, and their validation.
 
-Only raw, user-reported facts are stored. Derived values (pace, load) are
-computed when history is read, so they can never go stale or disagree.
+Storage is passed in as a Store, so these functions never touch a database
+directly and can be tested offline. Only raw, user-reported facts are stored.
+Derived values (pace, load) are computed when history is read, so they can
+never go stale or disagree.
 """
 
 import json
-import sqlite3
 from datetime import date, timedelta
+from typing import Protocol
 
 SPORTS = ("running", "climbing")
 CLIMBING_STYLES = ("boulder", "lead", "top_rope")
 RUNNING_FIELDS = ("distance_km", "elevation_m")
 CLIMBING_FIELDS = ("climbing_style", "hardest_grade", "routes_count")
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS sessions (
-    id             INTEGER PRIMARY KEY,
-    sport          TEXT    NOT NULL CHECK (sport IN ('running', 'climbing')),
-    date           TEXT    NOT NULL,              -- ISO date, YYYY-MM-DD
-    duration_min   INTEGER NOT NULL CHECK (duration_min > 0),
-    effort         INTEGER NOT NULL CHECK (effort BETWEEN 1 AND 10),
-    notes          TEXT,
-    -- running only
-    distance_km    REAL    CHECK (distance_km > 0),
-    elevation_m    INTEGER CHECK (elevation_m >= 0),
-    -- climbing only
-    climbing_style TEXT    CHECK (climbing_style IN ('boulder', 'lead', 'top_rope')),
-    hardest_grade  TEXT,
-    routes_count   INTEGER CHECK (routes_count >= 0)
-)
-"""
 
+class Store(Protocol):
+    """Where sessions are kept. db.PostgresStore in the app, a fake in tests."""
 
-def connect(path: str) -> sqlite3.Connection:
-    """Open the database and make sure the table exists."""
-    conn = sqlite3.connect(path)
-    conn.row_factory = sqlite3.Row  # rows behave like dicts
-    conn.execute(SCHEMA)
-    return conn
+    def insert_session(self, row: dict) -> int: ...
+    def sessions_since(self, since: str) -> list[dict]: ...
 
 
 def log_session(
-    conn: sqlite3.Connection,
+    store: Store,
     sport: str,
     date: str,
     duration_min: int,
@@ -68,30 +51,21 @@ def log_session(
 
     row = {"sport": sport, "date": date, "duration_min": duration_min,
            "effort": effort, "notes": notes, **sport_fields}
-    columns = ", ".join(row)
-    placeholders = ", ".join("?" for _ in row)  # parameterized: no SQL injection
-    with conn:  # commits on success, rolls back on error
-        cur = conn.execute(
-            f"INSERT INTO sessions ({columns}) VALUES ({placeholders})",
-            tuple(row.values()),
-        )
-    return {"id": cur.lastrowid, **row}
+    return {"id": store.insert_session(row), **row}
 
 
-def get_history(conn: sqlite3.Connection, days: int, today: date | None = None) -> list[dict]:
+def get_history(store: Store, days: int, today: date | None = None) -> list[dict]:
     """Sessions from the last `days` days (today included), oldest first,
     with derived metrics computed on the fly."""
     if days < 1:
         raise ValueError("days must be at least 1")
     today = today or date.today()
     since = (today - timedelta(days=days - 1)).isoformat()
-    rows = conn.execute(
-        "SELECT * FROM sessions WHERE date >= ? ORDER BY date, id", (since,)
-    ).fetchall()
+    rows = store.sessions_since(since)
 
     sessions = []
     for row in rows:
-        s = {k: v for k, v in dict(row).items() if v is not None}
+        s = {k: v for k, v in row.items() if v is not None}
         s.update(derived_metrics(s))
         sessions.append(s)
     return sessions
@@ -165,12 +139,12 @@ TOOLS = [
 ]
 
 
-def run_tool(conn: sqlite3.Connection, name: str, tool_input: dict) -> str:
+def run_tool(store: Store, name: str, tool_input: dict) -> str:
     """Dispatch a tool call from Claude and return the result as JSON text."""
     if name == "log_session":
-        result = log_session(conn, **tool_input)
+        result = log_session(store, **tool_input)
     elif name == "get_history":
-        result = get_history(conn, **tool_input)
+        result = get_history(store, **tool_input)
     else:
         raise ValueError(f"unknown tool {name!r}")
     return json.dumps(result)

@@ -1,7 +1,6 @@
 """The tool-use loop, shared by the terminal script and the API."""
 
 import logging
-import sqlite3
 from datetime import date
 
 import anthropic
@@ -20,7 +19,7 @@ Today is {today}."""
 log = logging.getLogger(__name__)
 
 
-def run_turn(client: anthropic.Anthropic, conn: sqlite3.Connection, messages: list) -> str:
+def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list) -> str:
     """Run the tool-use loop for one user message (already appended to `messages`).
 
     Appends Claude's replies and the tool results to `messages` as plain,
@@ -61,8 +60,8 @@ def run_turn(client: anthropic.Anthropic, conn: sqlite3.Connection, messages: li
                 continue
             log.info("tool %s(%s)", block.name, block.input)
             try:
-                content, is_error = tools.run_tool(conn, block.name, block.input), False
-            except (ValueError, TypeError, sqlite3.IntegrityError) as e:
+                content, is_error = tools.run_tool(store, block.name, block.input), False
+            except (ValueError, TypeError) as e:
                 content, is_error = f"Error: {e}", True  # let Claude correct itself
             results.append({"type": "tool_result", "tool_use_id": block.id,
                             "content": content, "is_error": is_error})

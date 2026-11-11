@@ -5,6 +5,7 @@ description = "AI training agent for climbing and running"
 requires-python = ">=3.12"
 dependencies = [
     "anthropic>=2.8.0",
+    "psycopg[binary]>=3.3.8",
     "python-dotenv>=1.2.4",
 ]
 
