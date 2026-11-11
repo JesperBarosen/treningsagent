@@ -167,9 +167,23 @@ def calculate_progression(store: Store, weeks: int = 8, today: date | None = Non
     shown = [start + timedelta(days=7 * i) for i in range(weeks)]
     result = progression.calculate(store.sessions_since(since), store.climbs_since(since),
                                    shown, today)
-    result["climbing"]["grade_scale"] = list(GRADES)
+    climbing = result["climbing"]
+    climbing["grade_scale"] = list(GRADES)
+    for key in ("avg_session_hardest_sent", "avg_session_flash_grade"):
+        t = climbing["trends"][key]
+        t["recent_grade"] = nearest_grade(t["recent"])
+        t["baseline_grade"] = nearest_grade(t["baseline"])
     return {"weeks": weeks, "today": today.isoformat(),
             "trend_rule": progression.TREND_RULE, **result}
+
+
+def nearest_grade(ordinal: float | None) -> str | None:
+    """The grade whose ordinal is closest to an average, halves rounding up
+    (4.5 -> red). Python's round() would send 4.5 down to purple."""
+    if ordinal is None:
+        return None
+    index = min(max(int(ordinal + 0.5), 1), len(GRADES)) - 1
+    return GRADES[index]
 
 
 def derived_metrics(session: dict) -> dict:
@@ -289,7 +303,9 @@ TOOLS = [
             "data) comparing the last 14 days with the 28 before, with the recent and "
             "baseline values and how many sessions each is based on; `trend_rule` gives "
             "the exact rule. Climbing grade trends are averages of grade ordinals on "
-            "`grade_scale` (1 = yellow). Use this whenever the user asks if they are "
+            "`grade_scale` (1 = yellow), with the nearest grade in `recent_grade` and "
+            "`baseline_grade`: name grades only with those fields, never by mapping "
+            "the numbers yourself. Use this whenever the user asks if they are "
             "improving, getting faster or stronger, or how they are progressing. Quote "
             "the actual numbers. Prefer pace per distance band over overall pace, which "
             "mixes short and long runs. If a trend is 'not enough data', say so plainly "

@@ -141,7 +141,7 @@ def test_climbing_trends(store):
     trends = p["climbing"]["trends"]
     assert trends["avg_session_hardest_sent"] == {
         "recent": 5.0, "baseline": 3.0, "recent_sessions": 3, "baseline_sessions": 3,
-        "trend": "improving"}
+        "trend": "improving", "recent_grade": "red", "baseline_grade": "blue"}
     assert trends["avg_session_flash_grade"]["recent"] == 4.0  # red had null attempts
     assert trends["avg_session_flash_grade"]["trend"] == "improving"
     assert trends["send_rate_by_grade"]["purple"]["trend"] == "improving"
@@ -215,3 +215,30 @@ def test_tool_schema_matches_function_limits():
     weeks = schema["input_schema"]["properties"]["weeks"]
     assert (weeks["minimum"], weeks["maximum"]) == (1, 26)
     assert "not enough data" in schema["description"]
+
+
+@pytest.mark.parametrize("ordinal, grade", [
+    (5.0, "red"), (4.6, "red"), (4.5, "red"), (4.49, "purple"), (3.75, "purple"),
+    (2.67, "blue"), (1.0, "yellow"), (7.0, "white"), (None, None),
+])
+def test_nearest_grade(ordinal, grade):
+    assert tools.nearest_grade(ordinal) == grade
+
+
+def test_grade_averages_carry_nearest_grade_name(store):
+    for day in BASELINE:
+        session(store, day, climb("blue", True, 1), climb("purple", True, 2))
+    for day in RECENT[:2]:
+        session(store, day, climb("purple", True, 1), climb("red", True, 2))
+    session(store, RECENT[2], climb("purple", True, 1), climb("purple", True, 2))
+    trends = progress(store)["climbing"]["trends"]
+    hardest = trends["avg_session_hardest_sent"]
+    assert (hardest["recent"], hardest["recent_grade"]) == (4.67, "red")
+    assert (hardest["baseline"], hardest["baseline_grade"]) == (4.0, "purple")
+    flash = trends["avg_session_flash_grade"]
+    assert (flash["recent_grade"], flash["baseline_grade"]) == ("purple", "blue")
+
+
+def test_grade_names_are_none_without_sends(store):
+    hardest = progress(store)["climbing"]["trends"]["avg_session_hardest_sent"]
+    assert hardest["recent_grade"] is None and hardest["baseline_grade"] is None
