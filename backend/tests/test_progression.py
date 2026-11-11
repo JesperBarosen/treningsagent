@@ -1,3 +1,4 @@
+import json
 from datetime import date
 
 import pytest
@@ -181,3 +182,15 @@ def test_sport_modules_are_pluggable(store, monkeypatch):
         return {"sessions": 0, "weekly": [], "trends": {}}
     monkeypatch.setitem(progression.SPORT_MODULES, "strength", strength)
     assert progress(store)["strength"] == {"sessions": 0, "weekly": [], "trends": {}}
+
+
+def test_run_tool_dispatches_progression(store):
+    out = json.loads(tools.run_tool(store, "calculate_progression", {"weeks": 2}))
+    assert len(out["running"]["weekly"]) == 2 and out["climbing"]["sessions"] == 0
+
+
+def test_tool_schema_matches_function_limits():
+    schema = next(t for t in tools.TOOLS if t["name"] == "calculate_progression")
+    weeks = schema["input_schema"]["properties"]["weeks"]
+    assert (weeks["minimum"], weeks["maximum"]) == (1, 26)
+    assert "not enough data" in schema["description"]

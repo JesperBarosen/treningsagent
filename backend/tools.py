@@ -277,6 +277,30 @@ TOOLS = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "calculate_progression",
+        "description": (
+            "Measure whether the user is improving, per sport, from logged data. Running "
+            "per calendar week: runs, distance, duration, pace (min/km) overall and per "
+            "distance band (under_7km, 7_to_15km, over_15km). Climbing per week: climbs, "
+            "hardest sent grade, flash grade (sent with attempts = 1), send rate per "
+            "grade. Each metric has a trend (improving / flat / declining / not enough "
+            "data) comparing the last 14 days with the 28 before, with the recent and "
+            "baseline values and how many sessions each is based on; `trend_rule` gives "
+            "the exact rule. Climbing grade trends are averages of grade ordinals on "
+            "`grade_scale` (1 = yellow). Use this whenever the user asks if they are "
+            "improving, getting faster or stronger, or how they are progressing. Quote "
+            "the actual numbers. Prefer pace per distance band over overall pace, which "
+            "mixes short and long runs. If a trend is 'not enough data', say so plainly "
+            "and do not guess. Never claim progress the numbers do not show."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"weeks": {"type": "integer", "minimum": 1, "maximum": 26,
+                                     "description": "Calendar weeks to show, default 8"}},
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -288,6 +312,8 @@ def run_tool(store: Store, name: str, tool_input: dict) -> str:
         result = get_history(store, **tool_input)
     elif name == "get_training_load":
         result = get_training_load(store, **tool_input)
+    elif name == "calculate_progression":
+        result = calculate_progression(store, **tool_input)
     else:
         raise ValueError(f"unknown tool {name!r}")
     return json.dumps(result)
