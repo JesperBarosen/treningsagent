@@ -118,3 +118,57 @@ def test_run_tool_returns_json(store):
 def test_run_tool_rejects_unknown_tool(store):
     with pytest.raises(ValueError, match="unknown tool"):
         tools.run_tool(store, "delete_everything", {})
+
+
+WED = date(2026, 11, 11)  # a Wednesday; its week starts Monday 2026-11-09
+
+
+def test_training_load_per_day_and_week_across_sports(store):
+    tools.log_session(store, "running", "2026-10-30", 10, 5)   # before the shown weeks
+    tools.log_session(store, "running", "2026-11-02", 30, 5)   # 150
+    tools.log_session(store, "climbing", "2026-11-10", 60, 7)  # 420
+    tools.log_session(store, "running", "2026-11-10", 20, 5)   # 100
+    tools.log_session(store, "running", "2026-11-11", 40, 6)   # 240
+
+    load = tools.get_training_load(store, weeks=2, today=WED)
+
+    daily = {d["date"]: d["load"] for d in load["daily"]}
+    assert list(daily)[0] == "2026-11-02" and list(daily)[-1] == "2026-11-11"
+    assert daily["2026-11-03"] == 0  # rest days are included
+    assert daily["2026-11-10"] == 520
+    assert load["weekly"] == [
+        {"week_start": "2026-11-02", "load": 150, "sessions": 1,
+         "load_by_sport": {"running": 150}},
+        {"week_start": "2026-11-09", "load": 760, "sessions": 3,
+         "load_by_sport": {"climbing": 420, "running": 340}},
+    ]
+    assert store.rows[0].keys() == {"id", "sport", "date", "duration_min", "effort", "notes"}
+
+
+def test_acute_chronic_ratio_uses_7_and_28_day_averages(store):
+    tools.log_session(store, "running", "2026-10-14", 100, 10)  # 28 days ago: outside
+    tools.log_session(store, "running", "2026-10-15", 60, 5)    # 300, first chronic day
+    tools.log_session(store, "climbing", "2026-11-11", 70, 10)  # 700, today
+
+    load = tools.get_training_load(store, weeks=1, today=WED)
+
+    assert load["acute_7d_avg"] == 100.0             # 700 / 7
+    assert load["chronic_28d_avg"] == 35.7           # 1000 / 28
+    assert load["acute_chronic_ratio"] == 2.8        # 100 / 35.71
+    assert [d["date"] for d in load["daily"]] == ["2026-11-09", "2026-11-10", "2026-11-11"]
+
+
+def test_training_load_with_no_sessions(store):
+    load = tools.get_training_load(store, today=WED)
+    assert len(load["weekly"]) == 4
+    assert load["acute_chronic_ratio"] is None
+
+
+@pytest.mark.parametrize("weeks", [0, 13])
+def test_training_load_rejects_bad_weeks(store, weeks):
+    with pytest.raises(ValueError, match="weeks"):
+        tools.get_training_load(store, weeks=weeks)
+
+
+def test_run_tool_dispatches_training_load(store):
+    assert json.loads(tools.run_tool(store, "get_training_load", {}))["acute_chronic_ratio"] is None

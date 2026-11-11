@@ -105,12 +105,56 @@ def get_history(store: Store, days: int, today: date | None = None) -> list[dict
     return sessions
 
 
+def session_load(session: dict) -> int:
+    """Session-RPE load (Foster et al. 2001): minutes x perceived effort (1-10)."""
+    return session["duration_min"] * session["effort"]
+
+
+def get_training_load(store: Store, weeks: int = 4, today: date | None = None) -> dict:
+    """Session-RPE load per day and per calendar week (Monday start) across all
+    sports, for the current week and the `weeks - 1` before it, plus the
+    acute:chronic workload ratio: average daily load over the last 7 days
+    divided by the average over the last 28 (today included in both)."""
+    if not 1 <= weeks <= 12:
+        raise ValueError("weeks must be between 1 and 12")
+    today = today or date.today()
+    start = today - timedelta(days=today.weekday() + 7 * (weeks - 1))
+    chronic_start = today - timedelta(days=27)
+    sessions = store.sessions_since(min(start, chronic_start).isoformat())
+
+    by_day: dict[date, int] = {}
+    for s in sessions:
+        d = _parse_date(s["date"])
+        by_day[d] = by_day.get(d, 0) + session_load(s)
+
+    def days_from(first: date):
+        return (first + timedelta(days=i) for i in range((today - first).days + 1))
+
+    weekly = []
+    for i in range(weeks):
+        week_start = start + timedelta(days=7 * i)
+        week = [s for s in sessions
+                if week_start <= _parse_date(s["date"]) < week_start + timedelta(days=7)]
+        by_sport: dict[str, int] = {}
+        for s in week:
+            by_sport[s["sport"]] = by_sport.get(s["sport"], 0) + session_load(s)
+        weekly.append({"week_start": week_start.isoformat(), "load": sum(by_sport.values()),
+                       "sessions": len(week), "load_by_sport": by_sport})
+
+    acute = sum(by_day.get(d, 0) for d in days_from(today - timedelta(days=6))) / 7
+    chronic = sum(by_day.get(d, 0) for d in days_from(chronic_start)) / 28
+    return {
+        "daily": [{"date": d.isoformat(), "load": by_day.get(d, 0)} for d in days_from(start)],
+        "weekly": weekly,
+        "acute_7d_avg": round(acute, 1),
+        "chronic_28d_avg": round(chronic, 1),
+        "acute_chronic_ratio": round(acute / chronic, 2) if chronic else None,
+    }
+
+
 def derived_metrics(session: dict) -> dict:
     """Values computed from stored facts. Never written to the database."""
-    metrics = {
-        # Session-RPE load (Foster): minutes x perceived effort.
-        "load": session["duration_min"] * session["effort"],
-    }
+    metrics = {"load": session_load(session)}
     if session.get("distance_km"):
         metrics["pace_min_per_km"] = round(session["duration_min"] / session["distance_km"], 2)
     climbs = session.get("climbs", [])
@@ -194,6 +238,25 @@ TOOLS = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "get_training_load",
+        "description": (
+            "Get training load across all sports: session-RPE load (minutes x effort, "
+            "Foster et al. 2001) per day and per calendar week (Monday start, current week "
+            "is partial), and the acute:chronic workload ratio (average daily load over "
+            "the last 7 days / last 28 days). Use this when the user asks about load, "
+            "fatigue, how hard a week was, whether to train harder or rest, or injury "
+            "risk. Ratios around 0.8-1.3 are commonly cited as a moderate range and above "
+            "~1.5 as a sharp spike (Gabbett 2016); treat this as a rough guide, not a "
+            "prediction. The ratio is unreliable until about 4 weeks have been logged."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"weeks": {"type": "integer", "minimum": 1, "maximum": 12,
+                                     "description": "Calendar weeks to show, default 4"}},
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -203,6 +266,8 @@ def run_tool(store: Store, name: str, tool_input: dict) -> str:
         result = log_session(store, **tool_input)
     elif name == "get_history":
         result = get_history(store, **tool_input)
+    elif name == "get_training_load":
+        result = get_training_load(store, **tool_input)
     else:
         raise ValueError(f"unknown tool {name!r}")
     return json.dumps(result)
