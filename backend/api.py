@@ -7,7 +7,6 @@ from collections.abc import Iterator
 from functools import cache
 
 import anthropic
-from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -15,9 +14,10 @@ from pydantic import BaseModel, Field
 import auth
 import chat
 import db
+import env
 import tools
 
-load_dotenv()  # ANTHROPIC_API_KEY, DATABASE_URL and SUPABASE_URL from .env
+env.load()  # ANTHROPIC_API_KEY, DATABASE_URL, SUPABASE_URL, CHAT_DAILY_LIMIT from the root .env
 
 # /chat requests per user in any 24 hours, to cap what one account can spend.
 CHAT_DAILY_LIMIT = int(os.environ.get("CHAT_DAILY_LIMIT", "50"))

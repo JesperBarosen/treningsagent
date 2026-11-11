@@ -14,9 +14,9 @@ import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-from dotenv import load_dotenv
 
 import db
+import env
 import tools
 
 SEED_IDS_FILE = Path(__file__).parent / ".seed_ids.json"
@@ -88,7 +88,7 @@ def _climb(day: date, progress: float, light: bool, rng: random.Random) -> dict:
 
 
 def main() -> int:
-    load_dotenv()
+    env.load()
     if SEED_IDS_FILE.exists():
         print(f"Already seeded ({SEED_IDS_FILE.name} exists). Run unseed.py first.")
         return 1

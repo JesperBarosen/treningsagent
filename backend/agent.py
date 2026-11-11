@@ -4,14 +4,14 @@ import logging
 import uuid
 
 import anthropic
-from dotenv import load_dotenv
 
 import chat
 import db
+import env
 
 
 def main() -> None:
-    load_dotenv()  # puts ANTHROPIC_API_KEY and DATABASE_URL from .env into the environment
+    env.load()  # ANTHROPIC_API_KEY and DATABASE_URL from the root .env
     logging.basicConfig(format="  [%(name)s] %(message)s")
     logging.getLogger("chat").setLevel(logging.INFO)  # show tool calls
     client = anthropic.Anthropic()

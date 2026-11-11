@@ -26,11 +26,11 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import anthropic
-from dotenv import load_dotenv
 from pydantic import BaseModel
 
 import chat
 import db
+import env
 import tools
 
 CASES_DIR = Path(__file__).parent / "cases"
@@ -239,7 +239,7 @@ def main(argv: list[str]) -> int:
     if args.repeat < 1:
         parser.error("--repeat must be at least 1")
 
-    load_dotenv()
+    env.load()
     paths = sorted(CASES_DIR.glob("*.json"))
     if args.cases:
         unknown = set(args.cases) - {p.stem for p in paths}
