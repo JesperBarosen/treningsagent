@@ -158,6 +158,7 @@ test("dashboard: loading, empty and error @desktop", async ({ page }, info) => {
   const empty: Record<string, object> = {
     "training-load": {
       daily: [], acute_7d_avg: 0, chronic_28d_avg: 0, acute_chronic_ratio: null,
+      ratio_status: "not_enough_data", history_days: 0,
       weekly: [{ week_start: iso(0), load: 0, sessions: 0, load_by_sport: {} }],
     },
     progression: {

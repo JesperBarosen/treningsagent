@@ -17,6 +17,9 @@ RUNNING_FIELDS = ("distance_km", "elevation_m")
 # The gym's colour scale, easiest first. A grade's ordinal is its position + 1.
 GRADES = ("yellow", "green", "blue", "purple", "red", "black", "white")
 CLIMB_STYLES = ("boulder", "kilter", "rope")
+# The acute:chronic ratio compares 7 days with 28, so it means little before
+# 28 days of history.
+RATIO_MIN_HISTORY_DAYS = 28
 
 
 class Store(Protocol):
@@ -24,6 +27,7 @@ class Store(Protocol):
 
     def insert_session(self, row: dict, climbs: list[dict] = ()) -> int: ...
     def sessions_since(self, since: str) -> list[dict]: ...
+    def first_session_date(self) -> str | None: ...
     def climbs_since(self, since: str) -> list[dict]: ...
     def log_model_call(self, call: dict) -> None: ...
 
@@ -116,7 +120,11 @@ def get_training_load(store: Store, weeks: int = 4, today: date | None = None) -
     """Session-RPE load per day and per calendar week (Monday start) across all
     sports, for the current week and the `weeks - 1` before it, plus the
     acute:chronic workload ratio: average daily load over the last 7 days
-    divided by the average over the last 28 (today included in both)."""
+    divided by the average over the last 28 (today included in both).
+
+    ratio_status is "not_enough_data" when under RATIO_MIN_HISTORY_DAYS days
+    have passed since the first logged session (today included), or when there
+    is no ratio at all; otherwise "ok". history_days is that day count."""
     if not 1 <= weeks <= 12:
         raise ValueError("weeks must be between 1 and 12")
     today = today or date.today()
@@ -145,12 +153,18 @@ def get_training_load(store: Store, weeks: int = 4, today: date | None = None) -
 
     acute = sum(by_day.get(d, 0) for d in days_from(today - timedelta(days=6))) / 7
     chronic = sum(by_day.get(d, 0) for d in days_from(chronic_start)) / 28
+    ratio = round(acute / chronic, 2) if chronic else None
+    first = store.first_session_date()
+    history_days = max((today - _parse_date(first)).days + 1, 0) if first else 0
+    enough = ratio is not None and history_days >= RATIO_MIN_HISTORY_DAYS
     return {
         "daily": [{"date": d.isoformat(), "load": by_day.get(d, 0)} for d in days_from(start)],
         "weekly": weekly,
         "acute_7d_avg": round(acute, 1),
         "chronic_28d_avg": round(chronic, 1),
-        "acute_chronic_ratio": round(acute / chronic, 2) if chronic else None,
+        "acute_chronic_ratio": ratio,
+        "ratio_status": "ok" if enough else "not_enough_data",
+        "history_days": history_days,
     }
 
 
@@ -282,7 +296,9 @@ TOOLS = [
             "fatigue, how hard a week was, whether to train harder or rest, or injury "
             "risk. Ratios around 0.8-1.3 are commonly cited as a moderate range and above "
             "~1.5 as a sharp spike (Gabbett 2016); treat this as a rough guide, not a "
-            "prediction. The ratio is unreliable until about 4 weeks have been logged."
+            "prediction. ratio_status is \"not_enough_data\" when under 28 days have "
+            "passed since the first logged session (history_days); then don't interpret "
+            "the ratio, say there isn't enough history yet."
         ),
         "input_schema": {
             "type": "object",

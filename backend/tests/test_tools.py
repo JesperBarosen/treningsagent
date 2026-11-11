@@ -155,6 +155,8 @@ def test_acute_chronic_ratio_uses_7_and_28_day_averages(store):
     assert load["acute_7d_avg"] == 100.0             # 700 / 7
     assert load["chronic_28d_avg"] == 35.7           # 1000 / 28
     assert load["acute_chronic_ratio"] == 2.8        # 100 / 35.71
+    assert load["history_days"] == 29                # since 2026-10-14
+    assert load["ratio_status"] == "ok"
     assert [d["date"] for d in load["daily"]] == ["2026-11-09", "2026-11-10", "2026-11-11"]
 
 
@@ -162,6 +164,33 @@ def test_training_load_with_no_sessions(store):
     load = tools.get_training_load(store, today=WED)
     assert len(load["weekly"]) == 4
     assert load["acute_chronic_ratio"] is None
+    assert load["ratio_status"] == "not_enough_data"
+    assert load["history_days"] == 0
+
+
+@pytest.mark.parametrize(("first", "days", "status"), [
+    ("2026-10-15", 28, "ok"),               # exactly 28 days, today included
+    ("2026-10-16", 27, "not_enough_data"),
+])
+def test_ratio_status_needs_28_days_of_history(store, first, days, status):
+    tools.log_session(store, "running", first, 30, 5)
+    tools.log_session(store, "running", "2026-11-11", 30, 5)
+    load = tools.get_training_load(store, weeks=1, today=WED)
+    assert load["acute_chronic_ratio"] is not None
+    assert (load["history_days"], load["ratio_status"]) == (days, status)
+
+
+def test_ratio_status_counts_history_outside_the_shown_weeks(store):
+    tools.log_session(store, "running", "2026-06-01", 30, 5)  # long before the 28-day window
+    tools.log_session(store, "running", "2026-11-10", 30, 5)
+    assert tools.get_training_load(store, weeks=1, today=WED)["ratio_status"] == "ok"
+
+
+def test_ratio_status_without_recent_load(store):
+    tools.log_session(store, "running", "2026-06-01", 30, 5)  # long history, nothing in 28 days
+    load = tools.get_training_load(store, weeks=1, today=WED)
+    assert load["acute_chronic_ratio"] is None
+    assert load["ratio_status"] == "not_enough_data"
 
 
 @pytest.mark.parametrize("weeks", [0, 13])

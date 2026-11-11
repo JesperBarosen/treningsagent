@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";
 import { Dashboard } from "@/app/dashboard/dashboard-view";
 import type { Progression, TrainingLoad, Trend } from "@/lib/api";
-import { historyDays, ratioView } from "@/lib/dashboard";
+import { ratioView } from "@/lib/dashboard";
 
 beforeAll(() => {
   // Recharts' ResponsiveContainer needs ResizeObserver, which jsdom lacks.
@@ -30,6 +30,8 @@ const load = (over: Partial<TrainingLoad> = {}): TrainingLoad => ({
   acute_7d_avg: 80,
   chronic_28d_avg: 75,
   acute_chronic_ratio: 1.07,
+  ratio_status: "ok",
+  history_days: 50,
   ...over,
 });
 
@@ -82,14 +84,14 @@ describe("ratioView", () => {
     expect(ratioView(load({ acute_chronic_ratio: 0.5 }))).toMatchObject({ zone: "below" });
   });
 
-  it("says not enough data with under 4 weeks of history, whatever the ratio", () => {
-    const l = load({ daily: daily(50, 30), acute_chronic_ratio: 1.9 }); // first load 20 days ago
-    expect(historyDays(l.daily)).toBe(20);
+  it("follows the backend's ratio_status, whatever the ratio", () => {
+    const l = load({ acute_chronic_ratio: 1.9, ratio_status: "not_enough_data", history_days: 20 });
     expect(ratioView(l)).toEqual({ kind: "not enough data", historyDays: 20 });
   });
 
   it("says not enough data when the backend has no ratio", () => {
-    expect(ratioView(load({ acute_chronic_ratio: null, daily: daily(50, 50) }))).toEqual({
+    const l = load({ acute_chronic_ratio: null, ratio_status: "not_enough_data", history_days: 0 });
+    expect(ratioView(l)).toEqual({
       kind: "not enough data",
       historyDays: 0,
     });
@@ -105,9 +107,11 @@ describe("Dashboard", () => {
   });
 
   it("shows not enough data instead of a young ratio", () => {
-    render(<Dashboard load={load({ daily: daily(50, 40) })} progression={progression()} />);
+    const young = load({ ratio_status: "not_enough_data", history_days: 10 });
+    render(<Dashboard load={young} progression={progression()} />);
     const card = screen.getByRole("region", { name: "Acute:chronic ratio" });
     expect(within(card).getByText("Not enough data")).toBeInTheDocument();
+    expect(within(card).getByText(/You have 10 days so far/)).toBeInTheDocument();
     expect(within(card).queryByText("1.07")).toBeNull();
   });
 
