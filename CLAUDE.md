@@ -12,7 +12,12 @@
 
 ## Pull requests
 - When a part is done, push the branch and open a PR with `gh`.
-- The PR description says what changed, why, how it was tested, and includes screenshots for UI changes.
+- PR titles are plain English and describe the change (e.g. "Add the dashboard page"), with no prefixes or ticket codes.
+- Fill in `.github/pull_request_template.md`: What, Why, How it was tested, Screenshots (UI only) and Follow-ups.
+- Label every PR (`gh pr create --label ...`):
+  - exactly one type label: `type: feature`, `type: fix`, `type: refactor`, `type: docs`, `type: test` or `type: chore`
+  - one or more area labels: `area: backend`, `area: frontend`, `area: agent`, `area: evals`, `area: database` or `area: infra`
+  - sport labels when the change touches a sport: `sport: running`, `sport: climbing`
 - Don't merge until the user says so. Then merge with a merge commit (not squash), delete the branch, check out `main` and pull.
 
 ## Secrets
