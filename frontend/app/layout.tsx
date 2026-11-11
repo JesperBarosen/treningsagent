@@ -33,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to content
         </a>
         <TopBar />
-        <main id="main" className="mx-auto w-full max-w-content px-4 sm:px-6">
+        <main id="main" className="mx-auto w-full px-4 sm:px-6">
           {children}
         </main>
         <TabBar />
