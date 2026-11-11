@@ -107,6 +107,10 @@ computed when read and never stored.
   count as the hardest sent; climbs with no attempt count are tried but never
   flashes.
 
+Each sport also has `last_session` (its latest session date) and
+`days_since_last_session`, so the agent can say when the user last trained
+without reading dates off the weekly rows.
+
 Every metric also has a trend: `improving`, `flat`, `declining` or
 `not enough data`. The rule compares the last 14 days (today included) with
 the 28 days before:
