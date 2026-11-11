@@ -55,6 +55,24 @@ the next message.
 skipped unless `TEST_DATABASE_URL` is set (use a separate dev project: it writes
 and deletes rows).
 
+### Evals
+
+```sh
+cd backend
+uv run python -m evals.run                          # all cases in evals/cases/
+uv run python -m evals.run progression_grade_names  # or just some
+```
+
+Each case in `backend/evals/cases/` is a seed (sessions dated as days before
+today), a question and what the answer must and must not do, plus a note on
+the bug it caught. The runner logs the seed for a new throwaway user, asks the
+question through the real chat loop, checks the expected tools were called,
+has `claude-haiku-5-5` grade the answer against the checklist (with the tool
+results as ground truth), and deletes that user's rows. It prints pass/fail
+per check and the cost; a full run of the current three cases costs about
+half a cent. It needs the API key and database, so it isn't part of `pytest`
+or CI.
+
 ### Cost per conversation
 
 Every Claude call is logged to `model_calls` with tokens and latency:
