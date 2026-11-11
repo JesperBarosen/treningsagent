@@ -1,16 +1,24 @@
 """Run the eval cases against the real agent, Claude API and database.
 
-    cd backend && uv run python -m evals.run [case_id ...]
+    cd backend && uv run python -m evals.run [case_id ...] [--repeat N]
+    cd backend && uv run python -m evals.run --judge-check
 
 For each case in evals/cases/: seed its sessions for a new throwaway user,
 ask its question through the chat loop, check which tools were called, have a
 cheap Claude judge grade the answer against the case's must / must_not lists,
-then delete every row that user has. Prints pass/fail per case and the cost.
+then delete every row that user has. Prints pass/fail per run, a pass rate
+per case with --repeat, and the cost.
+
+--judge-check tests the judge instead: it grades each case's `known_bad`
+answer (an answer with one planted mistake) and must fail the check that
+mistake breaks. It makes judge calls only and computes the tool results from
+the seed in memory, so it needs no database.
 
 Needs ANTHROPIC_API_KEY and DATABASE_URL. Costs money and writes to the
 database, so it is not part of `pytest` or CI.
 """
 
+import argparse
 import json
 import sys
 import uuid
@@ -125,7 +133,53 @@ def judge(client: anthropic.Anthropic, case: dict, answer: str,
     return checks, usage
 
 
-def run_case(client: anthropic.Anthropic, conn, case: dict) -> tuple[bool, float | None]:
+class MemoryStore:
+    """In-memory store for --judge-check: computes a case's tool results from
+    its seed without touching the database."""
+
+    def __init__(self):
+        self.rows: list[dict] = []
+        self.climbs: list[dict] = []
+
+    def insert_session(self, row: dict, climbs: list[dict] = ()) -> int:
+        session_id = len(self.rows) + 1
+        self.rows.append({"id": session_id, **row})
+        self.climbs += [{"id": len(self.climbs) + i + 1, "session_id": session_id, **c}
+                        for i, c in enumerate(climbs)]
+        return session_id
+
+    def sessions_since(self, since: str) -> list[dict]:
+        return sorted((r for r in self.rows if r["date"] >= since),
+                      key=lambda r: (r["date"], r["id"]))
+
+    def climbs_since(self, since: str) -> list[dict]:
+        ids = {r["id"] for r in self.sessions_since(since)}
+        return [c for c in self.climbs if c["session_id"] in ids]
+
+    def log_model_call(self, call: dict) -> None:
+        pass
+
+
+def total_cost(costs: list[float | None]) -> float | None:
+    return None if None in costs else sum(costs)
+
+
+def fmt(amount: float | None) -> str:
+    return "unknown" if amount is None else f"${amount:.4f}"
+
+
+def print_checks(checks: list[Check], answer: str | None = None) -> None:
+    for c in checks:
+        print(f"    {'ok  ' if c.passed else 'FAIL'} {c.id}: {c.reason}")
+    if answer is not None:
+        print("    answer:")
+        for line in answer.splitlines():
+            print("      " + line)
+
+
+def run_case(client: anthropic.Anthropic, conn, case: dict,
+             verbose: bool) -> tuple[bool, float | None]:
+    """Ask the case's question once and grade the answer. Returns (passed, cost)."""
     store = EvalStore(conn)
     try:
         seed(store, case["seed"], date.today())
@@ -143,44 +197,83 @@ def run_case(client: anthropic.Anthropic, conn, case: dict) -> tuple[bool, float
         checks.insert(0, Check(id="tools_called", passed=False,
                                reason=f"not called: {missing}; called: {called}"))
     passed = all(c.passed for c in checks)
-
-    agent_costs = [cost(c) for c in store.calls]
-    judge_cost = cost(judge_usage)
-    total = (None if None in agent_costs or judge_cost is None
-             else sum(agent_costs) + judge_cost)
-    price = "unknown" if total is None else f"${total:.4f}"
-    print(f"{'PASS' if passed else 'FAIL'}  {case['id']}  ({len(store.calls)} agent calls "
-          f"+ 1 judge call, {price})")
-    for c in checks:
-        print(f"    {'ok  ' if c.passed else 'FAIL'} {c.id}: {c.reason}")
-    if not passed:
-        print("    answer:\n" + "\n".join("      " + line for line in answer.splitlines()))
-    return passed, total
+    amount = total_cost([cost(c) for c in store.calls] + [cost(judge_usage)])
+    print(f"  {'PASS' if passed else 'FAIL'}  ({len(store.calls)} agent calls + 1 judge call, "
+          f"{fmt(amount)})")
+    if verbose or not passed:
+        print_checks(checks, None if passed else answer)
+    return passed, amount
 
 
-def main(ids: list[str]) -> int:
+def judge_check(client: anthropic.Anthropic, case: dict) -> tuple[bool, float | None]:
+    """Feed the case's known-bad answer straight to the judge, with the tool
+    results its seed produces. The judge is working only if it fails the
+    check the planted mistake breaks (`should_fail`), not just any check."""
+    store = MemoryStore()
+    seed(store, case["seed"], date.today())
+    results = [tools.run_tool(store, name, {}) for name in case["expect"]["tools_called"]]
+    bad = case["known_bad"]
+    checks, usage = judge(client, case, bad["answer"], results)
+    caught = any(c.id == bad["should_fail"] and not c.passed for c in checks)
+    amount = cost(usage)
+    print(f"{'ok  ' if caught else 'MISS'}  {case['id']}: judge "
+          f"{'failed' if caught else 'PASSED'} the known-bad answer ({fmt(amount)})")
+    print(f"    planted: {bad['why']} (must fail {bad['should_fail']})")
+    print_checks(checks)
+    return caught, amount
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="python -m evals.run", description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("cases", nargs="*", help="case ids (default: all)")
+    parser.add_argument("--repeat", type=int, default=1, metavar="N",
+                        help="ask each question N times and report a pass rate")
+    parser.add_argument("--judge-check", action="store_true",
+                        help="only check the judge fails each case's known-bad answer "
+                             "(no agent calls, no database)")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="print every check, not only failing ones")
+    args = parser.parse_args(argv)
+    if args.repeat < 1:
+        parser.error("--repeat must be at least 1")
+
     load_dotenv()
     paths = sorted(CASES_DIR.glob("*.json"))
-    if ids:
-        paths = [p for p in paths if p.stem in ids]
-        unknown = set(ids) - {p.stem for p in paths}
+    if args.cases:
+        unknown = set(args.cases) - {p.stem for p in paths}
         if unknown:
-            print(f"unknown case(s): {sorted(unknown)}")
-            return 2
+            parser.error(f"unknown case(s): {sorted(unknown)}")
+        paths = [p for p in paths if p.stem in args.cases]
+    cases = [load_case(p) for p in paths]
     client = anthropic.Anthropic()
+
+    if args.judge_check:
+        results = [judge_check(client, case) for case in cases]
+        caught = sum(ok for ok, _ in results)
+        print()
+        print(f"judge failed {caught}/{len(results)} known-bad answers, "
+              f"cost {fmt(total_cost([c for _, c in results]))}")
+        return 0 if caught == len(results) else 1
+
     conn = db.connect()
-    results = []
+    rates, costs = [], []
     try:
-        for path in paths:
-            results.append(run_case(client, conn, load_case(path)))
+        for case in cases:
+            print(case["id"])
+            runs = [run_case(client, conn, case, args.verbose) for _ in range(args.repeat)]
+            passed = sum(ok for ok, _ in runs)
+            rates.append((case["id"], passed))
+            costs += [c for _, c in runs]
     finally:
         conn.close()
 
-    passed = sum(ok for ok, _ in results)
-    costs = [c for _, c in results]
-    total = "unknown" if None in costs else f"${sum(costs):.4f}"
-    print(f"\n{passed}/{len(results)} passed, total cost {total}")
-    return 0 if passed == len(results) else 1
+    print()
+    print("pass rate per case:")
+    for case_id, passed in rates:
+        print(f"  {passed}/{args.repeat}  {case_id}")
+    print(f"total cost {fmt(total_cost(costs))}")
+    return 0 if all(p == args.repeat for _, p in rates) else 1
 
 
 if __name__ == "__main__":

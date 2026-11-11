@@ -50,6 +50,12 @@
         {"grade": "black", "style": "boulder", "sent": false}]}
     ]
   },
+  "known_bad": {
+    "source": "Verbatim reply from the first live check on 2026-11-11, before last_session existed.",
+    "why": "Claims no session since Nov 2, though the seed has sessions 7, 6, 4, 3 and 2 days ago.",
+    "should_fail": "must_not-1",
+    "answer": "**Short answer: yes in both, though the samples are small.**\n\n**Running** (last 14 days vs. the 28 before)\n- Weekly distance: 24.5 km vs. 13.5 km, improving.\n- Weekly time: 141 min vs. 77 min, improving.\n- Overall pace: 5.76 vs. 5.70 min/km, flat. Mixing distances muddies this.\n- 7–15 km pace: 5.31 vs. 5.70 min/km, improving (3 recent runs vs. 5 baseline). This is the clearest speed signal.\n- Under 7 km and over 15 km: not enough data.\n\n**Climbing**\n- Climbs per week: 5.0 vs. 3.2, improving (3 sessions vs. 4).\n- Hardest send per session: averages about red now vs. between blue and purple before, improving.\n- Flash grade: averages about purple now vs. blue/purple before, improving (3 sessions each).\n- Purple send rate: 100% vs. 43%, improving.\n- Red: 75% recently, but not enough baseline data to call a trend.\n- Blue and green: not enough data.\n\nYou're clearly doing more of both, and the 7–15 km running pace and purple send rate are the strongest evidence of getting better. With only 3–5 sessions per comparison, treat these as early signs rather than firm conclusions. You also haven't logged a session since Nov 2, so the last week is quiet."
+  },
   "question": "Am I improving? Both running and climbing.",
   "expect": {
     "tools_called": ["calculate_progression"],

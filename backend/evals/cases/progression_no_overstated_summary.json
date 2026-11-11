@@ -2,6 +2,12 @@
   "id": "progression_no_overstated_summary",
   "note": "Caught on 2026-11-11 while re-running progression_no_false_gap: in 2 of 3 answers the climbing heading said 'improving on every measure' while the list below it had red and black send rates at 'not enough data'. The details were right but the summary overstated them. Fixed with a system prompt line: headings and summaries must not go beyond the metrics; if any metric is declining or 'not enough data', say 'mixed' or name the exception. A one-sentence version of that line still failed 2 of 3 runs ('improving on every measure shown', 'yes in climbing'); the version that passed 3 of 3 tells the model to check every band and grade first, gives an example heading and lists the forbidden phrases.",
   "seed_from": "progression_no_false_gap",
+  "known_bad": {
+    "source": "Verbatim reply (run 1) from the live check with the first, one-sentence heading rule on 2026-11-11.",
+    "why": "Heads climbing 'improving on every measure shown' while red, black, blue and green send rates are 'not enough data'.",
+    "should_fail": "must_not-1",
+    "answer": "**Running: mixed.**\n- Weekly distance rose from 13.5 km to 24.5 km, and weekly time from 77 to 141 min (more volume, so \"improving\" here just means more running).\n- Overall pace is flat: 5.76 min/km recent vs 5.70 baseline (about 1% slower), on 5 recent vs 7 baseline sessions.\n- Within 7–15 km runs, pace improved: 5.31 vs 5.70 min/km, on 3 recent vs 5 baseline sessions.\n- Under 7 km and over 15 km: not enough data to judge.\n\n**Climbing: improving on every measure shown, but on small samples.**\n- Climbs per week: 5.0 vs 3.2.\n- Average hardest sent grade: red-ish (5.0) vs blue/purple (3.75), on 3 vs 4 sessions.\n- Average flash grade: 3.67 vs 2.67 (purple-ish vs blue-ish), on 3 sessions each.\n- Purple send rate: 100% vs 43%, on 3 vs 4 sessions.\n- Red send rate: 75% recent, 0% baseline, but the baseline has only 2 sessions, so not enough data.\n- Blue, green and black: not enough data.\n\nBoth sports are trending up, but running pace is only clearly better on 7–15 km runs, and most climbing numbers rest on 3–4 sessions. Keep logging and this will firm up."
+  },
   "question": "Am I improving? Both running and climbing.",
   "expect": {
     "tools_called": ["calculate_progression"],

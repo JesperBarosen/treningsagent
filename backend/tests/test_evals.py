@@ -1,10 +1,12 @@
 """Offline checks of the eval runner and cases; the runner itself calls real APIs."""
 
+import json
 from datetime import date
 
 import pytest
 
 import db
+import tools
 from evals import run
 
 
@@ -45,3 +47,28 @@ def test_cost_uses_list_prices_and_cache_multipliers():
 def test_cleanup_refuses_the_real_test_user():
     with pytest.raises(RuntimeError):
         run.delete_user(conn=None, user_id=db.TEST_USER_ID)
+
+
+def test_every_case_has_a_known_bad_answer_aimed_at_a_real_check():
+    for path in sorted(run.CASES_DIR.glob("*.json")):
+        case = run.load_case(path)
+        bad = case["known_bad"]
+        assert bad["answer"] and bad["why"] and bad["source"]
+        kind, _, number = bad["should_fail"].partition("-")
+        assert kind in ("must", "must_not")
+        assert 1 <= int(number) <= len(case["expect"][kind]), path.stem
+
+
+def test_judge_check_computes_tool_results_from_the_seed_without_a_database():
+    case = run.load_case(run.CASES_DIR / "progression_grade_names.json")
+    store = run.MemoryStore()
+    run.seed(store, case["seed"], date.today())  # run_tool measures from today
+    out = json.loads(tools.run_tool(store, "calculate_progression", {}))
+    hardest = out["climbing"]["trends"]["avg_session_hardest_sent"]
+    assert (hardest["recent_grade"], hardest["baseline_grade"]) == ("red", "purple")
+    assert out["running"]["days_since_last_session"] == 2
+
+
+def test_repeat_must_be_positive():
+    with pytest.raises(SystemExit):
+        run.main(["--repeat", "0"])

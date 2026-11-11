@@ -2,6 +2,12 @@
   "id": "progression_grade_names",
   "note": "Caught on 2026-11-11 while re-running progression_no_overstated_summary: two of three answers called a hardest-send average of 5.0 'purple-ish' or 'purple', but 5 is red. The tool returned grade_scale, yet the model mapped the numbers wrongly. Fixed by returning recent_grade and baseline_grade (nearest ordinal, halves round up) next to every grade average and telling the model to use them.",
   "seed_from": "progression_no_false_gap",
+  "known_bad": {
+    "source": "Constructed: an otherwise correct answer with the grade naming copied from a live reply on 2026-11-11 ('purple vs blue-ish average ... 5.0 vs 3.75').",
+    "why": "Calls the recent hardest-send average 5.0 purple (it is red) and the baseline 3.75 blue-ish (it is purple).",
+    "should_fail": "must_not-1",
+    "answer": "**Climbing grades: mixed.** Harder sends and flashes, but most per-grade send rates lack data.\n- Hardest send per session: purple vs blue-ish average, improving (5.0 vs 3.75 on the grade scale, 3 vs 4 sessions).\n- Flash grade per session: purple (3.67) vs blue (2.67), improving (3 sessions each).\n- Purple send rate: 100% vs 43%, improving.\n- Red, blue, green and black send rates: not enough data.\n\nThese rest on only 3–4 sessions per window, so treat them as early signs."
+  },
   "question": "How are my climbing grades progressing?",
   "expect": {
     "tools_called": ["calculate_progression"],
