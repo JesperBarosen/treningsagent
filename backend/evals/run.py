@@ -61,6 +61,7 @@ class EvalStore(db.PostgresStore):
 
     def __init__(self, conn):
         super().__init__(conn, str(uuid.uuid4()))
+        db.ensure_auth_user(conn, self.user_id)
         self.calls: list[dict] = []
 
     def log_model_call(self, call: dict) -> None:
@@ -86,13 +87,10 @@ def seed(store: tools.Store, seed: dict, today: date) -> None:
 
 
 def delete_user(conn, user_id: str) -> None:
-    """Delete everything the throwaway user has. Runs as the connection's own
-    role, which bypasses RLS, so it must never be pointed at a real user."""
-    if user_id == db.TEST_USER_ID:
-        raise RuntimeError("refusing to delete the test user's rows")
-    with conn.transaction():
-        conn.execute("delete from public.sessions where user_id = %s", (user_id,))  # climbs cascade
-        conn.execute("delete from public.model_calls where user_id = %s", (user_id,))
+    """Delete the throwaway user and, by cascade, everything they have. Runs as
+    the connection's own role, which bypasses RLS, so it must never be pointed
+    at a real user: delete_auth_user only deletes users with no email."""
+    db.delete_auth_user(conn, user_id)
 
 
 def cost(usage: dict) -> float | None:

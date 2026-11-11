@@ -93,6 +93,7 @@ def main() -> int:
         print(f"Already seeded ({SEED_IDS_FILE.name} exists). Run unseed.py first.")
         return 1
     conn = db.connect()
+    db.ensure_auth_user(conn, db.TEST_USER_ID)
     store = db.PostgresStore(conn, db.TEST_USER_ID)
     ids = []
     try:

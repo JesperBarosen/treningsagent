@@ -16,6 +16,7 @@ def main() -> None:
     logging.getLogger("chat").setLevel(logging.INFO)  # show tool calls
     client = anthropic.Anthropic()
     conn = db.connect()
+    db.ensure_auth_user(conn, db.TEST_USER_ID)  # the terminal chat runs as the test user
     store = db.PostgresStore(conn, db.TEST_USER_ID)
     messages: list = []  # the whole conversation, kept across turns
     conversation_id = str(uuid.uuid4())  # groups model_calls rows for cost reporting
