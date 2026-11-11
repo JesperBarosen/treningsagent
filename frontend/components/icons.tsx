@@ -123,3 +123,19 @@ export function SportBadge({ sport, size = "md" }: { sport: Sport; size?: "sm" |
     </span>
   );
 }
+
+/** An envelope: the sign-in email. */
+export const MailIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3" y="5" width="18" height="14" rx="2.5" />
+    <path d="m4 7 8 6 8-6" />
+  </Icon>
+);
+
+/** An arrow leaving a door: sign out. */
+export const SignOutIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M14 4h3.5A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5H14" />
+    <path d="M10 8l-4 4 4 4M6 12h10" />
+  </Icon>
+);

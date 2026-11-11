@@ -9,7 +9,8 @@ Requires [uv](https://docs.astral.sh/uv/), an Anthropic API key and a
 ### 1. Configure
 
 ```sh
-cp .env.example .env    # then fill in ANTHROPIC_API_KEY and DATABASE_URL
+cp .env.example .env    # then fill in ANTHROPIC_API_KEY, DATABASE_URL and SUPABASE_URL
+cp frontend/.env.example frontend/.env.local   # Supabase URL and publishable key
 ```
 
 `DATABASE_URL` is in the Supabase dashboard under **Connect > Session pooler**.
@@ -24,12 +25,37 @@ supabase link --project-ref <project-ref>
 supabase db push
 ```
 
-This creates `sessions`, `climbs` and `model_calls`, all with Row Level
-Security: a user can only read and insert their own rows (and can only add
-climbs to their own sessions). The backend runs its queries as the
-`authenticated` role with the user's id in the JWT claims, so the policies apply
-to it too. Until login exists, everything runs as one fixed test user
-(`db.TEST_USER_ID`).
+This creates `sessions`, `climbs`, `model_calls` and `chat_requests`, all with
+Row Level Security: a user can only read and insert their own rows (and can
+only add climbs to their own sessions). Every row's `user_id` references
+`auth.users`, and deleting a user deletes their rows. The backend runs its
+queries as the `authenticated` role with the user's id in the JWT claims, so
+the policies apply to it too.
+
+### Sign-in
+
+Sign-in is by email magic link (Supabase Auth), invite only. The frontend
+(`proxy.ts`) sends signed-out visitors to `/sign-in`. The backend (`auth.py`)
+checks the `Authorization: Bearer` token on every request against the
+project's public signing keys (JWKS), so it needs only `SUPABASE_URL` and no
+shared secret, and runs queries as that user. `/chat` is limited to
+`CHAT_DAILY_LIMIT` requests (default 50) per user in any 24 hours.
+
+In the Supabase dashboard:
+
+- **Authentication > Sign In / Providers**: turn off *Allow new users to sign up*.
+- **Authentication > URL Configuration**: Site URL `http://localhost:3000`, and
+  add `http://localhost:3000/auth/confirm` to the redirect URLs.
+- **Authentication > Emails > Magic Link**: link to
+  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`, so the
+  link works in any browser.
+- **Project Settings > JWT Keys**: the current key must be asymmetric (ECC or RSA),
+  not the legacy shared secret.
+- Add people under **Authentication > Users > Add user > Create new user**
+  (tick *Auto Confirm User*).
+
+`db.TEST_USER_ID` is only for tests and the dev scripts (`seed.py`,
+`agent.py`), which create it in `auth.users` as a bare user that can't sign in.
 
 ### 3. Run
 
@@ -44,7 +70,7 @@ uv run pytest                            # tests: no network or API calls
 Talk to the API:
 
 ```sh
-curl -s localhost:8000/chat -H "content-type: application/json"   -d '{"message": "Ran 10 km in 50 min today, effort 6"}'
+curl -s localhost:8000/chat -H "content-type: application/json"   -H "authorization: Bearer $ACCESS_TOKEN" -d '{"message": "Ran 10 km in 50 min today, effort 6"}'
 ```
 
 The response has `reply`, `history` and `conversation_id`. The server keeps no

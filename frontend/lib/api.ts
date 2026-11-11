@@ -1,6 +1,8 @@
 // Typed client for the FastAPI backend in backend/. Numbers such as load and
 // pace come from the backend's tool functions; the frontend only formats them.
 
+import { accessToken, supabaseBrowser } from "./supabase/client";
+
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(
   /\/$/,
   "",
@@ -55,14 +57,26 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = await accessToken();
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
       ...init,
-      headers: { "content-type": "application/json", ...init?.headers },
+      headers: {
+        "content-type": "application/json",
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+        ...init?.headers,
+      },
     });
   } catch {
     throw new ApiError("Can't reach the backend.", null);
+  }
+  if (res.status === 401) {
+    // The backend rejected the session. Drop it here too (otherwise /sign-in
+    // would send us straight back), then reload on /sign-in so no state survives.
+    await supabaseBrowser().auth.signOut({ scope: "local" });
+    window.location.replace(`${window.location.origin}/sign-in`);
+    throw new ApiError("Your session has ended. Sign in again.", 401);
   }
   if (!res.ok) {
     let detail = `Request failed (${res.status}).`;
