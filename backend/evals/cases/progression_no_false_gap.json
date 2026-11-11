@@ -1,0 +1,65 @@
+{
+  "id": "progression_no_false_gap",
+  "note": "Caught on 2026-11-11 in a live /chat check of calculate_progression. With this seed, Haiku answered 'Am I improving?' with correct numbers but added 'You also haven't logged a session since Nov 2', although there were runs or climbs 7, 6, 4, 3 and 2 days ago. It misread the weekly rows (week_start dates). Fixed by returning last_session and days_since_last_session per sport and pointing the tool description at them.",
+  "seed": {
+    "dates": "days_ago is relative to the day the case runs (0 = today)",
+    "running": [
+      {"days_ago": 40, "distance_km": 8, "duration_min": 46, "effort": 6},
+      {"days_ago": 36, "distance_km": 5, "duration_min": 29, "effort": 6},
+      {"days_ago": 33, "distance_km": 10, "duration_min": 57, "effort": 6},
+      {"days_ago": 28, "distance_km": 8, "duration_min": 45, "effort": 6},
+      {"days_ago": 25, "distance_km": 5, "duration_min": 28, "effort": 6},
+      {"days_ago": 21, "distance_km": 10, "duration_min": 57, "effort": 6},
+      {"days_ago": 17, "distance_km": 8, "duration_min": 46, "effort": 6},
+      {"days_ago": 12, "distance_km": 8, "duration_min": 43, "effort": 6},
+      {"days_ago": 9, "distance_km": 5, "duration_min": 27, "effort": 6},
+      {"days_ago": 7, "distance_km": 10, "duration_min": 53, "effort": 6},
+      {"days_ago": 4, "distance_km": 18, "duration_min": 117, "effort": 6},
+      {"days_ago": 2, "distance_km": 8, "duration_min": 42, "effort": 6}
+    ],
+    "climbing": [
+      {"days_ago": 39, "duration_min": 90, "effort": 7, "climbs": [
+        {"grade": "blue", "style": "boulder", "sent": true, "attempts": 1},
+        {"grade": "purple", "style": "boulder", "sent": true, "attempts": 3},
+        {"grade": "red", "style": "boulder", "sent": false, "attempts": 4},
+        {"grade": "purple", "style": "boulder", "sent": false}]},
+      {"days_ago": 32, "duration_min": 90, "effort": 7, "climbs": [
+        {"grade": "blue", "style": "boulder", "sent": true, "attempts": 1},
+        {"grade": "purple", "style": "boulder", "sent": false, "attempts": 5},
+        {"grade": "purple", "style": "boulder", "sent": true}]},
+      {"days_ago": 24, "duration_min": 90, "effort": 7, "climbs": [
+        {"grade": "green", "style": "boulder", "sent": true, "attempts": 1},
+        {"grade": "purple", "style": "boulder", "sent": true, "attempts": 2},
+        {"grade": "red", "style": "boulder", "sent": false, "attempts": 3}]},
+      {"days_ago": 18, "duration_min": 90, "effort": 7, "climbs": [
+        {"grade": "blue", "style": "boulder", "sent": true, "attempts": 2},
+        {"grade": "purple", "style": "boulder", "sent": false, "attempts": 4},
+        {"grade": "purple", "style": "boulder", "sent": false}]},
+      {"days_ago": 11, "duration_min": 90, "effort": 7, "climbs": [
+        {"grade": "purple", "style": "boulder", "sent": true, "attempts": 1},
+        {"grade": "red", "style": "boulder", "sent": true, "attempts": 4},
+        {"grade": "black", "style": "boulder", "sent": false, "attempts": 6}]},
+      {"days_ago": 6, "duration_min": 90, "effort": 7, "climbs": [
+        {"grade": "purple", "style": "boulder", "sent": true, "attempts": 1},
+        {"grade": "red", "style": "boulder", "sent": false, "attempts": 3},
+        {"grade": "red", "style": "boulder", "sent": true}]},
+      {"days_ago": 3, "duration_min": 90, "effort": 7, "climbs": [
+        {"grade": "blue", "style": "boulder", "sent": true, "attempts": 1},
+        {"grade": "purple", "style": "boulder", "sent": true, "attempts": 2},
+        {"grade": "red", "style": "boulder", "sent": true, "attempts": 2},
+        {"grade": "black", "style": "boulder", "sent": false}]}
+    ]
+  },
+  "question": "Am I improving? Both running and climbing.",
+  "expect": {
+    "tools_called": ["calculate_progression"],
+    "must": [
+      "Quote recent vs baseline numbers from the tool result",
+      "Say 'not enough data' (or equivalent) for metrics the tool marks so, e.g. under-7 km and over-15 km pace, red send rate"
+    ],
+    "must_not": [
+      "Claim a gap in training that isn't there: the last run was 2 days ago and the last climbing session 3 days ago",
+      "Claim progress on a metric whose trend is flat or not enough data"
+    ]
+  }
+}
