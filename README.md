@@ -76,6 +76,7 @@ order by max(created_at) desc;
 | `log_session` | Store a run or a climbing session. A climbing session can include its individual climbs in the same call. |
 | `get_history` | Sessions from the last N days, with load, running pace, and each session's climbs, number sent and hardest sent grade. |
 | `get_training_load` | Load per day and per week across sports, plus the acute:chronic workload ratio. |
+| `calculate_progression` | "Am I improving?" Weekly running and climbing numbers with a trend per metric. |
 
 **Climbs.** Each climb has a colour grade on the gym's scale, from easiest to
 hardest: yellow, green, blue, purple, red, black, white. It also has a style
@@ -95,3 +96,32 @@ scale. The acute:chronic ratio is the average daily load over the last 7 days
 divided by the average over the last 28. It is a rough guide and means little
 until about four weeks are logged. Load and the other derived values are
 computed when read and never stored.
+
+**Progression** (`calculate_progression`, default 8 calendar weeks) gives per week:
+
+- Running: runs, distance, duration, pace (min/km), and pace per distance band
+  (`under_7km`, `7_to_15km`, `over_15km`), so a slow long run isn't read as
+  getting slower. Pace is total minutes / total km over runs with a distance.
+- Climbing: climbs, hardest sent grade, flash grade (hardest sent with
+  `attempts` = 1), and send rate per grade (sent / tried). Unsent climbs never
+  count as the hardest sent; climbs with no attempt count are tried but never
+  flashes.
+
+Every metric also has a trend: `improving`, `flat`, `declining` or
+`not enough data`. The rule compares the last 14 days (today included) with
+the 28 days before:
+
+- Each side needs at least 3 sessions that have the metric, else
+  `not enough data`.
+- Volumes (distance, duration, climbs) compare weekly averages; pace compares
+  minutes per km (lower is better); grades compare the average over sessions
+  of each session's hardest send (or flash) as a grade ordinal; send rate is
+  compared per grade.
+- A change is `flat` if under 10% for volume, 2% for pace, half a grade for
+  grades, or 10 percentage points for send rate. For volume, `improving` only
+  means more.
+
+The trend comes with the recent and baseline values and how many sessions each
+rests on, and the agent is told to quote those numbers and to say so when
+there isn't enough data. Each sport is one function in
+`progression.SPORT_MODULES`; strength can be added as another.
