@@ -1,0 +1,16 @@
+{
+  "id": "progression_grade_names",
+  "note": "Caught on 2026-11-11 while re-running progression_no_overstated_summary: two of three answers called a hardest-send average of 5.0 'purple-ish' or 'purple', but 5 is red. The tool returned grade_scale, yet the model mapped the numbers wrongly. Fixed by returning recent_grade and baseline_grade (nearest ordinal, halves round up) next to every grade average and telling the model to use them.",
+  "seed_from": "progression_no_false_gap",
+  "question": "How are my climbing grades progressing?",
+  "expect": {
+    "tools_called": ["calculate_progression"],
+    "must": [
+      "Any grade name the answer gives for a grade average matches the nearest-grade fields in the tool result (recent_grade / baseline_grade): with this seed the hardest-send average is red recently (5.0) and purple before (3.75), and the flash average is purple recently (3.67) and blue before (2.67)"
+    ],
+    "must_not": [
+      "Call the recent hardest-send average (5.0) purple or anything other than red",
+      "Call any grade average by a colour that differs from its recent_grade or baseline_grade"
+    ]
+  }
+}
