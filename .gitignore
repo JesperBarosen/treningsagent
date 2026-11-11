@@ -221,3 +221,6 @@ __marimo__/
 
 # Local SQLite database
 *.db
+
+# Session ids written by backend/seed.py, read by unseed.py
+backend/.seed_ids.json
