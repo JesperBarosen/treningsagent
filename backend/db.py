@@ -18,6 +18,8 @@ TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
 
 SESSION_COLUMNS = ("id", "sport", "date", "duration_min", "effort", "notes", "distance_km",
                    "elevation_m", "climbing_style", "hardest_grade", "routes_count")
+CLIMB_COLUMNS = ("id", "session_id", "grade", "grade_ordinal", "attempts", "sent", "style",
+                 "notes")
 
 
 def connect(url: str | None = None) -> psycopg.Connection:
@@ -46,18 +48,23 @@ class PostgresStore:
             self.conn.execute("select set_config('request.jwt.claims', %s, true)", (claims,))
             yield self.conn
 
-    def _insert(self, table: str, row: dict) -> int:
+    @staticmethod
+    def _insert(conn: psycopg.Connection, table: str, row: dict) -> int:
         query = sql.SQL("insert into public.{} ({}) values ({}) returning id").format(
             sql.Identifier(table),
             sql.SQL(", ").join(map(sql.Identifier, row)),
             sql.SQL(", ").join(sql.Placeholder() * len(row)),
         )
-        with self._as_user() as conn:
-            return conn.execute(query, tuple(row.values())).fetchone()["id"]
+        return conn.execute(query, tuple(row.values())).fetchone()["id"]
 
-    def insert_session(self, row: dict) -> int:
+    def insert_session(self, row: dict, climbs: list[dict] = ()) -> int:
+        """Insert a session and its climbs in one transaction: all or nothing."""
         try:
-            return self._insert("sessions", row)
+            with self._as_user() as conn:
+                session_id = self._insert(conn, "sessions", row)
+                for climb in climbs:
+                    self._insert(conn, "climbs", {**climb, "session_id": session_id})
+                return session_id
         except psycopg.errors.IntegrityError as e:
             # A check constraint the tool's own validation missed: report it to Claude.
             raise ValueError(e.diag.message_primary) from None
@@ -70,5 +77,15 @@ class PostgresStore:
             rows = conn.execute(query, (since,)).fetchall()
         return [{**r, "date": r["date"].isoformat()} for r in rows]
 
+    def climbs_since(self, since: str) -> list[dict]:
+        """Climbs in sessions dated on or after `since`, in insertion order."""
+        query = sql.SQL(
+            "select {} from public.climbs c join public.sessions s on s.id = c.session_id"
+            " where s.date >= %s order by c.id"
+        ).format(sql.SQL(", ").join(sql.Identifier("c", col) for col in CLIMB_COLUMNS))
+        with self._as_user() as conn:
+            return conn.execute(query, (since,)).fetchall()
+
     def log_model_call(self, call: dict) -> None:
-        self._insert("model_calls", call)
+        with self._as_user() as conn:
+            self._insert(conn, "model_calls", call)

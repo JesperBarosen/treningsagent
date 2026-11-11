@@ -7,6 +7,7 @@ Rows are written under random user ids and deleted afterwards.
 import os
 import uuid
 
+import psycopg
 import pytest
 
 import db
@@ -21,7 +22,7 @@ def conn():
     user_ids = []
     yield conn, user_ids
     # Clean up as the connection's own role, which RLS doesn't restrict.
-    for table in ("sessions", "model_calls"):
+    for table in ("climbs", "sessions", "model_calls"):
         conn.execute(f"delete from public.{table} where user_id = any(%s)", (user_ids,))
     conn.close()
 
@@ -65,3 +66,46 @@ def test_model_calls_are_private_too(conn):
         assert c.execute("select count(*) as n from public.model_calls").fetchone()["n"] == 0
     with alice._as_user() as c:
         assert c.execute("select count(*) as n from public.model_calls").fetchone()["n"] == 1
+
+
+CLIMBING = {"sport": "climbing", "date": "2026-11-10", "duration_min": 90, "effort": 7}
+CLIMBS = [
+    {"grade": "blue", "grade_ordinal": 3, "attempts": 2, "sent": True, "style": "boulder"},
+    {"grade": "red", "grade_ordinal": 5, "attempts": None, "sent": False, "style": "kilter",
+     "notes": "crimpy"},
+]
+
+
+def test_session_with_climbs_round_trip(conn):
+    store = make_store(conn)
+    session_id = store.insert_session(CLIMBING, CLIMBS)
+    climbs = store.climbs_since("2026-11-10")
+    assert [c["session_id"] for c in climbs] == [session_id, session_id]
+    assert [(c["grade"], c["grade_ordinal"], c["sent"]) for c in climbs] == [
+        ("blue", 3, True), ("red", 5, False)]
+    assert store.climbs_since("2026-11-11") == []
+
+
+def test_users_only_see_their_own_climbs(conn):
+    alice, bob = make_store(conn), make_store(conn)
+    alice.insert_session(CLIMBING, CLIMBS)
+    assert bob.climbs_since("2000-01-01") == []
+    with bob._as_user() as c:  # not even through a direct query
+        assert c.execute("select count(*) as n from public.climbs").fetchone()["n"] == 0
+
+
+def test_cannot_add_climbs_to_another_users_session(conn):
+    alice, bob = make_store(conn), make_store(conn)
+    session_id = alice.insert_session(CLIMBING)
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        with bob._as_user() as c:
+            bob._insert(c, "climbs", {**CLIMBS[0], "session_id": session_id})
+    assert alice.climbs_since("2000-01-01") == []
+
+
+def test_grade_ordinal_must_match_colour(conn):
+    store = make_store(conn)
+    with pytest.raises(ValueError):
+        store.insert_session(CLIMBING, [{**CLIMBS[0], "grade_ordinal": 4}])
+    # The session and its climbs are one transaction: nothing was stored.
+    assert store.sessions_since("2000-01-01") == []
