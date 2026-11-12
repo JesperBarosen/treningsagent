@@ -109,6 +109,38 @@ class PostgresStore:
         with self._as_user() as conn:
             return conn.execute(query, (since,)).fetchall()
 
+    def get_session(self, session_id: int) -> dict | None:
+        query = sql.SQL("select {} from public.sessions where id = %s").format(
+            sql.SQL(", ").join(map(sql.Identifier, SESSION_COLUMNS)))
+        with self._as_user() as conn:
+            row = conn.execute(query, (session_id,)).fetchone()
+        return {**row, "date": row["date"].isoformat()} if row else None
+
+    def update_session(self, session_id: int, row: dict, climbs: list[dict] | None) -> bool:
+        """Overwrite a session's columns and, unless `climbs` is None, replace its
+        climbs, in one transaction. False if RLS hides the session or it's gone."""
+        query = sql.SQL("update public.sessions set {} where id = %s returning id").format(
+            sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(c)) for c in row))
+        try:
+            with self._as_user() as conn:
+                if conn.execute(query, (*row.values(), session_id)).fetchone() is None:
+                    return False
+                if climbs is not None:
+                    conn.execute("delete from public.climbs where session_id = %s",
+                                 (session_id,))
+                    for climb in climbs:
+                        self._insert(conn, "climbs", {**climb, "session_id": session_id})
+                return True
+        except psycopg.errors.IntegrityError as e:
+            raise ValueError(e.diag.message_primary) from None
+
+    def delete_session(self, session_id: int) -> bool:
+        """Delete a session (its climbs go by cascade). False if not found."""
+        with self._as_user() as conn:
+            cur = conn.execute("delete from public.sessions where id = %s returning id",
+                               (session_id,))
+            return cur.fetchone() is not None
+
     def claim_chat_request(self, daily_limit: int) -> bool:
         """Record one /chat request unless the user already made `daily_limit`
         in the last 24 hours. True if it was recorded (the request may go ahead)."""

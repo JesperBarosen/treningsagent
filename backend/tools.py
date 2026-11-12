@@ -30,6 +30,13 @@ class Store(Protocol):
     def first_session_date(self) -> str | None: ...
     def climbs_since(self, since: str) -> list[dict]: ...
     def log_model_call(self, call: dict) -> None: ...
+    def get_session(self, session_id: int) -> dict | None: ...
+    def update_session(self, session_id: int, row: dict,
+                       climbs: list[dict] | None) -> bool: ...
+    def delete_session(self, session_id: int) -> bool: ...
+
+
+SESSION_FIELDS = ("sport", "date", "duration_min", "effort", "notes")
 
 
 def log_session(
@@ -44,6 +51,58 @@ def log_session(
 ) -> dict:
     """Validate and store one session, and for climbing its individual climbs,
     in one go. Returns the stored session with its id."""
+    row, climb_rows = validate_session(sport, date, duration_min, effort, notes, climbs,
+                                       **sport_fields)
+    session_id = store.insert_session(row, climb_rows)
+    result = {"id": session_id, **row}
+    if climb_rows:
+        result["climbs"] = climb_rows
+    return result
+
+
+def update_session(store: Store, session_id: int, changes: dict) -> dict:
+    """Apply `changes` to a stored session and validate the result with the
+    same rules as log_session. `climbs`, if given, replaces all the session's
+    climbs. Raises LookupError if the session doesn't exist (or isn't the
+    user's), ValueError if the result is invalid."""
+    current = store.get_session(session_id)
+    if current is None:
+        raise LookupError(f"session {session_id} not found")
+    merged = {k: current[k] for k in SESSION_FIELDS}
+    if changes.get("sport", current["sport"]) == current["sport"] == "running":
+        merged.update({f: current[f] for f in RUNNING_FIELDS if current.get(f) is not None})
+    merged.update(changes)
+    climbs = merged.pop("climbs", None)
+
+    row, climb_rows = validate_session(**merged, climbs=climbs)
+    if row["sport"] != "climbing":
+        replace_climbs = []  # a session that's no longer climbing keeps no climbs
+    else:
+        replace_climbs = climb_rows if climbs is not None else None
+    # Every column is written, so fields the new version doesn't have become null.
+    full_row = {**{f: None for f in RUNNING_FIELDS}, **row}
+    if not store.update_session(session_id, full_row, replace_climbs):
+        raise LookupError(f"session {session_id} not found")
+    return {"id": session_id, **row}
+
+
+def delete_session(store: Store, session_id: int) -> None:
+    """Delete a session and its climbs. Raises LookupError if not found."""
+    if not store.delete_session(session_id):
+        raise LookupError(f"session {session_id} not found")
+
+
+def validate_session(
+    sport: str,
+    date: str,
+    duration_min: int,
+    effort: int,
+    notes: str | None = None,
+    climbs: list[dict] | None = None,
+    **sport_fields,
+) -> tuple[dict, list[dict]]:
+    """The rules every stored session follows, whoever writes it (the agent
+    or the app). Returns the session row and the validated climb rows."""
     if sport not in SPORTS:
         raise ValueError(f"sport must be one of {SPORTS}, got {sport!r}")
     _parse_date(date)
@@ -62,11 +121,7 @@ def log_session(
 
     row = {"sport": sport, "date": date, "duration_min": duration_min,
            "effort": effort, "notes": notes, **sport_fields}
-    session_id = store.insert_session(row, climb_rows)
-    result = {"id": session_id, **row}
-    if climb_rows:
-        result["climbs"] = climb_rows
-    return result
+    return row, climb_rows
 
 
 def _climb_row(climb: dict) -> dict:

@@ -33,6 +33,27 @@ class FakeStore:
         ids = {r["id"] for r in self.sessions_since(since)}
         return [c for c in self.climbs if c["session_id"] in ids]
 
+    def get_session(self, session_id: int) -> dict | None:
+        return next((dict(r) for r in self.rows if r["id"] == session_id), None)
+
+    def update_session(self, session_id: int, row: dict, climbs: list[dict] | None) -> bool:
+        current = next((r for r in self.rows if r["id"] == session_id), None)
+        if current is None:
+            return False
+        current.update(row)
+        if climbs is not None:
+            self.climbs = [c for c in self.climbs if c["session_id"] != session_id]
+            for climb in climbs:
+                self.climbs.append({"id": len(self.climbs) + 1, "session_id": session_id,
+                                    **climb})
+        return True
+
+    def delete_session(self, session_id: int) -> bool:
+        before = len(self.rows)
+        self.rows = [r for r in self.rows if r["id"] != session_id]
+        self.climbs = [c for c in self.climbs if c["session_id"] != session_id]
+        return len(self.rows) < before
+
     def claim_chat_request(self, daily_limit: int) -> bool:
         if self.chat_requests >= daily_limit:
             return False
