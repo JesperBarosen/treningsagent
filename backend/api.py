@@ -28,7 +28,7 @@ app = FastAPI(title="treningsagent")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["content-type", "authorization"],
 )
 
@@ -116,6 +116,74 @@ def get_sessions(days: int = Query(56, ge=1, le=366),
                  store: db.PostgresStore = Depends(get_store)) -> list[dict]:
     """Sessions from the last `days` days, oldest first, as get_history returns them."""
     return tools.get_history(store, days)
+
+
+# Writes from the Log form. The models only check JSON types; the rules live in
+# tools.validate_session, shared with the agent's log_session.
+
+class ClimbIn(BaseModel, extra="forbid"):
+    grade: str
+    style: str
+    sent: bool
+    attempts: int | None = None
+    notes: str | None = None
+
+
+class SessionChanges(BaseModel, extra="forbid"):
+    sport: str | None = None
+    date: str | None = None
+    duration_min: int | None = None
+    effort: int | None = None
+    notes: str | None = None
+    distance_km: float | None = None
+    elevation_m: int | None = None
+    climbs: list[ClimbIn] | None = None
+
+
+class SessionIn(SessionChanges):
+    sport: str
+    date: str
+    duration_min: int
+    effort: int
+
+
+def _fields(body: SessionChanges) -> dict:
+    """The fields the client sent. A null `notes` clears it; other nulls are
+    treated as not sent, so a running field can't be set on a climb by null."""
+    fields = body.model_dump(exclude_unset=True, exclude={"climbs"})
+    fields = {k: v for k, v in fields.items() if v is not None or k == "notes"}
+    if body.climbs is not None:
+        fields["climbs"] = [c.model_dump(exclude_none=True) for c in body.climbs]
+    return fields
+
+
+@app.post("/sessions", status_code=201)
+def post_session(body: SessionIn, store: db.PostgresStore = Depends(get_store)) -> dict:
+    """Log a session from the form, with log_session's validation."""
+    try:
+        return tools.log_session(store, **_fields(body))
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@app.patch("/sessions/{session_id}")
+def patch_session(session_id: int, body: SessionChanges,
+                  store: db.PostgresStore = Depends(get_store)) -> dict:
+    """Change some fields of a session; `climbs` replaces all its climbs."""
+    try:
+        return tools.update_session(store, session_id, _fields(body))
+    except LookupError:
+        raise HTTPException(404, "Session not found.") from None
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@app.delete("/sessions/{session_id}", status_code=204)
+def delete_session(session_id: int, store: db.PostgresStore = Depends(get_store)) -> None:
+    try:
+        tools.delete_session(store, session_id)
+    except LookupError:
+        raise HTTPException(404, "Session not found.") from None
 
 
 @app.get("/training-load")
