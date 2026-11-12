@@ -5,10 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { PUBLIC_PATHS } from "@/lib/supabase/config";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { ChartIcon, ChatIcon, ListIcon, SignOutIcon } from "./icons";
+import { ChartIcon, ChatIcon, ListIcon, PlusIcon, SignOutIcon } from "./icons";
 
 const LINKS = [
   { href: "/", label: "Coach", Icon: ChatIcon },
+  { href: "/log", label: "Log", Icon: PlusIcon },
   { href: "/sessions", label: "Sessions", Icon: ListIcon },
   { href: "/dashboard", label: "Dashboard", Icon: ChartIcon },
 ];
