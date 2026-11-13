@@ -96,7 +96,14 @@ export function SessionsView() {
         )}
       </div>
 
-      <SessionSheet session={open} onClose={() => setOpen(null)} />
+      <SessionSheet
+        session={open}
+        onClose={() => setOpen(null)}
+        onChanged={() => {
+          setOpen(null);
+          load();
+        }}
+      />
     </div>
   );
 }

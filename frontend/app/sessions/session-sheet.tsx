@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { climbLabel, ClimbLegend, GradeDot } from "@/components/grade";
 import { BoltIcon, CheckIcon, CloseIcon, SportBadge } from "@/components/icons";
-import type { Climb, Session } from "@/lib/api";
+import { SessionForm } from "@/components/session-form";
+import { Button } from "@/components/states";
+import { ApiError, deleteSession, updateSession, type Climb, type Session } from "@/lib/api";
 import {
   climbOutcome,
   formatDuration,
@@ -16,7 +18,16 @@ import {
 
 /** Session details: a bottom sheet on mobile, a centred dialog from `sm`.
  *  Uses <dialog> for focus trapping, Escape and the backdrop for free. */
-export function SessionSheet({ session, onClose }: { session: Session | null; onClose: () => void }) {
+export function SessionSheet({
+  session,
+  onClose,
+  onChanged,
+}: {
+  session: Session | null;
+  onClose: () => void;
+  /** After an edit or delete: the parent closes the sheet and reloads. */
+  onChanged: () => void;
+}) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -34,12 +45,118 @@ export function SessionSheet({ session, onClose }: { session: Session | null; on
       aria-labelledby="session-title"
       className="m-0 mt-auto max-h-[88dvh] w-full max-w-none overflow-y-auto rounded-t-lg bg-surface text-ink shadow-sheet backdrop:bg-ink/40 open:animate-rise sm:m-auto sm:max-w-lg sm:rounded-lg"
     >
-      {session && <Details session={session} onClose={onClose} />}
+      {session && (
+        <SheetBody key={session.id} session={session} onClose={onClose} onChanged={onChanged} />
+      )}
     </dialog>
   );
 }
 
-function Details({ session: s, onClose }: { session: Session; onClose: () => void }) {
+function SheetBody({
+  session,
+  onClose,
+  onChanged,
+}: {
+  session: Session;
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  if (!editing) {
+    return (
+      <Details session={session} onClose={onClose}>
+        <SheetActions id={session.id} onEdit={() => setEditing(true)} onDeleted={onChanged} />
+      </Details>
+    );
+  }
+  return (
+    <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6">
+      <h2 id="session-title" className="mb-4 font-display text-lg font-semibold">
+        Edit session
+      </h2>
+      <SessionForm
+        session={session}
+        editing
+        onCancel={() => setEditing(false)}
+        onSubmit={async (input) => {
+          await updateSession(session.id, input);
+          onChanged();
+        }}
+      />
+    </div>
+  );
+}
+
+/** Edit, and delete behind a second tap so one slip can't lose a session. */
+function SheetActions({
+  id,
+  onEdit,
+  onDeleted,
+}: {
+  id: number;
+  onEdit: () => void;
+  onDeleted: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function remove() {
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteSession(id);
+      onDeleted();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Couldn't delete the session.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 border-t border-line pt-4">
+      {error && (
+        <p role="alert" className="mb-3 rounded-md bg-danger-soft px-4 py-3 text-sm text-danger">
+          {error}
+        </p>
+      )}
+      {confirming ? (
+        <div className="flex items-center gap-2">
+          <p className="flex-1 text-sm">Delete this session?</p>
+          <Button variant="ghost" onClick={() => setConfirming(false)}>
+            Keep
+          </Button>
+          <Button onClick={remove} disabled={busy} className="bg-danger!">
+            {busy ? "Deleting…" : "Delete"}
+          </Button>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={onEdit} className="flex-1 border border-line">
+            Edit
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setConfirming(true)}
+            className="flex-1 border border-line text-danger"
+          >
+            Delete
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Details({
+  session: s,
+  onClose,
+  children,
+}: {
+  session: Session;
+  onClose: () => void;
+  children?: React.ReactNode;
+}) {
   const stats: [string, string][] = [];
   if (s.distance_km) stats.push(["Distance", formatKm(s.distance_km)]);
   stats.push(["Duration", formatDuration(s.duration_min)]);
@@ -104,6 +221,7 @@ function Details({ session: s, onClose }: { session: Session; onClose: () => voi
           </ul>
         </section>
       )}
+      {children}
     </div>
   );
 }

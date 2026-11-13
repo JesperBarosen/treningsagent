@@ -88,7 +88,32 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new ApiError(detail, res.status);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
+}
+
+/** What the Log form sends. The backend checks it with log_session's rules. */
+export type SessionInput = {
+  sport: Sport;
+  date: string;
+  duration_min: number;
+  effort: number;
+  notes: string | null;
+  distance_km?: number;
+  climbs?: Pick<Climb, "grade" | "style" | "sent" | "attempts">[];
+};
+
+export function createSession(input: SessionInput): Promise<Session> {
+  return request("/sessions", { method: "POST", body: JSON.stringify(input) });
+}
+
+/** PATCH /sessions/{id}: `climbs`, when sent, replaces all the session's climbs. */
+export function updateSession(id: number, input: SessionInput): Promise<Session> {
+  return request(`/sessions/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function deleteSession(id: number): Promise<void> {
+  return request(`/sessions/${id}`, { method: "DELETE" });
 }
 
 export function sendChat(
