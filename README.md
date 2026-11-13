@@ -129,6 +129,12 @@ group by conversation_id
 order by max(created_at) desc;
 ```
 
+## Deploy
+
+Both the backend and the frontend run free on Vercel (Hobby), with Render's
+free tier as a fallback for the backend. See [docs/deploy.md](docs/deploy.md)
+for the checklist, the environment variables and the limits.
+
 ## What the agent can do
 
 | Tool | Use |
