@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { climbLabel, GradeDot } from "@/components/grade";
 import { BoltIcon, CheckIcon, CloseIcon, SportBadge } from "@/components/icons";
 import { Button } from "@/components/states";
@@ -29,6 +29,15 @@ const SPORTS: { value: Sport; label: string }[] = [
 ];
 
 export const today = () => new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD, local
+
+const noSubscribe = () => () => {};
+
+/** Today's date, read only in the browser. The server and the prerender see
+ *  "" so the date is never frozen into the page at build time (with
+ *  cacheComponents, reading the clock during a prerender is an error). */
+function useToday(): string {
+  return useSyncExternalStore(noSubscribe, today, () => "");
+}
 
 /** Tapping a climb row: not sent -> sent -> flash -> not sent. A flash is a
  *  send in one attempt, the same rule the backend and the chips use. */
@@ -62,7 +71,10 @@ export function SessionForm({
   onCancel?: () => void;
 }) {
   const [sport, setSport] = useState<Sport | null>(session?.sport ?? null);
-  const [date, setDate] = useState(editing && session ? session.date : today());
+  const todayIso = useToday();
+  // null means "today", resolved after mount; editing keeps the session's own date.
+  const [pickedDate, setDate] = useState<string | null>(editing && session ? session.date : null);
+  const date = pickedDate ?? todayIso;
   const [duration, setDuration] = useState(session ? String(session.duration_min) : "");
   const [distance, setDistance] = useState(session?.distance_km ? String(session.distance_km) : "");
   const [effort, setEffort] = useState(session?.effort ?? 5);
@@ -143,7 +155,7 @@ export function SessionForm({
                 id="date"
                 type="date"
                 value={date}
-                max={today()}
+                max={todayIso || undefined}
                 onChange={(e) => setDate(e.target.value)}
                 className={field}
               />

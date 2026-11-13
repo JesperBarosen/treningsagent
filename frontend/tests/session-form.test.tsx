@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { nextOutcome, SessionForm, today } from "@/components/session-form";
 import type { Session } from "@/lib/api";
@@ -14,6 +15,14 @@ describe("SessionForm", () => {
     pick("Run");
     expect(screen.getByLabelText("Duration (min)")).toBeTruthy();
     expect((screen.getByLabelText("Date") as HTMLInputElement).value).toBe(today());
+  });
+
+  it("leaves the date out of the server render so it isn't frozen at build time", () => {
+    const html = renderToString(
+      <SessionForm session={{ sport: "running", duration_min: 30, effort: 5 } as Session} onSubmit={vi.fn()} />,
+    );
+    expect(html).toContain('id="date"');
+    expect(html).not.toContain(today());
   });
 
   it("shows the pace live and submits a run", async () => {
