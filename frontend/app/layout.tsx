@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import { TabBar, TopBar } from "@/components/nav";
+import { THEME_COLORS, THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
@@ -26,15 +27,22 @@ export const viewport: Viewport = {
   // Lets the page reach the screen edges in standalone mode; the tab bar and
   // sheets already pad for env(safe-area-inset-bottom).
   viewportFit: "cover",
+  // Follows the OS (System). An explicit Light/Dark choice rewrites these
+  // metas in the browser (lib/theme.ts applyTheme and THEME_SCRIPT).
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f5f4ef" },
-    { media: "(prefers-color-scheme: dark)", color: "#0e1214" },
+    { media: "(prefers-color-scheme: light)", color: THEME_COLORS.light },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLORS.dark },
   ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}>
+    // suppressHydrationWarning: THEME_SCRIPT may set data-theme before React hydrates.
+    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} antialiased`} suppressHydrationWarning>
+      <head>
+        {/* Applies a saved Light/Dark choice before the first paint (no flash). */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="min-h-dvh font-sans">
         <a
           href="#main"

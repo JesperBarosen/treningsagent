@@ -26,8 +26,33 @@
   color-scheme: light;
 }
 
+/* Dark tokens, twice with the same values (tests/theme.test.tsx checks they
+   match): once for an explicit Dark choice (data-theme="dark" on <html>, see
+   lib/theme.ts), and once for System when the OS is dark, unless the user
+   chose Light. */
+:root[data-theme="dark"] {
+  --canvas: #0e1214;
+  --surface: #161b1e;
+  --sunken: #1e2529;
+  --line: #2c3439;
+  --ink: #eceeec;
+  --ink-muted: #9aa3a7;
+  --accent: #4fd1b5;
+  --on-accent: #062621;
+  --accent-soft: #13312c;
+  --climb: #e5a15a;
+  --climb-soft: #33271a;
+  --danger: #f97066;
+  --danger-soft: #3a1c1a;
+  --grade-ring: #6b767c;
+  --chart-run: #21a589;
+  --chart-climb: #c98030;
+  --sheet-shadow: 0 -8px 32px rgb(0 0 0 / 0.5);
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --canvas: #0e1214;
     --surface: #161b1e;
     --sunken: #1e2529;
