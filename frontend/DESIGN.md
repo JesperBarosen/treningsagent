@@ -153,7 +153,9 @@ Flat by default; separation comes from `--line` borders. One shadow,
 | MessageBubble | `app/chat.tsx` | user (sunken, right) and agent (plain, left) |
 | QuickReplies | `app/chat.tsx` | horizontally scrolling pill buttons |
 | Composer | `app/chat.tsx` | auto-growing textarea + send button, fixed to the bottom |
-| SessionSheet | `app/sessions/session-sheet.tsx` | details as a bottom sheet (mobile) / dialog (desktop) |
+| SessionSheet | `app/sessions/session-sheet.tsx` | details as a bottom sheet (mobile) / dialog (desktop), with Edit and a two-tap Delete |
+| SessionForm | `components/session-form.tsx` | the Log tab and the sheet's edit mode: sport first (radio cards), then date, duration, distance with live pace (runs), effort slider, climbs (style toggle, grade chips to add, tap a row to cycle not sent / sent / flash, +/- attempts) and notes; today's date is read only after mount |
+| App icon | `scripts/icon.svg` | white peak and dawn sun on spruce, full bleed with the art inside the maskable safe zone; `node scripts/make-icons.mjs` renders the PNGs, and `app/manifest.ts` uses the canvas colour |
 | States | `components/states.tsx` | Skeleton, EmptyState, ErrorState (with retry) |
 | Dashboard charts | `app/dashboard/charts.tsx` | weekly load (stacked columns), pace per band (line), hardest send / flash (grade dots on a grade axis) |
 | TrendChip | `app/dashboard/dashboard-view.tsx` | the backend's trend word; accent-soft only for "improving" |

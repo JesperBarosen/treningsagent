@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- App icon: a white peak on spruce (the accent token), with a dawn sun in the dark-theme accent.
+       Full bleed and kept inside the central 80% circle, so it also works as a maskable icon. -->
+  <rect width="512" height="512" fill="#0F6B5C"/>
+  <circle cx="352" cy="152" r="28" fill="#4FD1B5"/>
+  <path d="M112 368 L224 176 L276 260 L312 212 L400 368 Z" fill="#FFFFFF"/>
+</svg>

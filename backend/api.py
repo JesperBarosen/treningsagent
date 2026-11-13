@@ -1,4 +1,8 @@
-"""HTTP API for the training agent. Run: uv run uvicorn api:app --reload"""
+"""HTTP API for the training agent. Run: uv run uvicorn api:app --reload
+
+In production it runs as a Vercel Python function (entrypoint set in
+pyproject.toml, limits in vercel.json); see docs/deploy.md.
+"""
 
 import json
 import os
@@ -24,10 +28,11 @@ CHAT_DAILY_LIMIT = int(os.environ.get("CHAT_DAILY_LIMIT", "50"))
 
 app = FastAPI(title="treningsagent")
 
-# The Next.js dev server in frontend/. No other origin may call the API from a browser.
+# Only these origins may call the API from a browser: the frontend's URL(s)
+# from ALLOWED_ORIGINS, or the Next.js dev server when it is unset.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=env.allowed_origins(),
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["content-type", "authorization"],
 )
