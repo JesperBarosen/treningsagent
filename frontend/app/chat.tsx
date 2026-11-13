@@ -15,7 +15,7 @@ type Item =
 type Conversation = { items: Item[]; history: unknown[]; conversationId: string | null };
 
 const EMPTY: Conversation = { items: [], history: [], conversationId: null };
-const STORAGE_KEY = "treningsagent.chat.v1";
+const STORAGE_KEY = "treningsagent.chat.v2";
 
 /** Starters fill the input (the user adds their numbers); questions send at once. */
 const QUICK_REPLIES = [
