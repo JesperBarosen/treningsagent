@@ -10,9 +10,9 @@ connection's own role, limited to those ids and the test user.
 import json
 import sys
 
-from dotenv import load_dotenv
 
 import db
+import env
 from seed import SEED_IDS_FILE
 
 
@@ -27,7 +27,7 @@ def unseed(conn, user_id: str, session_ids: list[int]) -> int:
 
 
 def main() -> int:
-    load_dotenv()
+    env.load()
     if not SEED_IDS_FILE.exists():
         print("Nothing to unseed (no seed file).")
         return 0

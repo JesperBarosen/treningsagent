@@ -26,11 +26,11 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import anthropic
-from dotenv import load_dotenv
 from pydantic import BaseModel
 
 import chat
 import db
+import env
 import tools
 
 CASES_DIR = Path(__file__).parent / "cases"
@@ -61,6 +61,7 @@ class EvalStore(db.PostgresStore):
 
     def __init__(self, conn):
         super().__init__(conn, str(uuid.uuid4()))
+        db.ensure_auth_user(conn, self.user_id)
         self.calls: list[dict] = []
 
     def log_model_call(self, call: dict) -> None:
@@ -86,13 +87,10 @@ def seed(store: tools.Store, seed: dict, today: date) -> None:
 
 
 def delete_user(conn, user_id: str) -> None:
-    """Delete everything the throwaway user has. Runs as the connection's own
-    role, which bypasses RLS, so it must never be pointed at a real user."""
-    if user_id == db.TEST_USER_ID:
-        raise RuntimeError("refusing to delete the test user's rows")
-    with conn.transaction():
-        conn.execute("delete from public.sessions where user_id = %s", (user_id,))  # climbs cascade
-        conn.execute("delete from public.model_calls where user_id = %s", (user_id,))
+    """Delete the throwaway user and, by cascade, everything they have. Runs as
+    the connection's own role, which bypasses RLS, so it must never be pointed
+    at a real user: delete_auth_user only deletes users with no email."""
+    db.delete_auth_user(conn, user_id)
 
 
 def cost(usage: dict) -> float | None:
@@ -241,7 +239,7 @@ def main(argv: list[str]) -> int:
     if args.repeat < 1:
         parser.error("--repeat must be at least 1")
 
-    load_dotenv()
+    env.load()
     paths = sorted(CASES_DIR.glob("*.json"))
     if args.cases:
         unknown = set(args.cases) - {p.stem for p in paths}

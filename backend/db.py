@@ -13,7 +13,8 @@ import psycopg
 from psycopg import sql
 from psycopg.rows import dict_row
 
-# Fixed user until real login exists. Replace with the id from the user's JWT.
+# Fixed user for tests and dev scripts (seed.py, agent.py). The API takes the
+# user id from the verified Supabase JWT instead (auth.py).
 TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
 
 SESSION_COLUMNS = ("id", "sport", "date", "duration_min", "effort", "notes", "distance_km",
@@ -30,6 +31,23 @@ def connect(url: str | None = None) -> psycopg.Connection:
     # autocommit: each `with conn.transaction()` is one real transaction.
     # prepare_threshold=None: Supabase's transaction pooler can't use prepared statements.
     return psycopg.connect(url, autocommit=True, prepare_threshold=None, row_factory=dict_row)
+
+
+def ensure_auth_user(conn: psycopg.Connection, user_id: str) -> None:
+    """Make sure `user_id` exists in auth.users, so rows can reference it.
+
+    For dev scripts and integration tests only (the test user, throwaway eval
+    users). It adds a bare row with no email or password, which can't sign in.
+    Runs as the connection's own role; real users come from Supabase Auth."""
+    conn.execute("insert into auth.users (id, aud, role) values (%s, 'authenticated', "
+                 "'authenticated') on conflict (id) do nothing", (user_id,))
+
+
+def delete_auth_user(conn: psycopg.Connection, user_id: str) -> None:
+    """Delete a user made by ensure_auth_user and, by cascade, all their rows."""
+    if user_id == TEST_USER_ID:
+        raise RuntimeError("refusing to delete the test user")
+    conn.execute("delete from auth.users where id = %s and email is null", (user_id,))
 
 
 class PostgresStore:
@@ -90,6 +108,20 @@ class PostgresStore:
         ).format(sql.SQL(", ").join(sql.Identifier("c", col) for col in CLIMB_COLUMNS))
         with self._as_user() as conn:
             return conn.execute(query, (since,)).fetchall()
+
+    def claim_chat_request(self, daily_limit: int) -> bool:
+        """Record one /chat request unless the user already made `daily_limit`
+        in the last 24 hours. True if it was recorded (the request may go ahead)."""
+        with self._as_user() as conn:
+            # Serialise one user's concurrent requests so two can't both pass the count.
+            conn.execute("select pg_advisory_xact_lock(hashtext(%s))", (self.user_id,))
+            used = conn.execute(
+                "select count(*) as n from public.chat_requests"
+                " where created_at > now() - interval '24 hours'").fetchone()["n"]
+            if used >= daily_limit:
+                return False
+            conn.execute("insert into public.chat_requests default values")
+            return True
 
     def log_model_call(self, call: dict) -> None:
         with self._as_user() as conn:

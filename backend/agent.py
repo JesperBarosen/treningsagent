@@ -4,18 +4,19 @@ import logging
 import uuid
 
 import anthropic
-from dotenv import load_dotenv
 
 import chat
 import db
+import env
 
 
 def main() -> None:
-    load_dotenv()  # puts ANTHROPIC_API_KEY and DATABASE_URL from .env into the environment
+    env.load()  # ANTHROPIC_API_KEY and DATABASE_URL from the root .env
     logging.basicConfig(format="  [%(name)s] %(message)s")
     logging.getLogger("chat").setLevel(logging.INFO)  # show tool calls
     client = anthropic.Anthropic()
     conn = db.connect()
+    db.ensure_auth_user(conn, db.TEST_USER_ID)  # the terminal chat runs as the test user
     store = db.PostgresStore(conn, db.TEST_USER_ID)
     messages: list = []  # the whole conversation, kept across turns
     conversation_id = str(uuid.uuid4())  # groups model_calls rows for cost reporting

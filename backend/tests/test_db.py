@@ -22,14 +22,16 @@ def conn():
     user_ids = []
     yield conn, user_ids
     # Clean up as the connection's own role, which RLS doesn't restrict.
-    for table in ("climbs", "sessions", "model_calls"):
-        conn.execute(f"delete from public.{table} where user_id = any(%s)", (user_ids,))
+    # Deleting the users cascades to all their rows.
+    for user_id in user_ids:
+        db.delete_auth_user(conn, user_id)
     conn.close()
 
 
 def make_store(conn_and_ids):
     conn, user_ids = conn_and_ids
     user_ids.append(str(uuid.uuid4()))
+    db.ensure_auth_user(conn, user_ids[-1])
     return db.PostgresStore(conn, user_ids[-1])
 
 
@@ -52,6 +54,19 @@ def test_first_session_date(conn):
     store.insert_session({**ROW, "date": "2026-09-01"})
     assert store.first_session_date() == "2026-09-01"
     assert make_store(conn).first_session_date() is None  # another user's rows are hidden
+
+
+def test_chat_requests_are_limited_per_user(conn):
+    alice, bob = make_store(conn), make_store(conn)
+    assert alice.claim_chat_request(2) and alice.claim_chat_request(2)
+    assert not alice.claim_chat_request(2)
+    assert bob.claim_chat_request(2)  # alice's requests don't count for bob
+
+
+def test_rows_need_a_real_auth_user(conn):
+    ghost = db.PostgresStore(conn[0], str(uuid.uuid4()))  # not in auth.users
+    with pytest.raises(ValueError):
+        ghost.insert_session(ROW)
 
 
 def test_users_only_see_their_own_rows(conn):
