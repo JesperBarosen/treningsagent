@@ -49,6 +49,7 @@ def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list,
     Returns Claude's final text.
     """
     turn_start = len(messages) - 1  # index of the user message that started this turn
+    _strip_old_thinking(messages, turn_start)
     system = SYSTEM_PROMPT.format(today=date.today().isoformat())
 
     for _ in range(MAX_STEPS):
@@ -92,6 +93,25 @@ def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list,
         messages.append({"role": "user", "content": results})
 
     return f"(stopped after {MAX_STEPS} tool rounds)"
+
+
+THINKING_TYPES = {"thinking", "redacted_thinking"}
+
+
+def _strip_old_thinking(messages: list, turn_start: int) -> None:
+    """Drop thinking blocks from assistant messages before `turn_start`, in place.
+
+    The API only needs thinking blocks within the current tool-use turn, where
+    they must be sent back unchanged. In earlier turns they are dead weight, and
+    a client-held history may carry signatures that no longer validate.
+    """
+    for i, message in enumerate(messages[:turn_start]):
+        content = message.get("content")
+        if message.get("role") != "assistant" or not isinstance(content, list):
+            continue
+        kept = [b for b in content if b.get("type") not in THINKING_TYPES]
+        if kept and len(kept) != len(content):  # never leave an assistant message empty
+            messages[i] = {**message, "content": kept}
 
 
 def _log_model_call(store: tools.Store, conversation_id: str,

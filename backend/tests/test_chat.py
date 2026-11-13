@@ -62,6 +62,40 @@ def test_stops_after_max_steps(store):
     assert "stopped" in reply
 
 
+def thinking(text: str) -> dict:
+    return {"type": "thinking", "thinking": text, "signature": f"sig-{text}"}
+
+
+def test_thinking_is_kept_only_within_the_current_turn(store):
+    earlier = [
+        {"role": "user", "content": "Ran yesterday"},
+        {"role": "assistant", "content": [thinking("old"), {**LOG_RUN, "id": "toolu_0"}]},
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "toolu_0",
+                                      "content": "ok", "is_error": False}]},
+        {"role": "assistant", "content": [thinking("old2"),
+                                          {"type": "redacted_thinking", "data": "x"},
+                                          {"type": "text", "text": "Logged."}]},
+    ]
+    client = FakeClient(
+        make_message("tool_use", [thinking("new"), LOG_RUN]),
+        make_message("end_turn", [{"type": "text", "text": "Logged again."}]),
+    )
+    messages = [*earlier, {"role": "user", "content": "Ran 30 min, effort 5"}]
+
+    chat.run_turn(client, store, messages, CONVERSATION_ID)
+
+    def thinking_in(history):
+        return [b.get("thinking", b["type"]) for m in history if m["role"] == "assistant"
+                for b in m["content"] if b["type"] in chat.THINKING_TYPES]
+
+    # Earlier turns lose their thinking on the first call; this turn's thinking
+    # goes back unchanged with its tool results on the second.
+    assert thinking_in(client.requests[0]) == []
+    assert thinking_in(client.requests[1]) == ["new"]
+    assert messages[1]["content"] == [{**LOG_RUN, "id": "toolu_0"}]
+    assert messages[3]["content"] == [{"type": "text", "text": "Logged."}]
+
+
 def test_every_model_call_is_logged(store):
     client = FakeClient(
         make_message("tool_use", [LOG_RUN]),

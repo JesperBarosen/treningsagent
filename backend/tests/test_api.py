@@ -39,7 +39,7 @@ def test_chat_returns_reply_history_and_conversation_id(make_app, store):
     assert store.model_calls[0]["conversation_id"] == body["conversation_id"]
 
 
-def test_history_is_sent_back_to_claude_unchanged(make_app):
+def test_history_is_sent_back_without_earlier_thinking(make_app):
     http, fake = make_app(make_message("end_turn", [{"type": "text", "text": "Second"}]))
     history = [{"role": "user", "content": "Hello"},
                {"role": "assistant", "content": [THINKING, {"type": "text", "text": "Hi!"}]}]
@@ -48,7 +48,11 @@ def test_history_is_sent_back_to_claude_unchanged(make_app):
     res = http.post("/chat", json={"message": "Again", "history": history,
                                    "conversation_id": conversation_id})
 
-    assert fake.requests[0] == [*history, {"role": "user", "content": "Again"}]
+    assert fake.requests[0] == [
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": [{"type": "text", "text": "Hi!"}]},
+        {"role": "user", "content": "Again"},
+    ]
     assert res.json()["conversation_id"] == conversation_id
 
 
