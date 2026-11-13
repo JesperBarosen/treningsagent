@@ -13,9 +13,19 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: { default: "treningsagent", template: "%s · treningsagent" },
   description: "Log runs and climbing sessions in plain language and see how you progress.",
+  applicationName: "Treningsagent",
+  // Home-screen app on iPhone: full screen, named "Treningsagent", status bar
+  // in the page colour. The icon is app/apple-icon.png; the manifest is app/manifest.ts.
+  appleWebApp: { capable: true, title: "Treningsagent", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Lets the page reach the screen edges in standalone mode; the tab bar and
+  // sheets already pad for env(safe-area-inset-bottom).
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f5f4ef" },
     { media: "(prefers-color-scheme: dark)", color: "#0e1214" },

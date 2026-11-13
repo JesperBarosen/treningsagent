@@ -50,11 +50,13 @@ export function ErrorState({
           </Button>
         }
       >
-        {offline ? (
+        {offline && process.env.NODE_ENV === "development" ? (
           <>
             Is the API running at <code className="font-medium whitespace-nowrap text-ink">{API_URL}</code>? Start
             it with <code className="font-medium whitespace-nowrap text-ink">uv run uvicorn api:app</code>.
           </>
+        ) : offline ? (
+          "Check your connection and try again."
         ) : (
           message
         )}
