@@ -12,6 +12,10 @@ dependencies = [
     "uvicorn>=0.54.0",
 ]
 
+[tool.vercel]
+# Vercel only finds app.py/main.py/index.py/server.py on its own; ours is api.py.
+entrypoint = "api:app"
+
 [tool.pytest.ini_options]
 # Lets tests do `import tools` from backend/ without packaging the project.
 pythonpath = ["."]

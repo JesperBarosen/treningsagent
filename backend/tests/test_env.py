@@ -26,3 +26,17 @@ def test_load_reads_the_root_file(tmp_path, monkeypatch):
 
     assert os.environ["SUPABASE_URL"] == "https://from-root.example"
     assert os.environ["CHAT_DAILY_LIMIT"] == "7"
+
+
+def test_allowed_origins_default_to_the_dev_server(monkeypatch):
+    monkeypatch.delenv("ALLOWED_ORIGINS", raising=False)
+    assert env.allowed_origins() == ["http://localhost:3000"]
+    monkeypatch.setenv("ALLOWED_ORIGINS", "  ")
+    assert env.allowed_origins() == ["http://localhost:3000"]
+
+
+def test_allowed_origins_are_comma_separated_and_tidied(monkeypatch):
+    monkeypatch.setenv("ALLOWED_ORIGINS",
+                       " https://treningsagent.vercel.app/ , http://localhost:3000,,")
+    assert env.allowed_origins() == ["https://treningsagent.vercel.app",
+                                     "http://localhost:3000"]
