@@ -110,3 +110,42 @@ def test_every_model_call_is_logged(store):
     assert call["cache_read_input_tokens"] == 0
     assert call["stop_reason"] == "tool_use"
     assert isinstance(call["latency_ms"], int) and call["latency_ms"] >= 0
+
+
+# A conversation where the agent logged a run, then the user removed it from the
+# chat's Logged card, which appends a note to the history (#63, app/chat.tsx).
+REMOVED_NOTE = ("[User removed the session: Run · 10 km · 50 min · effort 6 on 2026-11-10 "
+                "(id 1). It is no longer in their log.]")
+EARLIER_TURN = [
+    {"role": "user", "content": "Ran 10 km in 50 min, effort 6"},
+    {"role": "assistant", "content": [{**LOG_RUN, "input": {
+        "sport": "running", "date": "2026-11-10", "duration_min": 50, "effort": 6,
+        "distance_km": 10}}]},
+    {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "toolu_1",
+                                  "content": '{"id": 1}', "is_error": False}]},
+    {"role": "assistant", "content": [{"type": "text", "text": "Logged your 10 km run."}]},
+    {"role": "user", "content": REMOVED_NOTE},
+]
+
+
+def test_a_removal_note_reaches_the_model_unchanged(store):
+    """The note and the next message are consecutive user messages; the API
+    merges them into one turn, so the loop must pass both through as they are."""
+    client = FakeClient(make_message("end_turn", [{"type": "text", "text": "Logged."}]))
+    messages = [*json.loads(json.dumps(EARLIER_TURN)),
+                {"role": "user", "content": "Ran 10 km in 50 min, effort 6"}]
+
+    chat.run_turn(client, store, messages, CONVERSATION_ID)
+
+    sent = client.requests[0]
+    assert sent[:5] == EARLIER_TURN
+    assert [m["role"] for m in sent[-2:]] == ["user", "user"]
+
+
+def test_system_prompt_explains_the_notes_and_checking_before_a_duplicate(store):
+    client = FakeClient(make_message("end_turn", [{"type": "text", "text": "Hi."}]))
+    chat.run_turn(client, store, [{"role": "user", "content": "Hi"}], CONVERSATION_ID)
+    system = " ".join(client.systems[0].split())  # the prompt wraps lines
+    assert "[User removed the session: ...]" in system
+    assert "[User edited the session to: ...]" in system
+    assert "duplicate" in system and "call get_history first" in system
