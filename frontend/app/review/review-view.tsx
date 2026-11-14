@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TrendChip } from "@/app/dashboard/dashboard-view";
 import { GradeDot } from "@/components/grade";
@@ -38,6 +38,23 @@ type State =
   | { status: "loading" }
   | { status: "error"; error: ApiError }
   | { status: "ready"; review: WeekReviewData | null; stored: StoredWeekReview | null };
+
+/** The review for `?week=` (or last week), read in the browser. */
+export function ReviewViewFromUrl() {
+  return <ReviewView week={useSearchParams().get("week") ?? undefined} />;
+}
+
+/** What the prerendered page shows until the browser has read `?week=`. */
+export function ReviewSkeleton() {
+  return (
+    <div className="pt-4 pb-24 md:pb-12">
+      <h1 className="font-display text-xl font-semibold">Your week</h1>
+      <div className="mt-4">
+        <LoadingReview />
+      </div>
+    </div>
+  );
+}
 
 export function ReviewView({ week: weekParam }: { week?: string }) {
   const week = reviewedWeek(weekParam);

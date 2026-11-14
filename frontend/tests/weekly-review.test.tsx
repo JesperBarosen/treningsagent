@@ -28,12 +28,13 @@ vi.mock("@/lib/api", async (importOriginal) => ({
   getProgression: api.getProgression,
 }));
 const router = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+const search = vi.hoisted(() => ({ params: new URLSearchParams() }));
+vi.mock("next/navigation", () => ({ useRouter: () => router, useSearchParams: () => search.params }));
 
 const { buildWeekReview, coachSentence, lastWeekStart, weekRange, weeksAgo } = await import(
   "@/lib/week-review"
 );
-const { ReviewView, reviewedWeek } = await import("@/app/review/review-view");
+const { ReviewView, ReviewViewFromUrl, reviewedWeek } = await import("@/app/review/review-view");
 const { WeekGlance } = await import("@/components/week-glance");
 
 const TODAY = new Date(2026, 10, 18); // Wednesday 18 Nov 2026
@@ -186,6 +187,13 @@ describe("coachSentence", () => {
 });
 
 describe("the review page", () => {
+  it("reads ?week= in the browser, so the page can be prerendered", async () => {
+    search.params = new URLSearchParams("week=2026-11-02");
+    render(<ReviewViewFromUrl />);
+    expect(await screen.findByText(/2–8 Nov/)).toBeInTheDocument();
+    search.params = new URLSearchParams();
+  });
+
   it("shows the week, records that it was opened, and saves the note on Done", async () => {
     const user = userEvent.setup();
     render(<ReviewView week={LAST} />);
