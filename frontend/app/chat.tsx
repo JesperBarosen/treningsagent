@@ -8,10 +8,14 @@ import { ApiError, sendChat, type Session } from "@/lib/api";
 import { dropLegacyChats, loadChat, saveChat } from "@/lib/chat-storage";
 import { currentUserId } from "@/lib/supabase/client";
 import { Markdown } from "@/lib/markdown";
+import { SessionSheet } from "./sessions/session-sheet";
+
+/** A session the agent logged, as its card shows it now: changed or undone from the card. */
+type Logged = Session & { edited?: boolean; undone?: boolean };
 
 type Item =
   | { id: string; role: "user"; text: string }
-  | { id: string; role: "agent"; text: string; logged: Session[] }
+  | { id: string; role: "agent"; text: string; logged: Logged[] }
   | { id: string; role: "error"; text: string; offline: boolean; retry: string };
 
 type Conversation = { items: Item[]; history: unknown[]; conversationId: string | null };
@@ -40,6 +44,8 @@ export function Chat() {
   const [userId, setUserId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  // The logged session whose sheet is open in edit mode, from its card's Edit.
+  const [editing, setEditing] = useState<Session | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -129,6 +135,16 @@ export function Chat() {
     inputRef.current?.focus();
   }
 
+  /** Update one logged session's card in place, wherever it is in the conversation. */
+  function updateLogged(id: number, change: (s: Logged) => Logged) {
+    setConvo((c) => ({
+      ...c,
+      items: c.items.map((i) =>
+        i.role === "agent" ? { ...i, logged: i.logged.map((s) => (s.id === id ? change(s) : s)) } : i,
+      ),
+    }));
+  }
+
   const empty = restored && convo.items.length === 0;
 
   return (
@@ -148,7 +164,13 @@ export function Chat() {
         <ol aria-label="Conversation" aria-live="polite" className="space-y-4">
           {convo.items.map((item) => (
             <li key={item.id} className="animate-rise">
-              <Message item={item} onRetry={send} disabled={sending} />
+              <Message
+                item={item}
+                onRetry={send}
+                disabled={sending}
+                onEdit={setEditing}
+                onUndone={(s) => updateLogged(s.id, (old) => ({ ...old, undone: true }))}
+              />
             </li>
           ))}
           {sending && (
@@ -159,6 +181,20 @@ export function Chat() {
         </ol>
         <div ref={endRef} />
       </div>
+
+      <SessionSheet
+        session={editing}
+        startEditing
+        onClose={() => setEditing(null)}
+        onChanged={(updated) => {
+          const id = editing?.id;
+          setEditing(null);
+          if (id === undefined) return;
+          updateLogged(id, (old) =>
+            updated ? { ...updated, edited: true } : { ...old, undone: true },
+          );
+        }}
+      />
 
       <div className="fixed inset-x-0 bottom-14 z-20 border-t border-line bg-canvas/95 shadow-sheet backdrop-blur md:bottom-0">
         <div className="mx-auto max-w-content px-4 pt-3 pb-3 sm:px-6">
@@ -235,10 +271,14 @@ function Message({
   item,
   onRetry,
   disabled,
+  onEdit,
+  onUndone,
 }: {
   item: Item;
   onRetry: (text: string) => void;
   disabled: boolean;
+  onEdit: (s: Session) => void;
+  onUndone: (s: Session) => void;
 }) {
   if (item.role === "user") {
     return (
@@ -269,7 +309,14 @@ function Message({
   return (
     <div className="space-y-2.5">
       {item.logged.map((s) => (
-        <LoggedSessionCard key={s.id} session={s} />
+        <LoggedSessionCard
+          key={s.id}
+          session={s}
+          edited={s.edited}
+          undone={s.undone}
+          onEdit={() => onEdit(s)}
+          onUndone={() => onUndone(s)}
+        />
       ))}
       <div className="max-w-[92%] leading-relaxed">
         <span className="sr-only">Coach: </span>

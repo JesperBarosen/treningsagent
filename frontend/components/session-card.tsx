@@ -1,5 +1,7 @@
-import Link from "next/link";
-import type { Session } from "@/lib/api";
+"use client";
+
+import { useState } from "react";
+import { ApiError, deleteSession, type Session } from "@/lib/api";
 import {
   dayLabel,
   formatDuration,
@@ -9,31 +11,97 @@ import {
   sportName,
 } from "@/lib/format";
 import { ClimbChips } from "./grade";
-import { CheckIcon, ChevronIcon, SportBadge } from "./icons";
+import { CheckIcon, SportBadge } from "./icons";
+import { Button } from "./states";
 
-/** In-chat confirmation that the agent stored a session. */
-export function LoggedSessionCard({ session }: { session: Session }) {
+/** In-chat confirmation that the agent stored a session, with Edit and Undo so
+ *  a misread session can be fixed where it happened (design-research.md, item 3).
+ *  Undo deletes behind a second tap, like the sheet's Delete (WCAG 3.3.4). */
+export function LoggedSessionCard({
+  session,
+  undone = false,
+  edited = false,
+  onEdit,
+  onUndone,
+}: {
+  session: Session;
+  /** The session was deleted from the card: show it struck through, without actions. */
+  undone?: boolean;
+  /** The session was changed from the card since the agent logged it. */
+  edited?: boolean;
+  onEdit: () => void;
+  onUndone: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function undo() {
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteSession(session.id);
+      setConfirming(false);
+      onUndone();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Couldn't undo. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (undone) {
+    return (
+      <div className="rounded-lg border border-dashed border-line p-3 text-ink-muted">
+        <p className="text-xs font-medium">Undone · removed from your log</p>
+        <p className="truncate text-sm line-through tabular-nums">{sessionSummary(session)}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-rise rounded-lg border border-line bg-surface p-3">
       <div className="flex items-center gap-3">
         <SportBadge sport={session.sport} size="sm" />
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1 text-xs font-medium text-accent">
-            <CheckIcon size={12} /> Logged · {dayLabel(session.date)}
+            <CheckIcon size={12} /> {edited ? "Edited" : "Logged"} · {dayLabel(session.date)}
           </p>
           <p className="truncate text-sm font-semibold tabular-nums">{sessionSummary(session)}</p>
         </div>
-        <Link
-          href="/sessions"
-          className="grid size-11 shrink-0 place-items-center rounded-full text-ink-muted hover:bg-sunken"
-          aria-label="Open sessions"
-        >
-          <ChevronIcon size={18} />
-        </Link>
       </div>
       {session.climbs && session.climbs.length > 0 && (
         <div className="mt-2.5 pl-11">
           <ClimbChips climbs={session.climbs} max={6} />
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
+          {error}
+        </p>
+      )}
+      {confirming ? (
+        <div className="mt-3 flex items-center gap-2">
+          <p className="flex-1 text-sm">Remove this session from your log?</p>
+          <Button variant="ghost" onClick={() => setConfirming(false)} disabled={busy}>
+            Keep
+          </Button>
+          <Button onClick={undo} disabled={busy} className="bg-danger!">
+            {busy ? "Removing…" : "Remove"}
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-3 flex gap-2">
+          <Button variant="ghost" onClick={onEdit} className="flex-1 border border-line">
+            Edit
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setConfirming(true)}
+            className="flex-1 border border-line"
+          >
+            Undo
+          </Button>
         </div>
       )}
     </div>
