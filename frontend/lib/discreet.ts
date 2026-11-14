@@ -14,6 +14,12 @@ const ATTR = "data-discreet";
 
 /** Spread on an element whose content should blur in discreet mode. */
 export const SENSITIVE = { "data-sensitive": "" } as const;
+/** Spread on chart text with values (axis ticks, tooltips): hidden, not blurred,
+ *  in discreet mode, so a chart keeps its shape but loses its numbers. We mark
+ *  our own tick and tooltip components instead of styling Recharts' internal
+ *  classes, which change between versions (Recharts 3 portals tick labels out
+ *  of the axis group). */
+export const HIDE_IN_DISCREET = { "data-discreet-hide": "" } as const;
 /** Spread on a container (a row, a card) that a tap reveals as a whole. */
 export const REVEAL_UNIT = { "data-reveal-unit": "" } as const;
 

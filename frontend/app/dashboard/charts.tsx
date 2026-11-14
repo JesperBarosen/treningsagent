@@ -17,6 +17,7 @@ import {
   YAxis,
 } from "recharts";
 import type { Grade, Progression, TrainingLoad } from "@/lib/api";
+import { HIDE_IN_DISCREET } from "@/lib/discreet";
 import { formatPace, nf, shortDate } from "@/lib/format";
 
 const RUN = "var(--chart-run)";
@@ -32,10 +33,44 @@ const GAP = 2; // surface gap between stacked segments
 
 // --- Shared pieces -------------------------------------------------------------
 
-/** The tooltip card: values lead, series names follow, keyed by a short line. */
+/** A y-axis value label we render ourselves, so discreet mode can hide it by
+ *  our own attribute instead of Recharts' internal classes. Same look as AXIS_TICK. */
+export function ValueTick({
+  x,
+  y,
+  payload,
+  format,
+}: {
+  x?: number | string;
+  y?: number | string;
+  payload?: { value: number };
+  format: (v: number) => string;
+}) {
+  if (payload === undefined) return null;
+  return (
+    <text
+      {...HIDE_IN_DISCREET}
+      x={Number(x)}
+      y={Number(y)}
+      dy="0.355em"
+      textAnchor="end"
+      fill={MUTED}
+      fontSize={12}
+      className="tabular-nums"
+    >
+      {format(payload.value)}
+    </text>
+  );
+}
+
+/** The tooltip card: values lead, series names follow, keyed by a short line.
+ *  Hidden in discreet mode, like the axis values. */
 function TooltipCard({ title, rows }: { title: string; rows: { key: ReactNode; name: string; value: string }[] }) {
   return (
-    <div className="rounded-md border border-line bg-surface px-3 py-2 text-xs shadow-sheet">
+    <div
+      {...HIDE_IN_DISCREET}
+      className="rounded-md border border-line bg-surface px-3 py-2 text-xs shadow-sheet"
+    >
       <p className="mb-1 font-medium text-ink-muted">{title}</p>
       <ul className="space-y-0.5">
         {rows.map((r) => (
@@ -96,11 +131,10 @@ export function WeeklyLoadChart({ load }: { load: TrainingLoad }) {
             minTickGap={8}
           />
           <YAxis
-            tick={AXIS_TICK}
             tickLine={false}
             axisLine={false}
             width={44}
-            tickFormatter={(v: number) => nf.format(v)}
+            tick={(p) => <ValueTick {...p} format={(v) => nf.format(v)} />}
           />
           <Tooltip
             cursor={{ fill: "var(--sunken)", opacity: 0.6 }}
@@ -177,11 +211,10 @@ export function PaceChart({ rows }: { rows: PaceRow[] }) {
             reversed
             domain={["dataMin - 0.15", "dataMax + 0.15"]}
             tickCount={3}
-            tick={AXIS_TICK}
             tickLine={false}
             axisLine={false}
             width={44}
-            tickFormatter={(v: number) => formatPace(v)}
+            tick={(p) => <ValueTick {...p} format={formatPace} />}
           />
           <Tooltip
             cursor={{ stroke: LINE, strokeWidth: 1 }}

@@ -123,6 +123,6 @@ describe("globals.css", () => {
   it("blurs sensitive content and chart value labels only in discreet mode", () => {
     expect(css).toMatch(/:root\[data-discreet\] \[data-sensitive\] \{\s*filter: blur/);
     expect(css).toContain(":root[data-discreet] [data-revealed] [data-sensitive]");
-    expect(css).toContain(":root[data-discreet] .recharts-yAxis .recharts-cartesian-axis-tick-value");
+    expect(css).toContain(":root[data-discreet] [data-discreet-hide]");
   });
 });

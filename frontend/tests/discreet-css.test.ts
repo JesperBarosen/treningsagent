@@ -86,15 +86,15 @@ describe("discreet mode in the compiled CSS", () => {
     }
   });
 
-  it("hides chart value labels and tooltips", () => {
-    for (const s of [
-      ":root[data-discreet] .recharts-yAxis .recharts-cartesian-axis-tick-value",
-      ":root[data-discreet] .recharts-tooltip-wrapper",
-    ]) {
-      const [hit] = rulesFor(s);
-      expect(hit, s).toBeDefined();
-      expect(decl(hit.rule, "visibility")).toBe("hidden");
-    }
+  it("hides chart value labels and tooltips, by our own attribute", () => {
+    const [hit] = rulesFor(":root[data-discreet] [data-discreet-hide]");
+    expect(hit, "the hide rule is missing from the compiled CSS").toBeDefined();
+    expect(decl(hit.rule, "visibility")).toBe("hidden");
+    // Recharts' internal classes moved in v3 (tick labels are portaled out of
+    // .recharts-yAxis), so no rule may depend on them.
+    compiled.walkRules((rule) => {
+      if (/data-discreet/.test(rule.selector)) expect(rule.selector).not.toMatch(/recharts/);
+    });
   });
 
   it("has no other rule that sets filter on sensitive content", () => {
