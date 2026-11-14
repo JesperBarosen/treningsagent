@@ -62,18 +62,22 @@ const label = "mb-1 block text-sm font-medium";
 export function SessionForm({
   session,
   editing = false,
+  keepDate = false,
   onSubmit,
   onCancel,
 }: {
   session?: Session;
   editing?: boolean;
+  /** Prefill the date from `session` too (a chat draft), instead of today. */
+  keepDate?: boolean;
   onSubmit: (input: SessionInput) => Promise<void>;
   onCancel?: () => void;
 }) {
   const [sport, setSport] = useState<Sport | null>(session?.sport ?? null);
   const todayIso = useToday();
-  // null means "today", resolved after mount; editing keeps the session's own date.
-  const [pickedDate, setDate] = useState<string | null>(editing && session ? session.date : null);
+  // null means "today", resolved after mount; editing (and a reviewed chat draft,
+  // `keepDate`) keeps the session's own date.
+  const [pickedDate, setDate] = useState<string | null>((editing || keepDate) && session ? session.date : null);
   const date = pickedDate ?? todayIso;
   const [duration, setDuration] = useState(session ? String(session.duration_min) : "");
   const [distance, setDistance] = useState(session?.distance_km ? String(session.distance_km) : "");

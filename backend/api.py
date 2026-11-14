@@ -46,6 +46,9 @@ class ChatRequest(BaseModel):
     history: list[dict] = []
     # Returned by the first /chat call; send it back to group cost per conversation.
     conversation_id: uuid.UUID | None = None
+    # The user's "Save chat sessions without asking" setting. Off (the default):
+    # the agent drafts sessions for the user to save (N4); on: it stores them.
+    auto_save: bool = False
 
 
 class ChatResponse(BaseModel):
@@ -55,6 +58,9 @@ class ChatResponse(BaseModel):
     # Sessions stored by log_session during this turn, as the tool returned them,
     # so a client can show what was logged without parsing `history`.
     logged_sessions: list[dict] = []
+    # Sessions draft_session prepared this turn, for the user to save or review.
+    # Not stored: they have no id.
+    drafts: list[dict] = []
 
 
 @cache
@@ -84,22 +90,29 @@ def post_chat(
     messages = [*req.history, {"role": "user", "content": req.message}]
     turn_start = len(req.history)
     try:
-        reply = chat.run_turn(client, store, messages, str(conversation_id))
+        reply = chat.run_turn(client, store, messages, str(conversation_id),
+                              auto_save=req.auto_save)
     except anthropic.APIError as e:
         raise HTTPException(502, f"Claude API error: {e.message}") from e
     return ChatResponse(reply=reply, history=messages, conversation_id=conversation_id,
-                        logged_sessions=logged_sessions(messages[turn_start:]))
+                        logged_sessions=logged_sessions(messages[turn_start:]),
+                        drafts=tool_results(messages[turn_start:], "draft_session"))
 
 
 def logged_sessions(turn: list[dict]) -> list[dict]:
-    """The sessions log_session stored in these messages: the JSON results of
-    log_session calls that succeeded, in call order."""
-    log_calls = {block["id"] for m in turn if m["role"] == "assistant"
-                 for block in _blocks(m) if block.get("type") == "tool_use"
-                 and block.get("name") == "log_session"}
+    """The sessions log_session stored in these messages."""
+    return tool_results(turn, "log_session")
+
+
+def tool_results(turn: list[dict], name: str) -> list[dict]:
+    """The JSON results of the `name` calls that succeeded in these messages,
+    in call order."""
+    calls = {block["id"] for m in turn if m["role"] == "assistant"
+             for block in _blocks(m) if block.get("type") == "tool_use"
+             and block.get("name") == name}
     return [json.loads(block["content"]) for m in turn if m["role"] == "user"
             for block in _blocks(m) if block.get("type") == "tool_result"
-            and block.get("tool_use_id") in log_calls and not block.get("is_error")]
+            and block.get("tool_use_id") in calls and not block.get("is_error")]
 
 
 def _blocks(message: dict) -> list[dict]:

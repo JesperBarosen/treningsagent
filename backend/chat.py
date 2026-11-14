@@ -12,7 +12,7 @@ MODEL = "claude-haiku-5-5"  # cheapest current model; fine for logging and looku
 MAX_STEPS = 10  # max tool rounds per user message, guards against runaway loops
 
 SYSTEM_PROMPT = """You are a training assistant for a climber and runner.
-Log sessions the user describes with log_session. For a climbing session, put
+{logging} For a climbing session, put
 every climb they mention in that same call's `climbs` list; the gym grades by
 colour, easiest to hardest: yellow, green, blue, purple, red, black, white.
 Use get_history for questions about specific past sessions.
@@ -40,12 +40,25 @@ conversation alone: call get_history first, and treat only the sessions it
 returns as stored.
 Today is {today}."""
 
+# How sessions get stored, by the user's setting (N4, docs/design-proposals-2.md).
+LOGGING_AUTO = "Log sessions the user describes with log_session."
+LOGGING_DRAFT = (
+    "When the user describes a session, call draft_session: the app shows it as a\n"
+    "draft with Save and Review, and nothing is stored until the user saves it. So\n"
+    "say it is ready to save or review, never that it is logged. A saved or\n"
+    "dismissed draft shows up in the history as a note such as \"[User saved the\n"
+    "draft as: ...]\" or \"[User dismissed the draft: ...]\"."
+)
+
 log = logging.getLogger(__name__)
 
 
 def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list,
-             conversation_id: str) -> str:
+             conversation_id: str, auto_save: bool = False) -> str:
     """Run the tool-use loop for one user message (already appended to `messages`).
+
+    By default the agent drafts sessions for the user to confirm (draft_session);
+    with `auto_save` it stores them itself (log_session), as before N4.
 
     Every model call's token usage and latency is logged to the store under
     `conversation_id`.
@@ -56,7 +69,11 @@ def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list,
     """
     turn_start = len(messages) - 1  # index of the user message that started this turn
     _strip_old_thinking(messages, turn_start)
-    system = SYSTEM_PROMPT.format(today=date.today().isoformat())
+    system = SYSTEM_PROMPT.format(today=date.today().isoformat(),
+                                  logging=LOGGING_AUTO if auto_save else LOGGING_DRAFT)
+    offered = tools.tools_for(auto_save)
+    # In draft mode log_session is defined (old histories call it) but refused.
+    refused = set() if auto_save else {"log_session"}
 
     for _ in range(MAX_STEPS):
         start = time.perf_counter()
@@ -64,7 +81,7 @@ def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list,
             model=MODEL,
             max_tokens=16000,
             system=system,
-            tools=tools.TOOLS,
+            tools=offered,
             messages=messages,
         )
         _log_model_call(store, conversation_id, response, time.perf_counter() - start)
@@ -91,6 +108,9 @@ def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list,
                 continue
             log.info("tool %s(%s)", block.name, block.input)
             try:
+                if block.name in refused:
+                    raise ValueError(f"{block.name} is not available: the user saves "
+                                     "sessions themselves. Call draft_session instead.")
                 content, is_error = tools.run_tool(store, block.name, block.input), False
             except (ValueError, TypeError) as e:
                 content, is_error = f"Error: {e}", True  # let Claude correct itself
