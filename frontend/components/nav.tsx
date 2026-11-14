@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { PUBLIC_PATHS } from "@/lib/supabase/config";
+import { DiscreetToggle } from "@/components/discreet-toggle";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { clearSavedChats } from "@/lib/chat-storage";
@@ -75,6 +76,7 @@ export function TopBar() {
               ))}
             </nav>
           )}
+          {signedIn && <DiscreetToggle />}
           {/* Also on the sign-in page, and on mobile, where the top bar stays visible. */}
           <ThemeToggle />
           {signedIn && (

@@ -7,6 +7,7 @@ import { Button, OfflineHint } from "@/components/states";
 import { WeekGlance } from "@/components/week-glance";
 import { ApiError, sendChat, type Session } from "@/lib/api";
 import { dropLegacyChats, loadChat, saveChat } from "@/lib/chat-storage";
+import { SENSITIVE } from "@/lib/discreet";
 import { currentUserId } from "@/lib/supabase/client";
 import { Markdown } from "@/lib/markdown";
 import { SessionSheet } from "./sessions/session-sheet";
@@ -285,7 +286,7 @@ function Message({
   if (item.role === "user") {
     return (
       <div className="flex justify-end">
-        <p className="max-w-[85%] rounded-lg rounded-br-sm bg-sunken px-4 py-2.5 whitespace-pre-wrap">
+        <p {...SENSITIVE} className="max-w-[85%] rounded-lg rounded-br-sm bg-sunken px-4 py-2.5 whitespace-pre-wrap">
           <span className="sr-only">You: </span>
           {item.text}
         </p>
@@ -301,7 +302,7 @@ function Message({
         <p className="mt-1 text-ink-muted">
           {item.offline ? <OfflineHint /> : item.text}
         </p>
-        <p className="mt-2 truncate text-ink">&ldquo;{item.retry}&rdquo;</p>
+        <p {...SENSITIVE} className="mt-2 truncate text-ink">&ldquo;{item.retry}&rdquo;</p>
         <Button className="mt-3 -ml-1" onClick={() => onRetry(item.retry)} disabled={disabled}>
           Send again
         </Button>
@@ -320,7 +321,7 @@ function Message({
           onUndone={() => onUndone(s)}
         />
       ))}
-      <div className="max-w-[92%] leading-relaxed">
+      <div {...SENSITIVE} className="max-w-[92%] leading-relaxed">
         <span className="sr-only">Coach: </span>
         <Markdown text={item.text} />
       </div>

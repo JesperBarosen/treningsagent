@@ -145,6 +145,11 @@ Flat by default; separation comes from `--line` borders. One shadow,
   `prefers-reduced-motion`.
 - Icons that carry meaning have labels; decorative ones are `aria-hidden`.
 - Live regions: new chat replies are announced (`aria-live="polite"`).
+- Discreet mode (eye button in the top bar, `lib/discreet.ts`): spread
+  `{...SENSITIVE}` on any element that shows personal numbers or notes, and
+  `{...REVEAL_UNIT}` on a row or card that one tap should reveal as a whole.
+  Blurred content reveals on the first tap; the next tap acts as usual. It is
+  visual only, so screen readers still read everything.
 
 ## Components
 

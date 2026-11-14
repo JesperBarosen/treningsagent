@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ApiError, deleteSession, type Session } from "@/lib/api";
+import { REVEAL_UNIT, SENSITIVE } from "@/lib/discreet";
 import {
   dayLabel,
   formatDuration,
@@ -54,7 +55,9 @@ export function LoggedSessionCard({
     return (
       <div className="rounded-lg border border-dashed border-line p-3 text-ink-muted">
         <p className="text-xs font-medium">Undone · removed from your log</p>
-        <p className="truncate text-sm line-through tabular-nums">{sessionSummary(session)}</p>
+        <p {...SENSITIVE} className="truncate text-sm line-through tabular-nums">
+          {sessionSummary(session)}
+        </p>
       </div>
     );
   }
@@ -67,7 +70,9 @@ export function LoggedSessionCard({
           <p className="flex items-center gap-1 text-xs font-medium text-accent">
             <CheckIcon size={12} /> {edited ? "Edited" : "Logged"} · {dayLabel(session.date)}
           </p>
-          <p className="truncate text-sm font-semibold tabular-nums">{sessionSummary(session)}</p>
+          <p {...SENSITIVE} className="truncate text-sm font-semibold tabular-nums">
+            {sessionSummary(session)}
+          </p>
         </div>
       </div>
       {session.climbs && session.climbs.length > 0 && (
@@ -122,6 +127,7 @@ function stats(s: Session): string[] {
 export function SessionRow({ session, onOpen }: { session: Session; onOpen: () => void }) {
   return (
     <button
+      {...REVEAL_UNIT}
       type="button"
       onClick={onOpen}
       className="flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-sunken"
@@ -133,7 +139,9 @@ export function SessionRow({ session, onOpen }: { session: Session; onOpen: () =
           <p className="font-semibold">{sportName(session)}</p>
           <p className="shrink-0 text-xs text-ink-muted">{dayLabel(session.date)}</p>
         </div>
-        <p className="mt-0.5 text-sm text-ink-muted tabular-nums">{stats(session).join(" · ")}</p>
+        <p {...SENSITIVE} className="mt-0.5 text-sm text-ink-muted tabular-nums">
+          {stats(session).join(" · ")}
+        </p>
         {session.climbs && session.climbs.length > 0 && (
           <div className="mt-2">
             <ClimbChips climbs={session.climbs} max={5} />

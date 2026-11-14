@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getTrainingLoad, type TrainingLoad } from "@/lib/api";
+import { SENSITIVE } from "@/lib/discreet";
 import { recordEvent } from "@/lib/events";
 import { nf } from "@/lib/format";
 import { getWeekReview, lastWeekStart, saveWeekReview, weekRange } from "@/lib/week-review";
@@ -54,7 +55,7 @@ export function WeekGlance() {
               <h2 id="your-week-title" className="font-semibold">
                 Your week, {weekRange(lastWeek)}
               </h2>
-              <p className="text-sm text-ink-muted tabular-nums">
+              <p {...SENSITIVE} className="text-sm text-ink-muted tabular-nums">
                 {prev.sessions} {prev.sessions === 1 ? "session" : "sessions"} · load{" "}
                 {nf.format(prev.load)}
               </p>
@@ -75,10 +76,10 @@ export function WeekGlance() {
       )}
       <p className="flex flex-wrap gap-x-3 text-sm text-ink-muted tabular-nums" aria-label="This week so far">
         <span className="font-medium text-ink">This week so far</span>
-        <span>
+        <span {...SENSITIVE}>
           {now.sessions} {now.sessions === 1 ? "session" : "sessions"} · load {nf.format(now.load)}
         </span>
-        <span>last week {nf.format(prev.load)}</span>
+        <span {...SENSITIVE}>last week {nf.format(prev.load)}</span>
       </p>
     </div>
   );
