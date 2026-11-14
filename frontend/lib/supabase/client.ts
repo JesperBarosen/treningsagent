@@ -11,6 +11,12 @@ export function supabaseBrowser(): SupabaseClient {
   return client;
 }
 
+/** The signed-in user's id, or null when signed out. Reads the local session (no network). */
+export async function currentUserId(): Promise<string | null> {
+  const { data } = await supabaseBrowser().auth.getSession();
+  return data.session?.user.id ?? null;
+}
+
 /** The current access token for the backend, or null when signed out. */
 export async function accessToken(): Promise<string | null> {
   const { data } = await supabaseBrowser().auth.getSession();

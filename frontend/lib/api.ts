@@ -1,6 +1,7 @@
 // Typed client for the FastAPI backend in backend/. Numbers such as load and
 // pace come from the backend's tool functions; the frontend only formats them.
 
+import { clearSavedChats } from "./chat-storage";
 import { accessToken, supabaseBrowser } from "./supabase/client";
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(
@@ -74,6 +75,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (res.status === 401) {
     // The backend rejected the session. Drop it here too (otherwise /sign-in
     // would send us straight back), then reload on /sign-in so no state survives.
+    clearSavedChats();
     await supabaseBrowser().auth.signOut({ scope: "local" });
     window.location.replace(`${window.location.origin}/sign-in`);
     throw new ApiError("Your session has ended. Sign in again.", 401);

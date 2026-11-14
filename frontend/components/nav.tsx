@@ -6,6 +6,7 @@ import { useState } from "react";
 import { PUBLIC_PATHS } from "@/lib/supabase/config";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { clearSavedChats } from "@/lib/chat-storage";
 import { ChartIcon, ChatIcon, KeyIcon, ListIcon, PlusIcon, SignOutIcon } from "./icons";
 
 const LINKS = [
@@ -30,6 +31,7 @@ function SignOutButton() {
   const [busy, setBusy] = useState(false);
   async function signOut() {
     setBusy(true);
+    clearSavedChats(); // the next person on this browser must not see this chat
     await supabaseBrowser().auth.signOut();
     router.replace("/sign-in");
     router.refresh();

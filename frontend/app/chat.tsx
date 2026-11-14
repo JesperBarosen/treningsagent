@@ -5,6 +5,8 @@ import { ChatIcon, PlusIcon, SendIcon } from "@/components/icons";
 import { LoggedSessionCard } from "@/components/session-card";
 import { Button } from "@/components/states";
 import { ApiError, sendChat, type Session } from "@/lib/api";
+import { dropLegacyChats, loadChat, saveChat } from "@/lib/chat-storage";
+import { currentUserId } from "@/lib/supabase/client";
 import { Markdown } from "@/lib/markdown";
 
 type Item =
@@ -15,7 +17,6 @@ type Item =
 type Conversation = { items: Item[]; history: unknown[]; conversationId: string | null };
 
 const EMPTY: Conversation = { items: [], history: [], conversationId: null };
-const STORAGE_KEY = "treningsagent.chat.v2";
 
 /** Starters fill the input (the user adds their numbers); questions send at once. */
 const QUICK_REPLIES = [
@@ -25,21 +26,9 @@ const QUICK_REPLIES = [
   { label: "This week's load", send: "How is my training load this week?" },
 ] as const;
 
-function loadConversation(): Conversation {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? { ...EMPTY, ...JSON.parse(raw) } : EMPTY;
-  } catch {
-    return EMPTY;
-  }
-}
-
-function saveConversation(c: Conversation) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(c));
-  } catch {
-    // private mode or full storage: the chat still works, it just won't survive a reload
-  }
+function loadConversation(userId: string): Conversation {
+  const saved = loadChat(userId);
+  return saved && typeof saved === "object" ? { ...EMPTY, ...saved } : EMPTY;
 }
 
 const newId = () => Math.random().toString(36).slice(2);
@@ -47,23 +36,33 @@ const newId = () => Math.random().toString(36).slice(2);
 export function Chat() {
   const [convo, setConvo] = useState<Conversation>(EMPTY);
   const [restored, setRestored] = useState(false);
+  // Whose chat this is: it is saved under their id, so another account never restores it.
+  const [userId, setUserId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
-  // Restore after mount: the server render has no localStorage.
+  // Restore after mount (the server render has no localStorage), for the signed-in user only.
   useEffect(() => {
-    const saved = loadConversation();
-    queueMicrotask(() => {
-      setConvo(saved);
-      setRestored(true);
-    });
+    let cancelled = false;
+    currentUserId()
+      .catch(() => null)
+      .then((id) => {
+        if (cancelled) return;
+        dropLegacyChats();
+        setUserId(id);
+        if (id) setConvo(loadConversation(id));
+        setRestored(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    if (restored) saveConversation(convo);
-  }, [convo, restored]);
+    if (restored && userId) saveChat(userId, convo);
+  }, [convo, restored, userId]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
