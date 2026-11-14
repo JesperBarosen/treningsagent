@@ -155,14 +155,20 @@ class PostgresStore:
         query = sql.SQL("select {} from public.pauses where ended_on is null or ended_on >= %s"
                         " order by start_date, id").format(
             sql.SQL(", ").join(map(sql.Identifier, PAUSE_COLUMNS)))
-        with self._as_user() as conn:
-            return [self._pause(r) for r in conn.execute(query, (since,)).fetchall()]
+        try:
+            with self._as_user() as conn:
+                return [self._pause(r) for r in conn.execute(query, (since,)).fetchall()]
+        except psycopg.errors.UndefinedTable:  # migration not applied yet: no pauses
+            return []
 
     def active_pause(self) -> dict | None:
         query = sql.SQL("select {} from public.pauses where ended_on is null").format(
             sql.SQL(", ").join(map(sql.Identifier, PAUSE_COLUMNS)))
-        with self._as_user() as conn:
-            row = conn.execute(query).fetchone()
+        try:
+            with self._as_user() as conn:
+                row = conn.execute(query).fetchone()
+        except psycopg.errors.UndefinedTable:  # migration not applied yet: no pause
+            return None
         return self._pause(row) if row else None
 
     def start_pause(self, row: dict) -> dict:
