@@ -7,6 +7,7 @@ import { ListIcon } from "@/components/icons";
 import { SessionRow } from "@/components/session-card";
 import { ErrorState, EmptyState, HIT_AREA_Y, Skeleton } from "@/components/states";
 import { ApiError, getSessions, type Session, type Sport } from "@/lib/api";
+import { SENSITIVE } from "@/lib/discreet";
 import { groupByWeek, nf, weekLabel } from "@/lib/format";
 import { SessionSheet } from "./session-sheet";
 
@@ -158,7 +159,7 @@ function WeekList({
               >
                 {weekLabel(week.weekStart)}
               </h2>
-              <p className="text-xs text-ink-muted tabular-nums">
+              <p {...SENSITIVE} className="text-xs text-ink-muted tabular-nums">
                 {n} {n === 1 ? "session" : "sessions"} · load {nf.format(load)}
               </p>
             </div>

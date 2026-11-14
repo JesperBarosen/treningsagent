@@ -7,6 +7,7 @@ import { GradeDot } from "@/components/grade";
 import { Button, ErrorState, Skeleton } from "@/components/states";
 import { ApiError, getProgression, getTrainingLoad } from "@/lib/api";
 import { BAND_LABELS } from "@/lib/dashboard";
+import { SENSITIVE } from "@/lib/discreet";
 import { recordEvent } from "@/lib/events";
 import { formatPace, nf, weekStart } from "@/lib/format";
 import {
@@ -142,6 +143,7 @@ function Review({
           Note for next week
         </label>
         <textarea
+          {...SENSITIVE}
           id="week-note"
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -177,13 +179,13 @@ function WeekNumbers({ review: r }: { review: WeekReviewData }) {
     n === null ? null : `${fmt(n)} the week before`;
   return (
     <>
-      <dl className="grid grid-cols-2 gap-2">
+      <dl {...SENSITIVE} className="grid grid-cols-2 gap-2">
         <Tile label="Sessions" value={String(r.sessions)} sub={before(r.prevSessions, String)} />
         <Tile label="Load" value={nf.format(r.load)} sub={before(r.prevLoad, (n) => nf.format(n))} />
       </dl>
 
       {(r.runs > 0 || r.climbingSessions > 0) && (
-        <section aria-label="Highlights" className="rounded-lg border border-line bg-surface p-4 text-sm">
+        <section {...SENSITIVE} aria-label="Highlights" className="rounded-lg border border-line bg-surface p-4 text-sm">
           <p className="text-ink-muted">
             {[
               r.runs > 0 && `${r.runs} ${r.runs === 1 ? "run" : "runs"}`,
@@ -215,7 +217,7 @@ function WeekNumbers({ review: r }: { review: WeekReviewData }) {
         </section>
       )}
 
-      <p className="leading-relaxed">
+      <p {...SENSITIVE} className="leading-relaxed">
         <span className="sr-only">Coach: </span>
         {r.sentence}
       </p>

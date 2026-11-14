@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { climbLabel, ClimbLegend, GradeDot } from "@/components/grade";
 import { BoltIcon, CheckIcon, CloseIcon, SportBadge } from "@/components/icons";
 import { SessionForm } from "@/components/session-form";
+import { SENSITIVE } from "@/lib/discreet";
 import { Button } from "@/components/states";
 import {
   ApiError,
@@ -219,7 +220,7 @@ function Details({
         </button>
       </div>
 
-      <dl className="mt-5 grid grid-cols-2 gap-2 min-[400px]:grid-cols-3">
+      <dl {...SENSITIVE} className="mt-5 grid grid-cols-2 gap-2 min-[400px]:grid-cols-3">
         {stats.map(([label, value]) => (
           <div key={label} className="rounded-md border border-line bg-canvas px-3 py-2.5">
             <dt className="text-xs text-ink-muted">{label}</dt>
@@ -230,7 +231,9 @@ function Details({
       <p className="mt-2 text-xs text-ink-muted">Load = minutes × effort (session-RPE).</p>
 
       {s.notes && (
-        <p className="mt-4 rounded-md bg-sunken px-4 py-3 text-sm">{s.notes}</p>
+        <p {...SENSITIVE} className="mt-4 rounded-md bg-sunken px-4 py-3 text-sm">
+          {s.notes}
+        </p>
       )}
 
       {s.climbs && s.climbs.length > 0 && (
@@ -241,7 +244,7 @@ function Details({
             </h3>
             <ClimbLegend />
           </div>
-          <ul className="divide-y divide-line rounded-md border border-line">
+          <ul {...SENSITIVE} className="divide-y divide-line rounded-md border border-line">
             {[...s.climbs]
               .sort((a, b) => b.grade_ordinal - a.grade_ordinal)
               .map((c, i) => (
