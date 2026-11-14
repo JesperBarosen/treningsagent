@@ -35,9 +35,8 @@
 - Status: new work starts in `Backlog` (or `Next` when it is up next). Move the issue to
   `In progress` when work on it starts, and to `In review` when its PR opens. `Done` is for
   merged PRs and closed issues.
-- Link the issue in the PR body (`Closes #n`).
-- Use `gh project item-add` and `gh project item-edit`; if no issue exists for the work,
-  create one first.
+- When a PR has an issue, link it in the PR body (`Closes #n`).
+- Use `gh project item-add` and `gh project item-edit`.
 
 ## Secrets
 - Never print or commit secrets. `.env` files stay gitignored.
