@@ -41,7 +41,8 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1)
     # The `history` returned by the previous /chat call, unchanged. The server
-    # keeps no conversation state; it must include Claude's thinking blocks as-is.
+    # keeps no conversation state. Thinking blocks from earlier turns are
+    # stripped before each call (chat.run_turn), so they are optional here.
     history: list[dict] = []
     # Returned by the first /chat call; send it back to group cost per conversation.
     conversation_id: uuid.UUID | None = None

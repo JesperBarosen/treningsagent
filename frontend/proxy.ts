@@ -41,5 +41,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Every page, but not Next's own assets or files with an extension (favicon, images).
-  matcher: ["/((?!_next/static|_next/image|.*\.[a-zA-Z0-9]+$).*)"],
+  // The dot must reach the regex escaped: "\." in a plain string is just "." (any
+  // character), which made the proxy skip every page but "/". tests/proxy-matcher.test.ts
+  matcher: ["/((?!_next/static|_next/image|.*\\.[a-zA-Z0-9]+$).*)"],
 };

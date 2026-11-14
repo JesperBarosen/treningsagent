@@ -4,6 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const auth = {
   signInWithOtp: vi.fn(),
+  signInWithPassword: vi.fn(),
+  updateUser: vi.fn(),
+  signUp: vi.fn(),
   getSession: vi.fn(),
   signOut: vi.fn(),
 };
@@ -13,6 +16,7 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 const { SignInForm } = await import("@/app/sign-in/sign-in-form");
+const { SetPasswordForm } = await import("@/app/account/set-password-form");
 const { getSessions } = await import("@/lib/api");
 
 beforeEach(() => {
@@ -52,6 +56,82 @@ describe("SignInForm", () => {
   it("explains a failed link", () => {
     render(<SignInForm linkFailed />);
     expect(screen.getByRole("alert")).toHaveTextContent("didn't work");
+  });
+});
+
+describe("SignInForm with a password", () => {
+  const replace = vi.fn();
+  beforeEach(() => vi.stubGlobal("location", { ...window.location, origin: "http://localhost:3000", replace }));
+  afterEach(() => vi.unstubAllGlobals());
+
+  async function submit(password = "correct horse") {
+    render(<SignInForm />);
+    await userEvent.click(screen.getByRole("radio", { name: "Password" }));
+    await userEvent.type(screen.getByLabelText("Email"), "me@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), password);
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+  }
+
+  it("signs in an existing user and opens the app, never signing up", async () => {
+    auth.signInWithPassword.mockResolvedValue({ data: {}, error: null });
+    await submit();
+    expect(auth.signInWithPassword).toHaveBeenCalledWith({ email: "me@example.com", password: "correct horse" });
+    expect(replace).toHaveBeenCalledWith("http://localhost:3000/");
+    expect(auth.signUp).not.toHaveBeenCalled();
+    expect(auth.signInWithOtp).not.toHaveBeenCalled();
+  });
+
+  it("gives one answer for a wrong password or an unknown address", async () => {
+    auth.signInWithPassword.mockResolvedValue({
+      data: {},
+      error: { status: 400, code: "invalid_credentials", message: "Invalid login credentials" },
+    });
+    await submit("wrong");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Wrong email or password");
+    expect((screen.getByLabelText("Password") as HTMLInputElement).value).toBe("");
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("says when there were too many attempts", async () => {
+    auth.signInWithPassword.mockResolvedValue({ data: {}, error: { status: 429, message: "rate limit" } });
+    await submit();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Too many attempts");
+  });
+});
+
+describe("SetPasswordForm", () => {
+  const button = () => screen.getByRole("button", { name: "Set password" });
+  async function fill(password: string, confirm = password) {
+    render(<SetPasswordForm />);
+    await userEvent.type(screen.getByLabelText("New password"), password);
+    await userEvent.type(screen.getByLabelText("Repeat password"), confirm);
+  }
+
+  it("needs at least 8 characters, typed twice the same", async () => {
+    await fill("short");
+    expect(button()).toBeDisabled();
+    expect(screen.getByText("At least 8 characters.")).toBeInTheDocument();
+  });
+
+  it("won't save when the two passwords differ", async () => {
+    await fill("long enough", "long enougj");
+    expect(button()).toBeDisabled();
+    expect(screen.getByText("The passwords don't match.")).toBeInTheDocument();
+  });
+
+  it("sets the password for the signed-in user", async () => {
+    auth.updateUser.mockResolvedValue({ data: {}, error: null });
+    await fill("long enough");
+    await userEvent.click(button());
+    expect(auth.updateUser).toHaveBeenCalledWith({ password: "long enough" });
+    expect(await screen.findByRole("status")).toHaveTextContent("Password saved");
+  });
+
+  it("explains an error from Supabase", async () => {
+    auth.updateUser.mockResolvedValue({ data: {}, error: { status: 422, code: "same_password", message: "" } });
+    await fill("long enough");
+    await userEvent.click(button());
+    expect(await screen.findByRole("alert")).toHaveTextContent("already your password");
   });
 });
 

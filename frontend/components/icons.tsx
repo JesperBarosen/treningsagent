@@ -132,6 +132,14 @@ export const MailIcon = (p: IconProps) => (
   </Icon>
 );
 
+/** A key: the account page, where a password is set. */
+export const KeyIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="8" cy="15" r="4" />
+    <path d="m11 12 9-9M16 7l3 3M18 5l2 2" />
+  </Icon>
+);
+
 /** An arrow leaving a door: sign out. */
 export const SignOutIcon = (p: IconProps) => (
   <Icon {...p}>

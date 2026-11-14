@@ -6,7 +6,7 @@ import { useState } from "react";
 import { PUBLIC_PATHS } from "@/lib/supabase/config";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { ChartIcon, ChatIcon, ListIcon, PlusIcon, SignOutIcon } from "./icons";
+import { ChartIcon, ChatIcon, KeyIcon, ListIcon, PlusIcon, SignOutIcon } from "./icons";
 
 const LINKS = [
   { href: "/", label: "Coach", Icon: ChatIcon },
@@ -48,7 +48,7 @@ function SignOutButton() {
   );
 }
 
-/** Top bar with the wordmark, the theme switch and sign out; from `md` it also holds the links. */
+/** Top bar with the wordmark, the theme switch, account and sign out; from `md` it also holds the links. */
 export function TopBar() {
   const pathname = usePathname();
   const signedIn = !isPublic(pathname);
@@ -75,7 +75,20 @@ export function TopBar() {
           )}
           {/* Also on the sign-in page, and on mobile, where the top bar stays visible. */}
           <ThemeToggle />
-          {signedIn && <SignOutButton />}
+          {signedIn && (
+            <>
+              <Link
+                href="/account"
+                aria-label="Account"
+                title="Account"
+                aria-current={pathname === "/account" ? "page" : undefined}
+                className="grid size-11 place-items-center rounded-full text-ink-muted transition hover:bg-sunken hover:text-ink aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent"
+              >
+                <KeyIcon size={20} />
+              </Link>
+              <SignOutButton />
+            </>
+          )}
         </div>
       </div>
     </header>

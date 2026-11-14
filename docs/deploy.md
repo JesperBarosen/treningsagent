@@ -112,12 +112,18 @@ In the Supabase dashboard: **Authentication > URL Configuration**.
 2. **Redirect URLs:** add `https://<frontend-domain>/auth/confirm`. Keep
    `http://localhost:3000/auth/confirm` for local development.
 3. Sign-ups stay off (**Authentication > Sign In / Providers**); invite
-   users from **Authentication > Users**.
+   users from **Authentication > Users**. Password sign-in only works for
+   existing users, so it doesn't open sign-ups.
+4. In **Authentication > Sign In / Providers > Email**, keep the **Email**
+   provider enabled. Password sign-in uses it too. If **Secure password
+   change** is on, the Account page asks users to sign in again with an email
+   link before setting a password.
 
 ## 5. Smoke test
 
 - [ ] `https://<frontend-domain>` redirects to the sign-in page.
 - [ ] A sign-in link arrives, opens `/auth/confirm`, and lands signed in on the chat.
+- [ ] Account > Set password works. After signing out, **Password** on the sign-in page signs you back in.
 - [ ] "Ran 5 km in 30 min, effort 5" in the chat logs a session that shows up under Sessions.
 - [ ] Log, edit and delete a session from the Log tab and the session sheet.
 - [ ] The dashboard loads.
@@ -131,10 +137,19 @@ to Home Screen**, then **Add**. It opens full screen as "Treningsagent".
 **Android (Chrome):** open the URL in Chrome, tap the **⋮** menu, then **Add to
 home screen** (or **Install app**), then **Install**.
 
-On iPhone, the home-screen app keeps its own sign-in, separate from Safari.
-The emailed sign-in link opens in Safari, so the home-screen app may still
-show the sign-in page afterwards. See the PR's follow-ups. On Android, the
-installed app shares Chrome's sign-in.
+**iPhone home-screen users: sign in with a password.** The home-screen app
+keeps its own sign-in, separate from Safari, and an emailed sign-in link
+always opens in Safari, so a link can't sign in the home-screen app. Set a
+password once, then use it in the app:
+
+1. In Safari, sign in with an email link.
+2. Open **Account** (the key icon in the top bar), enter a password of at
+   least 8 characters twice, and tap **Set password**.
+3. Open the home-screen app, choose **Password** on the sign-in page, and sign
+   in with your email and that password.
+
+On Android, the installed app shares Chrome's sign-in, so an email link works
+there too.
 
 ## Fallback: Render free tier
 
