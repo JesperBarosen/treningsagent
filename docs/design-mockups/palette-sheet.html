@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palette sheet: current and proposed</title>
+<style>
+  /* Static sheet: both themes are shown at once, so it does not follow the OS setting. */
+  :root {
+    --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+    --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px 48px; background: #f5f4ef; color: #15191b; font: 14px/1.45 var(--font-sans); }
+  main { max-width: 980px; margin: 0 auto; }
+  h1 { font: 600 22px/28px var(--font-display); margin: 0 0 4px; }
+  h2 { font: 600 18px/26px var(--font-display); margin: 32px 0 8px; }
+  p.lead { color: #5a6166; margin: 0 0 16px; }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .theme { border-radius: 18px; padding: 16px; border: 1px solid #d9d6cc; }
+  .light { background: #f5f4ef; color: #15191b; }
+  .dark { background: #121618; color: #e8ebe9; border-color: #30393e; }
+  .theme h3 { font: 600 16px/24px var(--font-display); margin: 0 0 8px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 4px; vertical-align: middle; }
+  th { font-size: 12px; font-weight: 600; opacity: .8; }
+  tr + tr td { border-top: 1px solid rgb(127 127 127 / .25); }
+  .sw { display: inline-block; width: 22px; height: 22px; border-radius: 6px; box-shadow: 0 0 0 1px rgb(127 127 127 / .5); vertical-align: middle; margin-right: 6px; }
+  code { font-size: 12px; }
+  .new { font-weight: 600; }
+  .fail { color: #b42318; font-weight: 600; } .dark .fail { color: #f97066; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .blk { width: 88px; border-radius: 12px; overflow: hidden; border: 1px solid rgb(127 127 127 / .35); font-size: 12px; }
+  .blk i { display: block; height: 40px; }
+  .blk span { display: block; padding: 4px 6px; }
+  .note { color: #5a6166; font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Palette sheet</h1>
+  <p class="lead">Current tokens and the proposals in <code>docs/design-visual.md</code>. Ratios are WCAG 2.2 contrast ratios measured from the hex values. ΔE values are OKLab ×100 from the dataviz validator (CVD = worst of protanopia, deuteranopia, tritanopia simulation). <span class="new">Bold</span> marks a proposed value.</p>
+
+  <h2>Surfaces, text and outlines</h2>
+  <div class="cols">
+    <section class="theme light">
+      <h3>Light</h3>
+      <table>
+        <tr><th>Token</th><th>Hex</th><th>Measured</th></tr>
+        <tr><td><i class="sw" style="background:#f5f4ef"></i>canvas</td><td><code>#F5F4EF</code></td><td>unchanged</td></tr>
+        <tr><td><i class="sw" style="background:#ffffff"></i>surface</td><td><code>#FFFFFF</code></td><td>unchanged</td></tr>
+        <tr><td><i class="sw" style="background:#eceae3"></i>sunken</td><td><code>#ECEAE3</code></td><td>unchanged</td></tr>
+        <tr><td><i class="sw" style="background:#15191b"></i>ink</td><td><code>#15191B</code></td><td>17.70 / 16.07 / 14.70:1</td></tr>
+        <tr><td><i class="sw" style="background:#5a6166"></i>ink-muted now</td><td><code>#5A6166</code></td><td>6.29 / 5.72 / 5.23:1</td></tr>
+        <tr><td><i class="sw" style="background:#474e53"></i><span class="new">ink-muted</span></td><td><code class="new">#474E53</code></td><td>8.46 / 7.68 / 7.03:1</td></tr>
+        <tr><td><i class="sw" style="background:#d9d6cc"></i>line (decorative)</td><td><code>#D9D6CC</code></td><td><span class="fail">1.45 / 1.32:1</span> as a control edge</td></tr>
+        <tr><td><i class="sw" style="background:#8a857a"></i><span class="new">control</span></td><td><code class="new">#8A857A</code></td><td>3.67 / 3.34:1</td></tr>
+        <tr><td><i class="sw" style="background:#0f6b5c"></i>accent</td><td><code>#0F6B5C</code></td><td>6.41 / 5.82:1, on accent-soft 5.36:1</td></tr>
+        <tr><td><i class="sw" style="background:#9a5a17"></i>climb</td><td><code>#9A5A17</code></td><td>5.46:1, on climb-soft 4.53:1</td></tr>
+        <tr><td><i class="sw" style="background:#f8ecdc"></i><span class="new">climb-soft</span></td><td><code class="new">#F8ECDC</code></td><td>climb on it 4.68:1</td></tr>
+        <tr><td><i class="sw" style="background:#b42318"></i>danger</td><td><code>#B42318</code></td><td>6.57:1, on danger-soft 5.75:1</td></tr>
+      </table>
+      <p class="note">Ratios: on surface / canvas / sunken unless stated.</p>
+    </section>
+    <section class="theme dark">
+      <h3>Dark</h3>
+      <table>
+        <tr><th>Token</th><th>Hex now → proposed</th><th>Measured (proposed)</th></tr>
+        <tr><td><i class="sw" style="background:#121618"></i>canvas</td><td><code>#0E1214</code> → <code class="new">#121618</code></td><td></td></tr>
+        <tr><td><i class="sw" style="background:#191f22"></i>surface</td><td><code>#161B1E</code> → <code class="new">#191F22</code></td><td></td></tr>
+        <tr><td><i class="sw" style="background:#222a2e"></i>sunken, <span class="new">elevated</span></td><td><code>#1E2529</code> → <code class="new">#222A2E</code></td><td>sheets, dialogs, composer</td></tr>
+        <tr><td><i class="sw" style="background:#e8ebe9"></i>ink</td><td><code>#ECEEEC</code> → <code class="new">#E8EBE9</code></td><td>13.88 / 15.16 / 12.16:1</td></tr>
+        <tr><td><i class="sw" style="background:#b0b8bc"></i>ink-muted</td><td><code>#9AA3A7</code> → <code class="new">#B0B8BC</code></td><td>8.27 / 9.04 / 7.25:1</td></tr>
+        <tr><td><i class="sw" style="background:#30393e"></i>line (decorative)</td><td><code>#2C3439</code> → <code class="new">#30393E</code></td><td><span class="fail">1.41 / 1.54:1</span> as a control edge</td></tr>
+        <tr><td><i class="sw" style="background:#6b767c"></i><span class="new">control</span></td><td><code class="new">#6B767C</code></td><td>3.58 / 3.91:1</td></tr>
+        <tr><td><i class="sw" style="background:#4fd1b5"></i>accent</td><td><code>#4FD1B5</code></td><td>8.82 / 9.64:1</td></tr>
+        <tr><td><i class="sw" style="background:#e5a15a"></i>climb</td><td><code>#E5A15A</code></td><td>7.60:1</td></tr>
+        <tr><td><i class="sw" style="background:#f97066"></i>danger</td><td><code>#F97066</code></td><td>5.98:1</td></tr>
+      </table>
+      <p class="note" style="color:#b0b8bc">Ratios: on surface / canvas / sunken. Today's dark values pass text contrast too (ink 14.89:1, muted 6.75:1 on surface).</p>
+    </section>
+  </div>
+
+  <h2>Chart series: sports</h2>
+  <div class="cols">
+    <section class="theme light">
+      <h3>Light, on <code>#FFFFFF</code></h3>
+      <div class="row">
+        <div class="blk"><i style="background:#008571"></i><span>Running<br><code>#008571</code><br>4.57:1</span></div>
+        <div class="blk"><i style="background:#a85f12"></i><span>Climbing<br><code>#A85F12</code><br>4.87:1</span></div>
+        <div class="blk"><i style="background:#4a5bb5"></i><span class="new">Strength<br><code>#4A5BB5</code><br>6.08:1</span></div>
+      </div>
+      <p class="note">All pairs: CVD worst ΔE 11.5 (climbing↔running, protan), normal-vision worst 18.9. Lightness band, chroma floor and 3:1 all pass.</p>
+    </section>
+    <section class="theme dark">
+      <h3>Dark, on <code>#191F22</code></h3>
+      <div class="row">
+        <div class="blk"><i style="background:#21a589"></i><span>Running<br><code>#21A589</code><br>5.40:1</span></div>
+        <div class="blk"><i style="background:#c98030"></i><span>Climbing<br><code>#C98030</code><br>5.25:1</span></div>
+        <div class="blk"><i style="background:#7083e0"></i><span class="new">Strength<br><code>#7083E0</code><br>4.77:1</span></div>
+      </div>
+      <p class="note" style="color:#b0b8bc">All pairs: CVD worst ΔE 11.0, normal-vision worst 19.6. All checks pass.</p>
+    </section>
+  </div>
+
+  <h2>Grade colours (the same in both themes)</h2>
+  <div class="cols">
+    <section class="theme light">
+      <h3>Now</h3>
+      <div class="row">
+        <div class="blk"><i style="background:#f2c230"></i><span>yellow<br><code>#F2C230</code></span></div>
+        <div class="blk"><i style="background:#2e9e5b"></i><span>green<br><code>#2E9E5B</code></span></div>
+        <div class="blk"><i style="background:#2f6fd6"></i><span>blue<br><code>#2F6FD6</code></span></div>
+        <div class="blk"><i style="background:#7c4dc4"></i><span>purple<br><code>#7C4DC4</code></span></div>
+        <div class="blk"><i style="background:#d63a3a"></i><span>red<br><code>#D63A3A</code></span></div>
+      </div>
+      <p class="note"><span class="fail">blue↔purple</span> ΔE 11.9 normal vision (below 15), 3.0 deutan. <span class="fail">green↔red</span> 4.7 deutan.</p>
+    </section>
+    <section class="theme light">
+      <h3>Proposed on-screen steps</h3>
+      <div class="row">
+        <div class="blk"><i style="background:#f2c230"></i><span>yellow<br><code>#F2C230</code></span></div>
+        <div class="blk"><i style="background:#3fae5f"></i><span class="new">green<br><code>#3FAE5F</code></span></div>
+        <div class="blk"><i style="background:#2f6fd6"></i><span>blue<br><code>#2F6FD6</code></span></div>
+        <div class="blk"><i style="background:#9440b8"></i><span class="new">purple<br><code>#9440B8</code></span></div>
+        <div class="blk"><i style="background:#c0302f"></i><span class="new">red<br><code>#C0302F</code></span></div>
+      </div>
+      <p class="note">green↔red 12.3 deutan (pass). blue↔purple 16.8 normal (pass), 5.3 deutan (still below 8: the grade name stays the signal). Black, white and the ring are unchanged.</p>
+    </section>
+  </div>
+
+  <h2>Higher contrast (<code>prefers-contrast: more</code>)</h2>
+  <div class="cols">
+    <section class="theme light">
+      <h3>Light</h3>
+      <p>Outlines and dividers use <code>#5A6166</code> (6.29:1 on surface, 5.72:1 on canvas). Secondary text uses ink (17.70:1).</p>
+    </section>
+    <section class="theme dark">
+      <h3>Dark</h3>
+      <p>Outlines and dividers use <code>#9AA3A7</code> (6.75:1 on surface, 7.33:1 on canvas, measured on today's dark surfaces). Secondary text uses ink.</p>
+    </section>
+  </div>
+</main>
+</body>
+</html>
