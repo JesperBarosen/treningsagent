@@ -5,7 +5,15 @@ import { climbLabel, ClimbLegend, GradeDot } from "@/components/grade";
 import { BoltIcon, CheckIcon, CloseIcon, SportBadge } from "@/components/icons";
 import { SessionForm } from "@/components/session-form";
 import { Button } from "@/components/states";
-import { ApiError, deleteSession, updateSession, type Climb, type Session } from "@/lib/api";
+import {
+  ApiError,
+  deleteSession,
+  GRADES,
+  updateSession,
+  type Climb,
+  type Session,
+  type SessionInput,
+} from "@/lib/api";
 import {
   climbOutcome,
   formatDuration,
@@ -22,11 +30,15 @@ export function SessionSheet({
   session,
   onClose,
   onChanged,
+  startEditing = false,
 }: {
   session: Session | null;
   onClose: () => void;
-  /** After an edit or delete: the parent closes the sheet and reloads. */
-  onChanged: () => void;
+  /** After an edit (with the updated session) or a delete (with nothing):
+   *  the parent closes the sheet and reloads or updates what it shows. */
+  onChanged: (updated?: Session) => void;
+  /** Open straight in the edit form; Cancel then closes the sheet. */
+  startEditing?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
 
@@ -46,26 +58,42 @@ export function SessionSheet({
       className="m-0 mt-auto max-h-[88dvh] w-full max-w-none overflow-y-auto rounded-t-lg bg-surface text-ink shadow-sheet backdrop:bg-ink/40 open:animate-rise sm:m-auto sm:max-w-lg sm:rounded-lg"
     >
       {session && (
-        <SheetBody key={session.id} session={session} onClose={onClose} onChanged={onChanged} />
+        <SheetBody
+          key={session.id}
+          session={session}
+          onClose={onClose}
+          onChanged={onChanged}
+          startEditing={startEditing}
+        />
       )}
     </dialog>
   );
+}
+
+function withOrdinals(climbs: SessionInput["climbs"]): Climb[] | undefined {
+  return climbs?.map((c) => ({ ...c, grade_ordinal: GRADES.indexOf(c.grade) + 1 }));
 }
 
 function SheetBody({
   session,
   onClose,
   onChanged,
+  startEditing,
 }: {
   session: Session;
   onClose: () => void;
-  onChanged: () => void;
+  onChanged: (updated?: Session) => void;
+  startEditing: boolean;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(startEditing);
   if (!editing) {
     return (
       <Details session={session} onClose={onClose}>
-        <SheetActions id={session.id} onEdit={() => setEditing(true)} onDeleted={onChanged} />
+        <SheetActions
+          id={session.id}
+          onEdit={() => setEditing(true)}
+          onDeleted={() => onChanged()}
+        />
       </Details>
     );
   }
@@ -77,10 +105,11 @@ function SheetBody({
       <SessionForm
         session={session}
         editing
-        onCancel={() => setEditing(false)}
+        onCancel={() => (startEditing ? onClose() : setEditing(false))}
         onSubmit={async (input) => {
-          await updateSession(session.id, input);
-          onChanged();
+          const updated = await updateSession(session.id, input);
+          // PATCH returns the session without its climbs; the form just sent them.
+          onChanged({ ...updated, climbs: updated.climbs ?? withOrdinals(input.climbs) });
         }}
       />
     </div>
