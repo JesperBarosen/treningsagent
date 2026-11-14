@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { ChatIcon, PlusIcon, SendIcon } from "@/components/icons";
+import { LogShortcuts } from "@/components/log-shortcuts";
 import { LoggedSessionCard } from "@/components/session-card";
 import { Button, OfflineHint } from "@/components/states";
 import { WeekGlance } from "@/components/week-glance";
@@ -232,7 +233,7 @@ export function Chat() {
       </div>
 
       {/* Bottom padding leaves room for the fixed composer (and the tab bar on mobile). */}
-      <div className="pb-52 md:pb-40">
+      <div className="pb-64 md:pb-52">
         {userId && <WeekGlance />}
         {empty && <Welcome />}
         <ol aria-label="Conversation" aria-live="polite" className="space-y-4">
@@ -283,6 +284,7 @@ export function Chat() {
 
       <div className="fixed inset-x-0 bottom-14 z-20 border-t border-line bg-canvas/95 shadow-sheet backdrop-blur md:bottom-0">
         <div className="mx-auto max-w-content px-4 pt-3 pb-3 sm:px-6">
+          <LogShortcuts />
           <div
             className="scrollbar-none -mx-4 mb-2 flex gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6"
             role="group"

@@ -179,6 +179,14 @@ export const EyeOffIcon = (p: IconProps) => (
   </Icon>
 );
 
+/** A head and shoulders: the You tab. */
+export const UserIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="8" r="3.5" />
+    <path d="M5 20a7 7 0 0 1 14 0" />
+  </Icon>
+);
+
 /** A crescent moon: the Dark theme. */
 export const MoonIcon = (p: IconProps) => (
   <Icon {...p}>

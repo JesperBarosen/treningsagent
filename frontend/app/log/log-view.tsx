@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { asSession } from "@/components/draft-card";
 import { RefreshIcon } from "@/components/icons";
+import { takeRepeatIntent } from "@/components/log-shortcuts";
 import { SessionForm } from "@/components/session-form";
 import { Button } from "@/components/states";
 import { createSession, getSessions, type Session } from "@/lib/api";
@@ -33,7 +34,12 @@ export function LogView() {
   useEffect(() => {
     const controller = new AbortController();
     getSessions(56, controller.signal)
-      .then((sessions) => setLast(sessions.at(-1) ?? null)) // oldest first
+      .then((sessions) => {
+        const latest = sessions.at(-1) ?? null; // oldest first
+        setLast(latest);
+        // The Coach's "Repeat" shortcut (N3) opens the form prefilled with it.
+        if (takeRepeatIntent() && latest) restart(latest);
+      })
       .catch(() => {}); // the button just stays hidden
     return () => controller.abort();
   }, []);
