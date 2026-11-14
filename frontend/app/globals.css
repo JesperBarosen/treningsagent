@@ -165,6 +165,28 @@
   }
 }
 
+/* Discreet mode (lib/discreet.ts): data-discreet on <html> blurs everything
+   marked data-sensitive until it, or the reveal unit around it, is tapped.
+   Charts keep their shape but lose their value labels and tooltips. */
+@layer base {
+  :root[data-discreet] [data-sensitive] {
+    filter: blur(6px);
+    user-select: none;
+    cursor: pointer;
+    transition: filter 150ms ease-out;
+  }
+  :root[data-discreet] [data-sensitive][data-revealed],
+  :root[data-discreet] [data-revealed] [data-sensitive] {
+    filter: none;
+    user-select: auto;
+    cursor: auto;
+  }
+  :root[data-discreet] .recharts-yAxis .recharts-cartesian-axis-tick-value,
+  :root[data-discreet] .recharts-tooltip-wrapper {
+    visibility: hidden;
+  }
+}
+
 @utility scrollbar-none {
   scrollbar-width: none;
   &::-webkit-scrollbar {

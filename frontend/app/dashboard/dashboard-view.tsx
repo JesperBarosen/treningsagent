@@ -23,6 +23,7 @@ import {
   RATIO_SPIKE,
   ratioView,
 } from "@/lib/dashboard";
+import { SENSITIVE } from "@/lib/discreet";
 import { formatPace, formatRate, nf, shortDate } from "@/lib/format";
 import {
   GradeChart,
@@ -174,7 +175,7 @@ function NumbersTable({ caption, head, rows }: { caption: string; head: string[]
       <summary className="inline-flex min-h-11 cursor-pointer items-center rounded-sm text-ink-muted hover:text-ink">
         Show the numbers
       </summary>
-      <div className="overflow-x-auto">
+      <div {...SENSITIVE} className="overflow-x-auto">
         <table className="w-full text-left tabular-nums">
           <caption className="sr-only">{caption}</caption>
           <thead>
@@ -235,7 +236,7 @@ function LoadCard({ load, className }: { load: TrainingLoad; className?: string 
       subtitle="Minutes × effort (session RPE), by sport"
       className={className}
     >
-      <dl className="mb-3 flex gap-6">
+      <dl {...SENSITIVE} className="mb-3 flex gap-6">
         <div>
           <dt className="text-xs text-ink-muted">This week so far</dt>
           <dd className="font-display text-2xl font-semibold">{nf.format(thisWeek?.load ?? 0)}</dd>
@@ -303,7 +304,9 @@ function RatioCard({ load }: { load: TrainingLoad }) {
         </div>
       ) : (
         <div>
-          <p className="font-display text-[3rem] leading-none font-semibold">{view.ratio.toFixed(2)}</p>
+          <p {...SENSITIVE} className="font-display text-[3rem] leading-none font-semibold">
+            {view.ratio.toFixed(2)}
+          </p>
           <div
             role="img"
             aria-label={`Ratio ${view.ratio.toFixed(2)} on a scale from 0 to ${SCALE_MAX}, with ${RATIO_MODERATE[0]} to ${RATIO_MODERATE[1]} marked as the moderate range`}
@@ -331,7 +334,7 @@ function RatioCard({ load }: { load: TrainingLoad }) {
           <p className="text-sm">{ZONE_TEXT[view.zone]}</p>
         </div>
       )}
-      <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3 text-sm">
+      <dl {...SENSITIVE} className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3 text-sm">
         <div>
           <dt className="text-xs text-ink-muted">7-day daily average</dt>
           <dd className="font-medium tabular-nums">{nf.format(load.acute_7d_avg)}</dd>
@@ -408,7 +411,7 @@ function PaceTrendLine({ trend }: { trend: Trend }) {
   const part = (v: number | null, n: number, when: string) =>
     v === null ? `– ${when}` : `${formatPace(v)} ${when} (${n} ${n === 1 ? "run" : "runs"})`;
   return (
-    <p className="mb-1 text-xs text-ink-muted tabular-nums">
+    <p {...SENSITIVE} className="mb-1 text-xs text-ink-muted tabular-nums">
       {part(trend.recent, trend.recent_sessions, "last 2 wks")} · {part(trend.baseline, trend.baseline_sessions, "4 wks before")}
     </p>
   );
@@ -489,7 +492,7 @@ function RateBar({ grade, rate, label }: { grade: Grade; rate: number | null; la
           />
         )}
       </div>
-      <span className="w-10 shrink-0 text-right text-sm font-medium tabular-nums">
+      <span {...SENSITIVE} className="w-10 shrink-0 text-right text-sm font-medium tabular-nums">
         {rate === null ? "–" : formatRate(rate)}
       </span>
     </div>
