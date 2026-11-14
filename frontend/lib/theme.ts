@@ -3,10 +3,14 @@
 // globals.css uses to pick the light or dark tokens. System stores nothing
 // and sets no attribute, so the prefers-color-scheme media query decides.
 
-export type Theme = "system" | "light" | "dark";
+// The switch in the top bar only toggles Light and Dark. Until it is first
+// tapped nothing is stored ("system"), and the OS setting decides.
 
-export const THEMES: Theme[] = ["system", "light", "dark"];
+export type Theme = "system" | "light" | "dark";
+export type Appearance = "light" | "dark";
+
 export const THEME_KEY = "treningsagent.theme";
+const DARK_QUERY = "(prefers-color-scheme: dark)";
 const CHANGE_EVENT = "treningsagent:theme";
 
 /** The --canvas colour of each theme, used for the browser's theme-color. */
@@ -48,18 +52,40 @@ export function saveTheme(theme: Theme): void {
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
-/** For useSyncExternalStore: a change here, or in another tab. */
+function osPrefersDark(): boolean {
+  return typeof window.matchMedia === "function" && window.matchMedia(DARK_QUERY).matches;
+}
+
+/** What the page shows now: the saved choice, else the OS setting. */
+export function currentAppearance(): Appearance {
+  const saved = readTheme();
+  if (isExplicit(saved)) return saved;
+  return osPrefersDark() ? "dark" : "light";
+}
+
+/** One tap on the switch: save the opposite of what is shown now. */
+export function toggleTheme(): Appearance {
+  const next: Appearance = currentAppearance() === "dark" ? "light" : "dark";
+  saveTheme(next);
+  return next;
+}
+
+/** For useSyncExternalStore: a change here, in another tab, or in the OS setting
+ *  (which only matters while nothing is saved). */
 export function subscribeTheme(onChange: () => void): () => void {
   const onStorage = (e: StorageEvent) => {
     if (e.key !== THEME_KEY && e.key !== null) return;
     applyTheme(readTheme());
     onChange();
   };
+  const media = typeof window.matchMedia === "function" ? window.matchMedia(DARK_QUERY) : null;
   window.addEventListener(CHANGE_EVENT, onChange);
   window.addEventListener("storage", onStorage);
+  media?.addEventListener?.("change", onChange);
   return () => {
     window.removeEventListener(CHANGE_EVENT, onChange);
     window.removeEventListener("storage", onStorage);
+    media?.removeEventListener?.("change", onChange);
   };
 }
 

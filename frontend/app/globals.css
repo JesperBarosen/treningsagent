@@ -165,6 +165,32 @@
   }
 }
 
+/* The theme switch (components/theme-toggle.tsx) shows a sun in dark mode and a
+   moon in light mode. The choice follows the same rules as the colour tokens
+   above (an explicit data-theme, else the OS), so it is right before React runs. */
+@layer components {
+  .theme-icon-dark {
+    display: none;
+  }
+  .theme-icon-light {
+    display: inline-flex;
+  }
+  :root[data-theme="dark"] .theme-icon-dark {
+    display: inline-flex;
+  }
+  :root[data-theme="dark"] .theme-icon-light {
+    display: none;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .theme-icon-dark {
+      display: inline-flex;
+    }
+    :root:not([data-theme="light"]) .theme-icon-light {
+      display: none;
+    }
+  }
+}
+
 /* Discreet mode (lib/discreet.ts): data-discreet on <html> blurs everything
    marked data-sensitive until it, or the reveal unit around it, is tapped.
    Charts keep their shape but lose their value labels and tooltips, which
