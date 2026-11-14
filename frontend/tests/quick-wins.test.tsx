@@ -7,6 +7,7 @@ const auth = { getSession: vi.fn(), signInWithOtp: vi.fn(), signInWithPassword: 
 vi.mock("@/lib/supabase/client", () => ({
   supabaseBrowser: () => ({ auth }),
   accessToken: async () => "tok",
+  currentUserId: async () => null, // used by the chat once it stores chats per user (#15)
 }));
 const api = vi.hoisted(() => ({ getSessions: vi.fn(), sendChat: vi.fn() }));
 vi.mock("@/lib/api", async (importOriginal) => ({
