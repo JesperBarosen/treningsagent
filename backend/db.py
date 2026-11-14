@@ -21,6 +21,8 @@ SESSION_COLUMNS = ("id", "sport", "date", "duration_min", "effort", "notes", "di
                    "elevation_m", "climbing_style", "hardest_grade", "routes_count")
 PAUSE_COLUMNS = ("id", "start_date", "planned_end", "ended_on", "reason", "body_part", "pain",
                  "note", "resume_choice")
+GOAL_COLUMNS = ("id", "kind", "grade", "climb_mode", "band", "target_pace", "start_pace",
+                "target_date", "status", "achieved_on", "created_on")
 CLIMB_COLUMNS = ("id", "session_id", "grade", "grade_ordinal", "attempts", "sent", "style",
                  "notes")
 
@@ -190,6 +192,53 @@ class PostgresStore:
         with self._as_user() as conn:
             row = conn.execute(query, (ended_on, resume_choice)).fetchone()
         return self._pause(row) if row else None
+
+    # --- Goals (N2) --------------------------------------------------------------
+
+    def _goal_select(self, where: str = "") -> sql.Composed:
+        return sql.SQL("select {} from public.goals " + where + " order by created_on, id").format(
+            sql.SQL(", ").join(map(sql.Identifier, GOAL_COLUMNS)))
+
+    @staticmethod
+    def _goal(row: dict) -> dict:
+        out = {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in row.items()}
+        for k in ("target_pace", "start_pace"):  # numeric -> float for JSON
+            if out.get(k) is not None:
+                out[k] = float(out[k])
+        return out
+
+    def goals(self) -> list[dict]:
+        try:
+            with self._as_user() as conn:
+                return [self._goal(r) for r in conn.execute(self._goal_select()).fetchall()]
+        except psycopg.errors.UndefinedTable:  # migration not applied yet: no goals
+            return []
+
+    def insert_goal(self, row: dict) -> dict:
+        try:
+            with self._as_user() as conn:
+                goal_id = self._insert(conn, "goals", row)
+                return self._goal(conn.execute(
+                    self._goal_select("where id = %s"), (goal_id,)).fetchone())
+        except psycopg.errors.IntegrityError as e:
+            raise ValueError(e.diag.message_primary) from None
+
+    def update_goal(self, goal_id: int, changes: dict) -> dict | None:
+        """Change a goal's target_date, status or achieved_on. None if not found."""
+        query = sql.SQL("update public.goals set {} where id = %s returning {}").format(
+            sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(k)) for k in changes),
+            sql.SQL(", ").join(map(sql.Identifier, GOAL_COLUMNS)))
+        try:
+            with self._as_user() as conn:
+                row = conn.execute(query, (*changes.values(), goal_id)).fetchone()
+        except psycopg.errors.IntegrityError as e:
+            raise ValueError(e.diag.message_primary) from None
+        return self._goal(row) if row else None
+
+    def delete_goal(self, goal_id: int) -> bool:
+        with self._as_user() as conn:
+            return conn.execute("delete from public.goals where id = %s returning id",
+                                (goal_id,)).fetchone() is not None
 
     def claim_chat_request(self, daily_limit: int) -> bool:
         """Record one /chat request unless the user already made `daily_limit`

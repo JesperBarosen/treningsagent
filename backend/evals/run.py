@@ -164,6 +164,22 @@ class MemoryStore:
     def log_model_call(self, call: dict) -> None:
         pass
 
+    # Goals (N2), so --judge-check can run set_goal and get_goals offline.
+    def goals(self) -> list[dict]:
+        return list(getattr(self, "_goals", []))
+
+    def insert_goal(self, row: dict) -> dict:
+        self._goals = [*self.goals(), {"id": len(self.goals()) + 1, "status": "active",
+                                       "achieved_on": None, "start_pace": None, **row}]
+        return dict(self._goals[-1])
+
+    def update_goal(self, goal_id: int, changes: dict) -> dict | None:
+        for g in self.goals():
+            if g["id"] == goal_id:
+                g.update(changes)
+                return dict(g)
+        return None
+
 
 def total_cost(costs: list[float | None]) -> float | None:
     return None if None in costs else sum(costs)

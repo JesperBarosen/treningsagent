@@ -187,6 +187,67 @@ export type TrainingLoad = {
   pause?: Pause | null;
 };
 
+// --- Goals (N2) -------------------------------------------------------------------
+
+export type GoalStatus = "active" | "paused" | "achieved" | "dropped";
+
+type GoalBase = {
+  id: number;
+  target_date: string | null;
+  status: GoalStatus;
+  achieved_on: string | null;
+  created_on: string;
+  /** The date passed while the goal was still open: ask, never "failed". */
+  overdue: boolean;
+};
+
+export type GradeGoal = GoalBase & {
+  kind: "climb_grade";
+  grade: Grade;
+  climb_mode: "send" | "flash";
+  progress: { steps: number; of: number; best_grade: Grade | null; best_count_28d: number; reached_on: string | null };
+};
+
+export type PaceGoal = GoalBase & {
+  kind: "run_pace";
+  band: DistanceBand;
+  target_pace: number;
+  start_pace: number | null;
+  progress: {
+    start_pace: number | null;
+    now_pace: number | null;
+    target_pace: number;
+    fraction: number | null;
+    reached_on: string | null;
+  };
+};
+
+export type Goal = GradeGoal | PaceGoal;
+
+export type GoalInput =
+  | { kind: "climb_grade"; grade: Grade; climb_mode: "send" | "flash"; target_date?: string | null }
+  | { kind: "run_pace"; band: DistanceBand; target_pace: number; target_date?: string | null };
+
+export function getGoals(signal?: AbortSignal): Promise<Goal[]> {
+  return request("/goals", { signal });
+}
+
+export function addGoal(input: GoalInput): Promise<Goal> {
+  return request("/goals", { method: "POST", body: JSON.stringify(input) });
+}
+
+/** Move or remove the date (`target_date: null`), or pause, resume or let go. */
+export function changeGoal(
+  id: number,
+  change: { target_date?: string | null; status?: "active" | "paused" | "dropped" },
+): Promise<Goal> {
+  return request(`/goals/${id}`, { method: "PATCH", body: JSON.stringify(change) });
+}
+
+export function deleteGoal(id: number): Promise<void> {
+  return request(`/goals/${id}`, { method: "DELETE" });
+}
+
 // --- Pauses (N5) ------------------------------------------------------------------
 
 export const PAUSE_REASONS = ["injury", "illness", "travel", "other"] as const;

@@ -269,3 +269,64 @@ def post_pause_end(body: PauseEnd, store: db.PostgresStore = Depends(get_store))
     if ended is None:
         raise HTTPException(404, "No pause is on.")
     return ended
+
+
+# --- Goals (N2) --------------------------------------------------------------------
+
+class GoalIn(BaseModel):
+    kind: Literal["climb_grade", "run_pace"]
+    grade: str | None = None
+    climb_mode: Literal["send", "flash"] | None = None
+    band: str | None = None
+    target_pace: float | None = None
+    target_date: str | None = None
+
+
+class GoalChange(BaseModel):
+    # Send target_date: null to remove the date ("keep it, without a date").
+    target_date: str | None = None
+    # A goal can be paused, resumed or let go; "achieved" is set by progress only.
+    status: Literal["active", "paused", "dropped"] | None = None
+
+
+@app.get("/goals")
+def get_goals(store: db.PostgresStore = Depends(get_store)) -> list[dict]:
+    """Every goal with its progress, from the user's own sessions."""
+    return tools.list_goals(store)
+
+
+@app.post("/goals", status_code=201)
+def post_goal(body: GoalIn, store: db.PostgresStore = Depends(get_store)) -> dict:
+    try:
+        return tools.set_goal(store, **body.model_dump())
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@app.patch("/goals/{goal_id}")
+def patch_goal(goal_id: int, body: GoalChange, store: db.PostgresStore = Depends(get_store)) -> dict:
+    """Move or remove the date, pause, resume or let go of a goal."""
+    changes = body.model_dump(include=body.model_fields_set)
+    if not changes:
+        raise HTTPException(422, "Nothing to change.")
+    if changes.get("target_date"):
+        try:
+            if date.fromisoformat(changes["target_date"]) < date.today():
+                raise HTTPException(422, "The date can't be in the past.")
+        except ValueError:
+            raise HTTPException(422, "target_date must be YYYY-MM-DD.") from None
+    if changes.get("status") is None:
+        changes.pop("status", None)
+    try:
+        goal = store.update_goal(goal_id, changes)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+    if goal is None:
+        raise HTTPException(404, "Goal not found.")
+    return goal
+
+
+@app.delete("/goals/{goal_id}", status_code=204)
+def delete_goal(goal_id: int, store: db.PostgresStore = Depends(get_store)) -> None:
+    if not store.delete_goal(goal_id):
+        raise HTTPException(404, "Goal not found.")
