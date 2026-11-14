@@ -19,6 +19,8 @@ TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
 
 SESSION_COLUMNS = ("id", "sport", "date", "duration_min", "effort", "notes", "distance_km",
                    "elevation_m", "climbing_style", "hardest_grade", "routes_count")
+PAUSE_COLUMNS = ("id", "start_date", "planned_end", "ended_on", "reason", "body_part", "pain",
+                 "note", "resume_choice")
 CLIMB_COLUMNS = ("id", "session_id", "grade", "grade_ordinal", "attempts", "sent", "style",
                  "notes")
 
@@ -140,6 +142,48 @@ class PostgresStore:
             cur = conn.execute("delete from public.sessions where id = %s returning id",
                                (session_id,))
             return cur.fetchone() is not None
+
+    # --- Pauses (N5) -------------------------------------------------------------
+
+    @staticmethod
+    def _pause(row: dict) -> dict:
+        return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in row.items()
+                if k in PAUSE_COLUMNS}
+
+    def pauses_since(self, since: str) -> list[dict]:
+        """Pauses still on, or that ended on or after `since`, oldest first."""
+        query = sql.SQL("select {} from public.pauses where ended_on is null or ended_on >= %s"
+                        " order by start_date, id").format(
+            sql.SQL(", ").join(map(sql.Identifier, PAUSE_COLUMNS)))
+        with self._as_user() as conn:
+            return [self._pause(r) for r in conn.execute(query, (since,)).fetchall()]
+
+    def active_pause(self) -> dict | None:
+        query = sql.SQL("select {} from public.pauses where ended_on is null").format(
+            sql.SQL(", ").join(map(sql.Identifier, PAUSE_COLUMNS)))
+        with self._as_user() as conn:
+            row = conn.execute(query).fetchone()
+        return self._pause(row) if row else None
+
+    def start_pause(self, row: dict) -> dict:
+        """Insert a pause (pauses.validate_pause's row). ValueError if one is on."""
+        try:
+            with self._as_user() as conn:
+                pause_id = self._insert(conn, "pauses", row)
+        except psycopg.errors.UniqueViolation:
+            raise ValueError("a pause is already on") from None
+        except psycopg.errors.IntegrityError as e:  # a check the validation missed
+            raise ValueError(e.diag.message_primary) from None
+        return {"id": pause_id, **row, "ended_on": None, "resume_choice": None}
+
+    def end_pause(self, ended_on: str, resume_choice: str) -> dict | None:
+        """End the pause that is on. None if there is none."""
+        query = sql.SQL("update public.pauses set ended_on = %s, resume_choice = %s"
+                        " where ended_on is null returning {}").format(
+            sql.SQL(", ").join(map(sql.Identifier, PAUSE_COLUMNS)))
+        with self._as_user() as conn:
+            row = conn.execute(query, (ended_on, resume_choice)).fetchone()
+        return self._pause(row) if row else None
 
     def claim_chat_request(self, daily_limit: int) -> bool:
         """Record one /chat request unless the user already made `daily_limit`

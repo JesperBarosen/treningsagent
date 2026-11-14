@@ -7,6 +7,8 @@ pyproject.toml, limits in vercel.json); see docs/deploy.md.
 import json
 import os
 import uuid
+from datetime import date, timedelta
+from typing import Literal
 from collections.abc import Iterator
 from functools import cache
 
@@ -19,6 +21,7 @@ import auth
 import chat
 import db
 import env
+import pauses
 import tools
 
 env.load()  # ANTHROPIC_API_KEY, DATABASE_URL, SUPABASE_URL, CHAT_DAILY_LIMIT from the root .env
@@ -217,3 +220,52 @@ def get_progression(weeks: int = Query(8, ge=1, le=26),
                     store: db.PostgresStore = Depends(get_store)) -> dict:
     """calculate_progression: weekly running and climbing numbers with trends."""
     return tools.calculate_progression(store, weeks)
+
+
+# --- Pauses (N5) -------------------------------------------------------------------
+
+class PauseStart(BaseModel):
+    reason: Literal["injury", "illness", "travel", "other"]
+    body_part: str | None = None
+    pain: int | None = None
+    note: str | None = None
+    planned_end: str | None = None
+
+
+class PauseEnd(BaseModel):
+    # "continue": keep the history as the baseline; "fresh": leave the old
+    # baseline out of trends for four weeks.
+    resume_choice: Literal["continue", "fresh"]
+
+
+@app.get("/pause")
+def get_pause(store: db.PostgresStore = Depends(get_store)) -> dict:
+    """The pause that is on, if any, and the last one that ended in the past
+    four weeks (the Dashboard explains a fresh start with it)."""
+    recent_since = (date.today() - timedelta(days=pauses.FRESH_DAYS)).isoformat()
+    rows = store.pauses_since(recent_since)
+    ended = [p for p in rows if p.get("ended_on")]
+    return {"active": next((p for p in rows if not p.get("ended_on")), None),
+            "recent": ended[-1] if ended else None}
+
+
+@app.post("/pause", status_code=201)
+def post_pause(body: PauseStart, store: db.PostgresStore = Depends(get_store)) -> dict:
+    """Start a pause today. 409 if one is already on."""
+    try:
+        row = pauses.validate_pause(**body.model_dump())
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+    try:
+        return store.start_pause(row)
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+@app.post("/pause/end")
+def post_pause_end(body: PauseEnd, store: db.PostgresStore = Depends(get_store)) -> dict:
+    """End the pause that is on, today. 404 if there is none."""
+    ended = store.end_pause(date.today().isoformat(), body.resume_choice)
+    if ended is None:
+        raise HTTPException(404, "No pause is on.")
+    return ended

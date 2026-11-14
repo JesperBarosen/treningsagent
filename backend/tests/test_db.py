@@ -195,3 +195,26 @@ def test_ui_event_names_are_short_slugs(conn):
             with alice._as_user() as c:
                 c.execute("insert into public.ui_events (event) values (%s)", (bad,))
     assert count_ui_events(conn[0], alice.user_id) == 0
+
+
+# --- Pauses (N5; needs migration 20261115120000_create_pauses.sql) ---------------------
+
+PAUSE = {"start_date": "2026-11-10", "planned_end": None, "reason": "injury",
+         "body_part": "knee", "pain": 5, "note": "sore"}
+
+
+def test_pauses_are_private_and_one_at_a_time(conn):
+    alice, bob = make_store(conn), make_store(conn)
+    alice.start_pause(PAUSE)
+    assert alice.active_pause()["body_part"] == "knee"
+    assert bob.active_pause() is None and bob.pauses_since("2000-01-01") == []
+    with pytest.raises(ValueError, match="already on"):
+        alice.start_pause({**PAUSE, "reason": "travel", "body_part": None, "pain": None})
+    ended = alice.end_pause("2026-11-14", "fresh")
+    assert ended["resume_choice"] == "fresh" and alice.active_pause() is None
+    assert bob.end_pause("2026-11-14", "continue") is None
+
+
+def test_injury_details_belong_to_an_injury(conn):
+    with pytest.raises(ValueError):
+        make_store(conn).start_pause({**PAUSE, "reason": "illness"})

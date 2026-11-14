@@ -12,11 +12,13 @@ export const RATIO_MODERATE = [0.8, 1.3] as const;
 export const RATIO_SPIKE = 1.5;
 
 export type RatioView =
+  | { kind: "paused" }
   | { kind: "not enough data"; historyDays: number }
   | { kind: "ok"; ratio: number; zone: "below" | "moderate" | "above" | "spike" };
 
 export function ratioView(load: TrainingLoad): RatioView {
   const ratio = load.acute_chronic_ratio;
+  if (load.ratio_status === "paused") return { kind: "paused" }; // N5: not counted on a break
   if (load.ratio_status !== "ok" || ratio === null) {
     return { kind: "not enough data", historyDays: load.history_days };
   }

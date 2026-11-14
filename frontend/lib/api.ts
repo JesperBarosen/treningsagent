@@ -176,11 +176,53 @@ export type TrainingLoad = {
   acute_7d_avg: number;
   chronic_28d_avg: number;
   acute_chronic_ratio: number | null;
-  /** "not_enough_data" under 28 days since the first logged session. */
-  ratio_status: "ok" | "not_enough_data";
+  /** "not_enough_data" under 28 days since the first logged session; "paused"
+   *  while a pause is on (the ratio isn't interpreted then). */
+  ratio_status: "ok" | "not_enough_data" | "paused";
   /** Days since the first logged session, today included. */
   history_days: number;
+  /** Days of the last 28 a pause left out of both averages (N5). */
+  paused_days?: number;
+  /** The pause that is on now, if any. */
+  pause?: Pause | null;
 };
+
+// --- Pauses (N5) ------------------------------------------------------------------
+
+export const PAUSE_REASONS = ["injury", "illness", "travel", "other"] as const;
+export type PauseReason = (typeof PAUSE_REASONS)[number];
+
+export type Pause = {
+  id: number;
+  start_date: string;
+  planned_end: string | null;
+  ended_on: string | null;
+  reason: PauseReason;
+  body_part: string | null;
+  pain: number | null;
+  note: string | null;
+  resume_choice: "continue" | "fresh" | null;
+};
+
+export type PauseStart = {
+  reason: PauseReason;
+  body_part?: string | null;
+  pain?: number | null;
+  note?: string | null;
+  planned_end?: string | null;
+};
+
+export function getPause(signal?: AbortSignal): Promise<{ active: Pause | null; recent: Pause | null }> {
+  return request("/pause", { signal });
+}
+
+export function startPause(input: PauseStart): Promise<Pause> {
+  return request("/pause", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function endPause(resumeChoice: "continue" | "fresh"): Promise<Pause> {
+  return request("/pause/end", { method: "POST", body: JSON.stringify({ resume_choice: resumeChoice }) });
+}
 
 export type TrendWord = "improving" | "flat" | "declining" | "not enough data";
 
@@ -243,6 +285,8 @@ export type Progression = {
   weeks: number;
   today: string;
   trend_rule: string;
+  /** Days of the trend windows a pause or a fresh start left out (N5). */
+  paused_days?: number;
   running: RunningProgression;
   climbing: ClimbingProgression;
 };

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronIcon, KeyIcon, SignOutIcon } from "@/components/icons";
 import { useSignOut } from "@/components/nav";
+import { PauseControl } from "@/components/pause-panel";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 /** The You tab (N3): what used to sit in the top-right corner, now in thumb
@@ -40,6 +41,16 @@ export function YouView() {
           </button>
         </li>
       </ul>
+
+      <section aria-labelledby="break-title" className="mt-6">
+        <h2 id="break-title" className="font-semibold">
+          A break from training
+        </h2>
+        <p className="mt-1 mb-3 text-sm text-ink-muted">
+          Injured, ill or away? Pause tracking so trends and the load ratio don&apos;t read the gap as a drop.
+        </p>
+        <PauseControl />
+      </section>
     </div>
   );
 }

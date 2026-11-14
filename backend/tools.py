@@ -10,6 +10,7 @@ import json
 from datetime import date, timedelta
 from typing import Protocol
 
+import pauses
 import progression
 
 SPORTS = ("running", "climbing")
@@ -227,21 +228,42 @@ def get_training_load(store: Store, weeks: int = 4, today: date | None = None) -
         weekly.append({"week_start": week_start.isoformat(), "load": sum(by_sport.values()),
                        "sessions": len(week), "load_by_sport": by_sport})
 
-    acute = sum(by_day.get(d, 0) for d in days_from(today - timedelta(days=6))) / 7
-    chronic = sum(by_day.get(d, 0) for d in days_from(chronic_start)) / 28
-    ratio = round(acute / chronic, 2) if chronic else None
+    # Paused days (N5) are left out of both averages, so a break doesn't look
+    # like a sudden drop. While a pause is on, the ratio isn't interpreted.
+    excluded, active = _pause_days(store, chronic_start, today)
+
+    def daily_avg(first: date) -> float | None:
+        days = [d for d in days_from(first) if d not in excluded]
+        return sum(by_day.get(d, 0) for d in days) / len(days) if days else None
+
+    acute = daily_avg(today - timedelta(days=6))
+    chronic = daily_avg(chronic_start)
+    ratio = round(acute / chronic, 2) if acute is not None and chronic else None
     first = store.first_session_date()
     history_days = max((today - _parse_date(first)).days + 1, 0) if first else 0
     enough = ratio is not None and history_days >= RATIO_MIN_HISTORY_DAYS
     return {
         "daily": [{"date": d.isoformat(), "load": by_day.get(d, 0)} for d in days_from(start)],
         "weekly": weekly,
-        "acute_7d_avg": round(acute, 1),
-        "chronic_28d_avg": round(chronic, 1),
+        "acute_7d_avg": round(acute or 0, 1),
+        "chronic_28d_avg": round(chronic or 0, 1),
         "acute_chronic_ratio": ratio,
-        "ratio_status": "ok" if enough else "not_enough_data",
+        "ratio_status": "paused" if active else ("ok" if enough else "not_enough_data"),
         "history_days": history_days,
+        "paused_days": sum(1 for d in days_from(chronic_start) if d in excluded),
+        "pause": active,
     }
+
+
+def _pause_days(store: Store, since: date, today: date) -> tuple[frozenset, dict | None]:
+    """Days to leave out of trends and the ratio, and the pause that is on now.
+    A store without pauses (the eval runner's) has neither."""
+    pauses_since = getattr(store, "pauses_since", None)
+    if pauses_since is None:
+        return frozenset(), None
+    rows = pauses_since(since.isoformat())
+    active = next((p for p in rows if not p.get("ended_on")), None)
+    return pauses.excluded_days(rows, today), active
 
 
 def calculate_progression(store: Store, weeks: int = 8, today: date | None = None) -> dict:
@@ -255,8 +277,11 @@ def calculate_progression(store: Store, weeks: int = 8, today: date | None = Non
     windows = progression.Windows(today)
     since = min(start, windows.baseline_start).isoformat()
     shown = [start + timedelta(days=7 * i) for i in range(weeks)]
+    excluded, _ = _pause_days(store, windows.baseline_start, today)
     result = progression.calculate(store.sessions_since(since), store.climbs_since(since),
-                                   shown, today)
+                                   shown, today, excluded)
+    # How many days of the trend windows a pause (or a fresh start) left out.
+    result["paused_days"] = sum(1 for d in excluded if windows.baseline_start <= d <= today)
     climbing = result["climbing"]
     climbing["grade_scale"] = list(GRADES)
     for key in ("avg_session_hardest_sent", "avg_session_flash_grade"):
@@ -374,7 +399,9 @@ TOOLS = [
             "~1.5 as a sharp spike (Gabbett 2016); treat this as a rough guide, not a "
             "prediction. ratio_status is \"not_enough_data\" when under 28 days have "
             "passed since the first logged session (history_days); then don't interpret "
-            "the ratio, say there isn't enough history yet."
+            "the ratio, say there isn't enough history yet. ratio_status is \"paused\" "
+            "while the user has paused tracking (`pause`); then don't interpret it either. "
+            "Paused days (`paused_days`) are left out of both averages."
         ),
         "input_schema": {
             "type": "object",
