@@ -167,7 +167,8 @@
 
 /* Discreet mode (lib/discreet.ts): data-discreet on <html> blurs everything
    marked data-sensitive until it, or the reveal unit around it, is tapped.
-   Charts keep their shape but lose their value labels and tooltips. */
+   Charts keep their shape but lose their value labels and tooltips.
+   tests/discreet-css.test.ts compiles this file and checks the blur survives. */
 @layer base {
   :root[data-discreet] [data-sensitive] {
     filter: blur(6px);

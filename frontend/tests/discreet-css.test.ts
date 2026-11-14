@@ -11,14 +11,29 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 const root = join(__dirname, "..");
 const from = join(root, "app", "globals.css");
+const source = readFileSync(from, "utf8");
+
+/** Compile CSS text as if it were app/globals.css. Never writes the file: a
+ *  running dev server would serve whatever it last compiled from disk. */
+async function compile(css: string) {
+  return (await postcss([tailwindcss({ base: root })]).process(css, { from })).root;
+}
+
+/** The compiled text of the [data-sensitive] blur rule, or null if missing. */
+function blurRuleText(css: postcss.Root): string | null {
+  let text: string | null = null;
+  css.walkRules((rule) => {
+    if (rule.selectors.some((s) => s.replace(/\s+/g, " ") === ":root[data-discreet] [data-sensitive]")) {
+      text = rule.toString();
+    }
+  });
+  return text;
+}
 
 let compiled: postcss.Root;
 
 beforeAll(async () => {
-  const result = await postcss([tailwindcss({ base: root })]).process(readFileSync(from, "utf8"), {
-    from,
-  });
-  compiled = result.root;
+  compiled = await compile(source);
 }, 60_000);
 
 /** Every compiled rule whose selector list includes `selector`, with its layer. */
@@ -47,7 +62,17 @@ describe("discreet mode in the compiled CSS", () => {
     expect(more).toHaveLength(0);
     expect(decl(hit.rule, "filter")).toBe("blur(6px)");
     expect(hit.layer).toBe("base");
+    // The served rule must contain the blur itself, not only the selector.
+    expect(blurRuleText(compiled)).toContain("blur(");
   });
+
+  it("would catch a blur dropped from the rule (checked in memory)", async () => {
+    const withoutBlur = source.replace(/^\s*filter: blur\(6px\);\s*$/m, "");
+    expect(withoutBlur).not.toBe(source); // the line exists to be removed
+    const text = blurRuleText(await compile(withoutBlur));
+    expect(text).not.toBeNull(); // the selector alone survives...
+    expect(text).not.toContain("blur("); // ...which is exactly the bug seen in the browser
+  }, 60_000);
 
   it("unblurs only revealed content", () => {
     const selectors = [
