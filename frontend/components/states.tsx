@@ -50,20 +50,28 @@ export function ErrorState({
           </Button>
         }
       >
-        {offline && process.env.NODE_ENV === "development" ? (
-          <>
-            Is the API running at <code className="font-medium whitespace-nowrap text-ink">{API_URL}</code>? Start
-            it with <code className="font-medium whitespace-nowrap text-ink">uv run uvicorn api:app</code>.
-          </>
-        ) : offline ? (
-          "Check your connection and try again."
-        ) : (
-          message
-        )}
+        {offline ? <OfflineHint /> : message}
       </EmptyState>
     </div>
   );
 }
+
+/** What to do when the backend can't be reached. The API hint is for
+ *  developers only; people using the app get plain advice. */
+export function OfflineHint() {
+  if (process.env.NODE_ENV !== "development") return <>Check your connection and try again.</>;
+  return (
+    <>
+      Is the API running at <code className="font-medium whitespace-nowrap text-ink">{API_URL}</code>? Start
+      it with <code className="font-medium whitespace-nowrap text-ink">uv run uvicorn api:app</code>.
+    </>
+  );
+}
+
+/** Grows a control's hit area 4 px above and below without changing how it
+ *  looks, so a 36 px pill inside a padded group is a 44 px target (DESIGN.md:
+ *  every tap target at least 44x44). Needs no `overflow-hidden` on the control. */
+export const HIT_AREA_Y = "relative before:absolute before:inset-x-0 before:-inset-y-1";
 
 export function Button({
   variant = "primary",
