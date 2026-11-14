@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { climbLabel, GradeDot } from "@/components/grade";
 import { BoltIcon, CheckIcon, CloseIcon, SportBadge } from "@/components/icons";
-import { Button } from "@/components/states";
+import { Button, HIT_AREA_Y } from "@/components/states";
 import {
   ApiError,
   GRADES,
@@ -307,7 +307,7 @@ function ClimbsField({
             role="radio"
             aria-checked={style === s.value}
             onClick={() => onStyle(s.value)}
-            className="min-h-9 rounded-full px-4 text-sm font-medium text-ink-muted aria-checked:bg-accent-soft aria-checked:text-accent"
+            className={`min-h-9 rounded-full px-4 text-sm font-medium text-ink-muted aria-checked:bg-accent-soft aria-checked:text-accent ${HIT_AREA_Y}`}
           >
             {s.label}
           </button>

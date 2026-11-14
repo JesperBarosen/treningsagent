@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { ChatIcon, PlusIcon, SendIcon } from "@/components/icons";
 import { LoggedSessionCard } from "@/components/session-card";
-import { Button } from "@/components/states";
+import { Button, OfflineHint } from "@/components/states";
 import { ApiError, sendChat, type Session } from "@/lib/api";
 import { dropLegacyChats, loadChat, saveChat } from "@/lib/chat-storage";
 import { currentUserId } from "@/lib/supabase/client";
@@ -173,7 +173,7 @@ export function Chat() {
                 type="button"
                 onClick={() => quickReply(q)}
                 disabled={sending}
-                className="min-h-9 shrink-0 rounded-full border border-line bg-surface px-3.5 text-sm font-medium whitespace-nowrap text-ink transition hover:border-accent hover:text-accent disabled:opacity-40"
+                className="min-h-11 shrink-0 rounded-full border border-line bg-surface px-3.5 text-sm font-medium whitespace-nowrap text-ink transition hover:border-accent hover:text-accent disabled:opacity-40"
               >
                 {q.label}
               </button>
@@ -257,7 +257,7 @@ function Message({
           {item.offline ? "Can't reach the backend" : "That didn't go through"}
         </p>
         <p className="mt-1 text-ink-muted">
-          {item.offline ? "Check that the API is running, then try again." : item.text}
+          {item.offline ? <OfflineHint /> : item.text}
         </p>
         <p className="mt-2 truncate text-ink">&ldquo;{item.retry}&rdquo;</p>
         <Button className="mt-3 -ml-1" onClick={() => onRetry(item.retry)} disabled={disabled}>

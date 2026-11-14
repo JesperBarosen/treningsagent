@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { MailIcon } from "@/components/icons";
-import { Button } from "@/components/states";
+import { Button, HIT_AREA_Y } from "@/components/states";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 type Method = "link" | "password";
@@ -119,7 +119,7 @@ export function SignInForm({ linkFailed = false }: { linkFailed?: boolean }) {
               setMethod(m.value);
               if (status.kind === "error") setStatus({ kind: "idle" });
             }}
-            className="min-h-10 rounded-full text-sm font-medium text-ink-muted aria-checked:bg-accent-soft aria-checked:text-accent"
+            className={`min-h-10 rounded-full text-sm font-medium text-ink-muted aria-checked:bg-accent-soft aria-checked:text-accent ${HIT_AREA_Y}`}
           >
             {m.label}
           </button>

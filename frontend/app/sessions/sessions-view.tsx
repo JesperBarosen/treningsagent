@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ClimbLegend } from "@/components/grade";
 import { ListIcon } from "@/components/icons";
 import { SessionRow } from "@/components/session-card";
-import { ErrorState, EmptyState, Skeleton } from "@/components/states";
+import { ErrorState, EmptyState, HIT_AREA_Y, Skeleton } from "@/components/states";
 import { ApiError, getSessions, type Session, type Sport } from "@/lib/api";
 import { groupByWeek, nf, weekLabel } from "@/lib/format";
 import { SessionSheet } from "./session-sheet";
@@ -70,7 +70,7 @@ export function SessionsView() {
               role="radio"
               aria-checked={filter === f.value}
               onClick={() => setFilter(f.value)}
-              className="min-h-9 rounded-full px-4 text-sm font-medium text-ink-muted transition aria-checked:bg-accent-soft aria-checked:text-accent"
+              className={`min-h-9 rounded-full px-4 text-sm font-medium text-ink-muted transition aria-checked:bg-accent-soft aria-checked:text-accent ${HIT_AREA_Y}`}
             >
               {f.label}
             </button>
