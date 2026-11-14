@@ -162,6 +162,32 @@ def test_ui_events_cannot_be_read_or_forged(conn):
     assert count_ui_events(conn[0], bob.user_id) == 0
 
 
+def test_week_reviews_are_private_and_upsert(conn):
+    alice, bob = make_store(conn), make_store(conn)
+    upsert = ("insert into public.week_reviews (week_start, status, note) values (%s, %s, %s) "
+              "on conflict (user_id, week_start) do update set status = excluded.status, "
+              "note = excluded.note")
+    with alice._as_user() as c:
+        c.execute(upsert, ("2026-11-09", "skipped", None))
+        c.execute(upsert, ("2026-11-09", "done", "rest fingers"))
+        rows = c.execute("select status, note from public.week_reviews").fetchall()
+    assert rows == [{"status": "done", "note": "rest fingers"}]
+    with bob._as_user() as c:
+        assert c.execute("select count(*) as n from public.week_reviews").fetchone()["n"] == 0
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        with bob._as_user() as c:  # user_id always comes from auth.uid()
+            c.execute("insert into public.week_reviews (user_id, week_start, status) "
+                      "values (%s, '2026-11-02', 'done')", (alice.user_id,))
+
+
+def test_week_reviews_start_on_a_monday(conn):
+    alice = make_store(conn)
+    with pytest.raises(psycopg.errors.CheckViolation):
+        with alice._as_user() as c:
+            c.execute("insert into public.week_reviews (week_start, status) "
+                      "values ('2026-11-10', 'done')")
+
+
 def test_ui_event_names_are_short_slugs(conn):
     alice = make_store(conn)
     for bad in ("Has spaces", "x" * 65, "", "1starts_with_digit"):
