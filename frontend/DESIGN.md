@@ -12,7 +12,13 @@ with `@theme`). The default Tailwind palette is switched off
 
 ## Colour
 
-Light and dark follow the system setting (`prefers-color-scheme`). Contrast is
+Light and dark follow the system setting (`prefers-color-scheme`) unless the
+user picks Light or Dark with the theme switch in the top bar (System / Light /
+Dark, `components/theme-toggle.tsx`). An explicit choice is saved in
+localStorage and set as `data-theme` on `<html>` by an inline script before the
+first paint (`lib/theme.ts`), and it also sets the browser's `theme-color`.
+The dark tokens appear twice in `globals.css`, for `data-theme="dark"` and for
+a dark OS; a test keeps the two in step. Contrast is
 checked against the background each token sits on (WCAG AA: 4.5:1 for body
 text, 3:1 for large text and UI outlines).
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { PUBLIC_PATHS } from "@/lib/supabase/config";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { ChartIcon, ChatIcon, KeyIcon, ListIcon, PlusIcon, SignOutIcon } from "./icons";
 
@@ -47,7 +48,7 @@ function SignOutButton() {
   );
 }
 
-/** Top bar with the wordmark, account and sign out; from `md` it also holds the links. */
+/** Top bar with the wordmark, the theme switch, account and sign out; from `md` it also holds the links. */
 export function TopBar() {
   const pathname = usePathname();
   const signedIn = !isPublic(pathname);
@@ -57,8 +58,8 @@ export function TopBar() {
         <Link href="/" className="rounded-sm">
           <Wordmark />
         </Link>
-        {signedIn && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          {signedIn && (
             <nav aria-label="Main" className="hidden gap-1 md:flex">
               {LINKS.map(({ href, label }) => (
                 <Link
@@ -71,18 +72,24 @@ export function TopBar() {
                 </Link>
               ))}
             </nav>
-            <Link
-              href="/account"
-              aria-label="Account"
-              title="Account"
-              aria-current={pathname === "/account" ? "page" : undefined}
-              className="grid size-11 place-items-center rounded-full text-ink-muted transition hover:bg-sunken hover:text-ink aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent"
-            >
-              <KeyIcon size={20} />
-            </Link>
-            <SignOutButton />
-          </div>
-        )}
+          )}
+          {/* Also on the sign-in page, and on mobile, where the top bar stays visible. */}
+          <ThemeToggle />
+          {signedIn && (
+            <>
+              <Link
+                href="/account"
+                aria-label="Account"
+                title="Account"
+                aria-current={pathname === "/account" ? "page" : undefined}
+                className="grid size-11 place-items-center rounded-full text-ink-muted transition hover:bg-sunken hover:text-ink aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent"
+              >
+                <KeyIcon size={20} />
+              </Link>
+              <SignOutButton />
+            </>
+          )}
+        </div>
       </div>
     </header>
   );
