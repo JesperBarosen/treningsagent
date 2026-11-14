@@ -97,13 +97,13 @@ export function LoggedSessionCard({
         </div>
       ) : (
         <div className="mt-3 flex gap-2">
-          <Button variant="ghost" onClick={onEdit} className="flex-1 border border-line">
+          <Button variant="ghost" onClick={onEdit} className="flex-1 border border-control">
             Edit
           </Button>
           <Button
             variant="ghost"
             onClick={() => setConfirming(true)}
-            className="flex-1 border border-line"
+            className="flex-1 border border-control"
           >
             Undo
           </Button>

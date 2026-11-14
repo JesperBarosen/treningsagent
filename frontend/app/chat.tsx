@@ -229,7 +229,7 @@ export function Chat() {
                 type="button"
                 onClick={() => quickReply(q)}
                 disabled={sending}
-                className="min-h-11 shrink-0 rounded-full border border-line bg-surface px-3.5 text-sm font-medium whitespace-nowrap text-ink transition hover:border-accent hover:text-accent disabled:opacity-40"
+                className="min-h-11 shrink-0 rounded-full border border-control bg-surface px-3.5 text-sm font-medium whitespace-nowrap text-ink transition hover:border-accent hover:text-accent disabled:opacity-40"
               >
                 {q.label}
               </button>
@@ -247,7 +247,7 @@ export function Chat() {
               onKeyDown={onKeyDown}
               rows={1}
               placeholder="Ran 10 km in 50 min, effort 6…"
-              className="field-sizing-content max-h-36 min-h-12 flex-1 resize-none rounded-lg border border-line bg-surface px-4 py-3 text-base placeholder:text-ink-muted focus:border-accent focus:outline-none focus-visible:outline-none"
+              className="field-sizing-content max-h-36 min-h-12 flex-1 resize-none rounded-lg border border-control bg-surface px-4 py-3 text-base placeholder:text-ink-muted focus:border-accent focus:outline-none focus-visible:outline-none"
             />
             <button
               type="submit"

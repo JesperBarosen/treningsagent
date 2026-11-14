@@ -162,13 +162,13 @@ function SheetActions({
         </div>
       ) : (
         <div className="flex gap-2">
-          <Button variant="ghost" onClick={onEdit} className="flex-1 border border-line">
+          <Button variant="ghost" onClick={onEdit} className="flex-1 border border-control">
             Edit
           </Button>
           <Button
             variant="ghost"
             onClick={() => setConfirming(true)}
-            className="flex-1 border border-line text-danger"
+            className="flex-1 border border-control text-danger"
           >
             Delete
           </Button>

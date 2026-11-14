@@ -92,7 +92,7 @@ export function SignInForm({ linkFailed = false }: { linkFailed?: boolean }) {
   }
 
   const field =
-    "min-h-12 rounded-md border border-line bg-surface px-4 text-base placeholder:text-ink-muted focus:border-accent focus:outline-none";
+    "min-h-12 rounded-md border border-control bg-surface px-4 text-base placeholder:text-ink-muted focus:border-accent focus:outline-none";
   const errorProps =
     status.kind === "error" ? { "aria-invalid": true, "aria-describedby": "sign-in-error" } : {};
 
@@ -107,7 +107,7 @@ export function SignInForm({ linkFailed = false }: { linkFailed?: boolean }) {
       <div
         role="radiogroup"
         aria-label="Sign-in method"
-        className="mt-6 grid grid-cols-2 rounded-full border border-line bg-surface p-1"
+        className="mt-6 grid grid-cols-2 rounded-full border border-control bg-surface p-1"
       >
         {METHODS.map((m) => (
           <button

@@ -8,7 +8,8 @@
   --canvas: #f5f4ef;
   --surface: #ffffff;
   --sunken: #eceae3;
-  --line: #d9d6cc;
+  --line: #d9d6cc; /* decorative hairlines only */
+  --control: #8a857a; /* edges of fields, chips, outlined buttons: 3.67:1 surface, 3.34:1 canvas */
   --ink: #15191b;
   --ink-muted: #5a6166;
   --accent: #0f6b5c;
@@ -35,6 +36,7 @@
   --surface: #161b1e;
   --sunken: #1e2529;
   --line: #2c3439;
+  --control: #6b767c;
   --ink: #eceeec;
   --ink-muted: #9aa3a7;
   --accent: #4fd1b5;
@@ -57,6 +59,7 @@
     --surface: #161b1e;
     --sunken: #1e2529;
     --line: #2c3439;
+    --control: #6b767c;
     --ink: #eceeec;
     --ink-muted: #9aa3a7;
     --accent: #4fd1b5;
@@ -125,6 +128,7 @@
   --color-surface: var(--surface);
   --color-sunken: var(--sunken);
   --color-line: var(--line);
+  --color-control: var(--control);
   --color-ink: var(--ink);
   --color-ink-muted: var(--ink-muted);
   --color-accent: var(--accent);
