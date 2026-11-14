@@ -18,6 +18,8 @@ vi.mock("@/lib/api", async (importOriginal) => ({
   sendChat: api.sendChat,
   updateSession: api.updateSession,
   deleteSession: api.deleteSession,
+  // The week glance above the chat; not under test here.
+  getTrainingLoad: () => Promise.reject(new Error("not under test")),
 }));
 
 const { Chat } = await import("@/app/chat");

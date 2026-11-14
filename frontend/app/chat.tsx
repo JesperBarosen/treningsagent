@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import { ChatIcon, PlusIcon, SendIcon } from "@/components/icons";
 import { LoggedSessionCard } from "@/components/session-card";
 import { Button, OfflineHint } from "@/components/states";
+import { WeekGlance } from "@/components/week-glance";
 import { ApiError, sendChat, type Session } from "@/lib/api";
 import { dropLegacyChats, loadChat, saveChat } from "@/lib/chat-storage";
 import { currentUserId } from "@/lib/supabase/client";
@@ -160,6 +161,7 @@ export function Chat() {
 
       {/* Bottom padding leaves room for the fixed composer (and the tab bar on mobile). */}
       <div className="pb-52 md:pb-40">
+        {userId && <WeekGlance />}
         {empty && <Welcome />}
         <ol aria-label="Conversation" aria-live="polite" className="space-y-4">
           {convo.items.map((item) => (
