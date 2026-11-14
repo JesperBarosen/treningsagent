@@ -72,3 +72,43 @@ def test_judge_check_computes_tool_results_from_the_seed_without_a_database():
 def test_repeat_must_be_positive():
     with pytest.raises(SystemExit):
         run.main(["--repeat", "0"])
+
+
+UNDO_CASE = run.CASES_DIR / "log_after_undo_not_duplicate.json"
+
+
+def test_today_placeholder_becomes_the_run_date():
+    case = run.load_case(UNDO_CASE, date(2026, 11, 14))
+    assert "{today}" not in json.dumps(case)
+    assert case["history"][1]["content"][0]["input"]["date"] == "2026-11-14"
+    assert "on 2026-11-14 (id 9001)" in case["history"][-1]["content"]
+
+
+def test_case_histories_are_valid_conversations():
+    """Starts with the user, and every tool_use is answered by a tool_result."""
+    for path in sorted(run.CASES_DIR.glob("*.json")):
+        history = run.load_case(path).get("history", [])
+        if not history:
+            continue
+        assert history[0]["role"] == "user", path.stem
+        blocks = [b for m in history if isinstance(m["content"], list) for b in m["content"]]
+        uses = {b["id"] for b in blocks if b["type"] == "tool_use"}
+        results = {b["tool_use_id"] for b in blocks if b["type"] == "tool_result"}
+        assert uses == results, path.stem
+
+
+def test_undo_case_ends_with_the_removal_note_the_app_sends():
+    note = run.load_case(UNDO_CASE)["history"][-1]
+    assert note["role"] == "user"
+    assert note["content"].startswith("[User removed the session: ")
+
+
+def test_judge_check_inputs_run_offline():
+    """--judge-check runs each expected tool on an in-memory store; log_session
+    needs the case's tool_inputs to do that."""
+    case = run.load_case(UNDO_CASE)
+    store = run.MemoryStore()
+    run.seed(store, case["seed"], date.today())
+    inputs = case["expect"]["tool_inputs"]
+    result = json.loads(tools.run_tool(store, "log_session", inputs["log_session"]))
+    assert result["distance_km"] == 10 and result["date"] == date.today().isoformat()

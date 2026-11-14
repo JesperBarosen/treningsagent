@@ -32,6 +32,12 @@ Use get_training_load for questions about load, fatigue, how hard a week was,
 or whether to push or rest; when citing the acute:chronic ratio, say it is a
 rough guide. If a required value (duration or effort) is missing, ask for it
 instead of guessing. Keep replies short.
+The user can edit or remove sessions outside the chat. The history then holds a
+note in square brackets, such as "[User removed the session: ...]" or "[User
+edited the session to: ...]"; it overrides what you logged earlier in the
+conversation. Never call a session a duplicate, or refuse to log one, from the
+conversation alone: call get_history first, and treat only the sessions it
+returns as stored.
 Today is {today}."""
 
 log = logging.getLogger(__name__)

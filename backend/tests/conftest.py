@@ -83,8 +83,10 @@ class FakeClient:
     def __init__(self, *responses: Message):
         self.responses = list(responses)
         self.requests: list[dict] = []
+        self.systems: list[str] = []
         self.messages = self  # so client.messages.create(...) works
 
     def create(self, **kwargs):
         self.requests.append(json.loads(json.dumps(kwargs["messages"])))  # snapshot
+        self.systems.append(kwargs["system"])
         return self.responses.pop(0)

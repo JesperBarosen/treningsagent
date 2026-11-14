@@ -69,8 +69,12 @@ class EvalStore(db.PostgresStore):
         super().log_model_call(call)
 
 
-def load_case(path: Path) -> dict:
-    case = json.loads(path.read_text(encoding="utf-8"))
+def load_case(path: Path, today: date | None = None) -> dict:
+    """Load a case. "{today}" anywhere in it becomes today's date, so a case's
+    optional `history` (earlier turns, sent before the question) and
+    `expect.tool_inputs` can refer to sessions logged on the day it runs."""
+    today = (today or date.today()).isoformat()
+    case = json.loads(path.read_text(encoding="utf-8").replace("{today}", today))
     if "seed_from" in case:
         case["seed"] = json.loads((CASES_DIR / f"{case['seed_from']}.json")
                                   .read_text(encoding="utf-8"))["seed"]
@@ -184,12 +188,15 @@ def run_case(client: anthropic.Anthropic, conn, case: dict,
     store = EvalStore(conn)
     try:
         seed(store, case["seed"], date.today())
-        messages = [{"role": "user", "content": case["question"]}]
+        history = case.get("history", [])
+        messages = [*history, {"role": "user", "content": case["question"]}]
         answer = chat.run_turn(client, store, messages, str(uuid.uuid4()))
     finally:
         delete_user(conn, store.user_id)
 
-    blocks = [b for m in messages if isinstance(m["content"], list) for b in m["content"]]
+    # Grade only this turn: the earlier turns' tool calls aren't the answer's.
+    this_turn = messages[len(history):]
+    blocks = [b for m in this_turn if isinstance(m["content"], list) for b in m["content"]]
     called = [b["name"] for b in blocks if b["type"] == "tool_use"]
     results = [b["content"] for b in blocks if b["type"] == "tool_result"]
     checks, judge_usage = judge(client, case, answer, results)
@@ -212,7 +219,9 @@ def judge_check(client: anthropic.Anthropic, case: dict) -> tuple[bool, float | 
     check the planted mistake breaks (`should_fail`), not just any check."""
     store = MemoryStore()
     seed(store, case["seed"], date.today())
-    results = [tools.run_tool(store, name, {}) for name in case["expect"]["tools_called"]]
+    inputs = case["expect"].get("tool_inputs", {})  # for tools that need arguments
+    results = [tools.run_tool(store, name, inputs.get(name, {}))
+               for name in case["expect"]["tools_called"]]
     bad = case["known_bad"]
     checks, usage = judge(client, case, bad["answer"], results)
     caught = any(c.id == bad["should_fail"] and not c.passed for c in checks)

@@ -7,6 +7,7 @@ import { Button, OfflineHint } from "@/components/states";
 import { ApiError, sendChat, type Session } from "@/lib/api";
 import { dropLegacyChats, loadChat, saveChat } from "@/lib/chat-storage";
 import { currentUserId } from "@/lib/supabase/client";
+import { sessionSummary } from "@/lib/format";
 import { Markdown } from "@/lib/markdown";
 import { SessionSheet } from "./sessions/session-sheet";
 
@@ -29,6 +30,14 @@ const QUICK_REPLIES = [
   { label: "Am I improving?", send: "Am I improving?" },
   { label: "This week's load", send: "How is my training load this week?" },
 ] as const;
+
+/** "Run · 10 km · 30 min · effort 6 on 2026-11-14 (id 7)", for the coach's history notes. */
+const describe = (s: Session) => `${sessionSummary(s)} on ${s.date} (id ${s.id})`;
+
+/** History notes for changes made on a Logged card. The system prompt explains them. */
+export const removedNote = (s: Session) =>
+  `[User removed the session: ${describe(s)}. It is no longer in their log.]`;
+export const editedNote = (s: Session) => `[User edited the session to: ${describe(s)}.]`;
 
 function loadConversation(userId: string): Conversation {
   const saved = loadChat(userId);
@@ -135,10 +144,14 @@ export function Chat() {
     inputRef.current?.focus();
   }
 
-  /** Update one logged session's card in place, wherever it is in the conversation. */
-  function updateLogged(id: number, change: (s: Logged) => Logged) {
+  /** Update one logged session's card in place, wherever it is in the conversation,
+   *  and tell the coach: `note` is appended to the stored history as a user
+   *  message, so the next /chat turn knows the session changed outside the chat.
+   *  (The API merges consecutive user messages into one turn.) */
+  function updateLogged(id: number, change: (s: Logged) => Logged, note: string) {
     setConvo((c) => ({
       ...c,
+      history: c.history.length ? [...c.history, { role: "user", content: note }] : c.history,
       items: c.items.map((i) =>
         i.role === "agent" ? { ...i, logged: i.logged.map((s) => (s.id === id ? change(s) : s)) } : i,
       ),
@@ -169,7 +182,9 @@ export function Chat() {
                 onRetry={send}
                 disabled={sending}
                 onEdit={setEditing}
-                onUndone={(s) => updateLogged(s.id, (old) => ({ ...old, undone: true }))}
+                onUndone={(s) =>
+                  updateLogged(s.id, (old) => ({ ...old, undone: true }), removedNote(s))
+                }
               />
             </li>
           ))}
@@ -187,11 +202,13 @@ export function Chat() {
         startEditing
         onClose={() => setEditing(null)}
         onChanged={(updated) => {
-          const id = editing?.id;
+          const before = editing;
           setEditing(null);
-          if (id === undefined) return;
-          updateLogged(id, (old) =>
-            updated ? { ...updated, edited: true } : { ...old, undone: true },
+          if (!before) return;
+          updateLogged(
+            before.id,
+            (old) => (updated ? { ...updated, edited: true } : { ...old, undone: true }),
+            updated ? editedNote(updated) : removedNote(before),
           );
         }}
       />

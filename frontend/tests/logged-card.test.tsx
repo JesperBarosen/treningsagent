@@ -22,6 +22,11 @@ vi.mock("@/lib/api", async (importOriginal) => ({
 
 const { Chat } = await import("@/app/chat");
 
+const HISTORY = [
+  { role: "user", content: "Ran 5 km in 30 min" },
+  { role: "assistant", content: [{ type: "text", text: "Logged your run." }] },
+];
+
 const RUN: Session = { id: 7, sport: "running", date: "2026-11-14", duration_min: 30, effort: 5, distance_km: 5 };
 
 beforeAll(() => {
@@ -40,7 +45,7 @@ beforeEach(() => {
   window.HTMLElement.prototype.scrollIntoView = vi.fn();
   api.sendChat.mockResolvedValue({
     reply: "Logged your run.",
-    history: [],
+    history: HISTORY,
     conversation_id: "c1",
     logged_sessions: [RUN],
   });
@@ -113,5 +118,56 @@ describe("the chat's Logged card", () => {
     await user.click(screen.getByRole("button", { name: "Remove" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Session not found.");
     expect(screen.queryByText(/Undone/)).not.toBeInTheDocument();
+  });
+});
+
+describe("telling the coach about changes made on the card (#63)", () => {
+  /** The history the chat sends with the next message. */
+  async function nextHistory(user: Awaited<ReturnType<typeof logARun>>) {
+    await user.type(screen.getByLabelText("Message"), "Ran 5 km in 30 min{Enter}");
+    await screen.findAllByText("Logged your run.");
+    return api.sendChat.mock.calls[1][1] as { role: string; content: unknown }[];
+  }
+
+  it("appends a 'removed' note to the history after Undo", async () => {
+    api.deleteSession.mockResolvedValue(undefined);
+    const user = await logARun();
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await user.click(screen.getByRole("button", { name: "Remove" }));
+    await screen.findByText("Undone · removed from your log");
+
+    const history = await nextHistory(user);
+    expect(history.slice(0, 2)).toEqual(HISTORY); // earlier turns are untouched
+    expect(history[2]).toEqual({
+      role: "user",
+      content:
+        "[User removed the session: Run · 5 km · 30 min · effort 5 on 2026-11-14 (id 7). It is no longer in their log.]",
+    });
+  });
+
+  it("appends an 'edited' note with the new values after Edit", async () => {
+    api.updateSession.mockResolvedValue({ ...RUN, duration_min: 35 });
+    const user = await logARun();
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const sheet = screen.getByRole("dialog", { hidden: true });
+    const duration = within(sheet).getByLabelText(/duration/i);
+    await user.clear(duration);
+    await user.type(duration, "35");
+    await user.click(within(sheet).getByRole("button", { name: "Save changes" }));
+    await screen.findByText(/Edited ·/);
+
+    const history = await nextHistory(user);
+    expect(history[2]).toEqual({
+      role: "user",
+      content: "[User edited the session to: Run · 5 km · 35 min · effort 5 on 2026-11-14 (id 7).]",
+    });
+  });
+
+  it("adds no note when nothing changed (Cancel)", async () => {
+    const user = await logARun();
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Cancel", hidden: true }));
+    const history = await nextHistory(user);
+    expect(history).toEqual(HISTORY);
   });
 });
