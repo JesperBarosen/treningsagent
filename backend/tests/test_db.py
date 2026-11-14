@@ -133,3 +133,39 @@ def test_grade_ordinal_must_match_colour(conn):
         store.insert_session(CLIMBING, [{**CLIMBS[0], "grade_ordinal": 4}])
     # The session and its climbs are one transaction: nothing was stored.
     assert store.sessions_since("2000-01-01") == []
+
+
+def count_ui_events(conn, user_id: str) -> int:
+    # As the connection's own role: the app itself can't read ui_events.
+    return conn.execute("select count(*) as n from public.ui_events where user_id = %s",
+                        (user_id,)).fetchone()["n"]
+
+
+def test_ui_events_are_recorded_for_the_caller(conn):
+    alice = make_store(conn)
+    with alice._as_user() as c:
+        c.execute("insert into public.ui_events (event) values ('weekly_review_opened')")
+    assert count_ui_events(conn[0], alice.user_id) == 1
+
+
+def test_ui_events_cannot_be_read_or_forged(conn):
+    alice, bob = make_store(conn), make_store(conn)
+    with alice._as_user() as c:
+        c.execute("insert into public.ui_events (event) values ('discreet_mode_on')")
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        with bob._as_user() as c:  # no select grant, not even on your own rows
+            c.execute("select count(*) from public.ui_events")
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        with bob._as_user() as c:  # user_id is not insertable, so it can't be someone else's
+            c.execute("insert into public.ui_events (user_id, event) values (%s, 'x')",
+                      (alice.user_id,))
+    assert count_ui_events(conn[0], bob.user_id) == 0
+
+
+def test_ui_event_names_are_short_slugs(conn):
+    alice = make_store(conn)
+    for bad in ("Has spaces", "x" * 65, "", "1starts_with_digit"):
+        with pytest.raises(psycopg.errors.CheckViolation):
+            with alice._as_user() as c:
+                c.execute("insert into public.ui_events (event) values (%s)", (bad,))
+    assert count_ui_events(conn[0], alice.user_id) == 0
