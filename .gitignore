@@ -224,3 +224,6 @@ __marimo__/
 
 # Session ids written by backend/seed.py, read by unseed.py
 backend/.seed_ids.json
+
+# Copyrighted papers read for docs/design-research.md. The repo is public: never commit them.
+research/
