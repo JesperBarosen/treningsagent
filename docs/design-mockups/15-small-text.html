@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 15: Small secondary text</title>
+<style>
+  :root {
+    --canvas: #f5f4ef; --surface: #ffffff; --sunken: #eceae3; --line: #d9d6cc;
+    --ink: #15191b; --muted-now: #5a6166; --muted-new: #474e53; --accent: #0f6b5c; --accent-soft: #dcefea;
+    --run-soft: #dcefea; --climb: #9a5a17; --climb-soft: #f6e8d6;
+    --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+    --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --canvas: #0e1214; --surface: #161b1e; --sunken: #1e2529; --line: #2c3439;
+      --ink: #eceeec; --muted-now: #9aa3a7; --muted-new: #b0b8bc; --accent: #4fd1b5; --accent-soft: #13312c;
+      --run-soft: #13312c; --climb: #e5a15a; --climb-soft: #33271a; color-scheme: dark; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px 48px; background: var(--canvas); color: var(--ink); font: 16px/1.5 var(--font-sans); }
+  header.page, .notes { max-width: 820px; margin: 0 auto 24px; }
+  h1 { font: 600 22px/28px var(--font-display); margin: 0 0 4px; }
+  .lead, .notes { color: var(--muted-now); font-size: 14px; margin-top: 0; }
+  .notes a { color: var(--accent); }
+  .pair { display: flex; flex-wrap: wrap; gap: 32px; justify-content: center; }
+  figure { margin: 0; }
+  figcaption { font: 600 12px/16px var(--font-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted-now); margin-bottom: 8px; }
+  figcaption.after { color: var(--accent); }
+  .phone { width: 375px; max-width: 100%; border: 1px solid var(--line); border-radius: 18px; background: var(--canvas); padding: 16px; }
+  .h { font: 600 22px/28px var(--font-display); margin: 0; }
+  .weekhead { display: flex; justify-content: space-between; padding: 0 12px; margin: 16px 0 4px; letter-spacing: .06em; font-weight: 600; }
+  .list { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; }
+  .row { display: flex; gap: 12px; padding: 12px; border-top: 1px solid var(--line); }
+  .row:first-child { border-top: 0; }
+  .badge { width: 40px; height: 40px; border-radius: 999px; flex: none; }
+  .run { background: var(--run-soft); } .climb { background: var(--climb-soft); }
+  .name { font-weight: 600; display: flex; justify-content: space-between; }
+  .before .m { color: var(--muted-now); }
+  .after .m { color: var(--muted-new); }
+  .before .meta { font-size: 12px; line-height: 16px; } .before .stats { font-size: 14px; }
+  .after .meta { font-size: 13px; line-height: 18px; } .after .stats { font-size: 14px; }
+  .before .weekhead { font-size: 12px; text-transform: uppercase; }
+  .after .weekhead { font-size: 13px; text-transform: none; letter-spacing: 0; }
+  .ratio { font-size: 12px; color: var(--muted-now); margin: 12px 0 0; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>V-S2 and V-S4. Small secondary text: 7:1 and 13 px</h1>
+  <p class="lead">Sessions at 375 px. Switch your OS to dark to compare the dark values. The positive-polarity advantage is largest for small characters (Piepenbrock et al. 2014), and Apple asks custom colours to "strive for a contrast ratio of 7:1, especially in small text".</p>
+</header>
+
+<div class="pair">
+  <figure>
+    <figcaption>Before</figcaption>
+    <div class="phone before" role="img" aria-label="Before: 12 px muted metadata and uppercase week headings">
+      <p class="h">Sessions</p>
+      <div class="weekhead m meta"><span>This week</span><span>3 sessions · load 1,240</span></div>
+      <div class="list">
+        <div class="row"><span class="badge run"></span><div style="flex:1"><div class="name">Run <span class="m meta">Today</span></div><div class="m stats">9.2 km · 50 min · 5:26 /km · effort 7</div></div></div>
+        <div class="row"><span class="badge climb"></span><div style="flex:1"><div class="name">Climbing <span class="m meta">Wed 12 Nov</span></div><div class="m stats">90 min · 3/4 sent · effort 7</div></div></div>
+      </div>
+      <p class="ratio">Muted <code>#5A6166</code> light: 6.29 / 5.72 / 5.23:1 on surface / canvas / sunken · dark <code>#9AA3A7</code>: 6.75 / 7.33 / 6.04:1. Captions 12 px, week headings 12 px uppercase.</p>
+    </div>
+  </figure>
+  <figure>
+    <figcaption class="after">After</figcaption>
+    <div class="phone after" role="img" aria-label="After: 13 px metadata in a darker muted tone and sentence-case week headings">
+      <p class="h">Sessions</p>
+      <div class="weekhead m meta"><span>This week</span><span>3 sessions · load 1,240</span></div>
+      <div class="list">
+        <div class="row"><span class="badge run"></span><div style="flex:1"><div class="name">Run <span class="m meta">Today</span></div><div class="m stats">9.2 km · 50 min · 5:26 /km · effort 7</div></div></div>
+        <div class="row"><span class="badge climb"></span><div style="flex:1"><div class="name">Climbing <span class="m meta">Wed 12 Nov</span></div><div class="m stats">90 min · 3/4 sent · effort 7</div></div></div>
+      </div>
+      <p class="ratio">Muted <code>#474E53</code> light: 8.46 / 7.68 / 7.03:1 · dark <code>#B0B8BC</code>: 8.27 / 9.04 / 7.25:1 (on the lifted dark surfaces of V-M1). Essential captions 13 px; week headings in sentence case. Ink stays at 14–18:1, so the hierarchy holds.</p>
+    </div>
+  </figure>
+</div>
+
+<div class="notes">
+  <p><strong>Change:</strong> darken <code>--ink-muted</code> in light and lighten it in dark so secondary text reaches 7:1 on every background it sits on, and add a 13 px "meta" step for captions that carry information (dates, weekly totals, trend lines). Chart ticks and purely decorative labels can stay at 12 px. See <a href="../design-visual.md">design-visual.md</a>, V-S2 and V-S4.</p>
+</div>
+</body>
+</html>

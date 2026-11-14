@@ -1,6 +1,6 @@
-# Design research: four papers against our UI
+# Design research: six papers against our UI
 
-This review reads four HCI papers, turns them into design principles, checks the
+This review reads six HCI papers, turns them into design principles, checks the
 principles against current guidelines (Apple HIG, Material Design 3, WCAG 2.2),
 and audits our pages against them. It ends with a prioritised list of changes.
 
@@ -19,7 +19,10 @@ and audits our pages against them. It ends with a prioritised list of changes.
   - **Interpretation** is my reading of it for this app.
 
 Principles are numbered P1–P20 across all four papers, so the audit and the
-change table can refer to them.
+change table can refer to them. Two newer papers were added later (sections 1.5
+and 1.6, principles P22–P24). They update Li 2010 and Epstein 2015 and bear on
+proposals N1 and N5 in [design-proposals-2.md](design-proposals-2.md), which
+defines P21. The visual-design papers are in [design-visual.md](design-visual.md).
 
 ## 1. The papers
 
@@ -199,6 +202,121 @@ activities were sensed automatically and the rest were journaled by hand
 - **P20. Comprehensive.** Give credit for every relevant activity, not only what
   the system can measure [Consolvo 2009].
 
+### 1.5 Epstein et al. (2020): mapping the personal informatics literature
+
+**Reference.** Daniel A. Epstein, Clara Caldeira, Mayara Costa Figueiredo, Xi Lu,
+Lucas M. Silva, Lucretia Williams, Jong Ho Lee, Qingyang Li, Simran Ahuja, Qiuer
+Chen, Payam Dowlatyari, Craig Hilby, Sazeda Sultana, Elizabeth V. Eikey, and
+Yunan Chen. 2020. Mapping and Taking Stock of the Personal Informatics
+Literature. *Proceedings of the ACM on Interactive, Mobile, Wearable and
+Ubiquitous Technologies* 4, 4, Article 126 (December 2020), 38 pages.
+https://doi.org/10.1145/3432231
+
+**Summary.** A decade after Li et al., the authors coded 523 papers on
+self-tracking. They found that the field studies health and wellbeing above all,
+with physical activity the case in over a third of papers. Research focuses on
+collecting and reflecting. Integration and action get less attention, and
+preparation the least. Lapsing and abandonment come up in under a tenth of
+papers, and few papers offer ways to keep tracked data private from people
+nearby. The authors ask for work on the neglected stages, for domain experts in
+the design process, and for more attention to privacy.
+
+**Study details.**
+
+| | |
+| --- | --- |
+| Year | 2020 (IMWUT) |
+| Method | Mapping review of the ACM Digital Library, IEEE Xplore and PubMed, searched in January 2020 for publications to 2019; 1,017 candidates screened to 523 and coded by several researchers (126:6–126:8) |
+| Participants | None; the unit is the publication (283 ACM, 59 IEEE, 128 PubMed, 53 in several) (126:7) |
+| Devices | Not applicable |
+
+Stage coverage: collection 16%, reflection 23%, both 34%, action 29%,
+integration 32%, preparation 11% (126:10). Abandonment or lapsing appears in 9%
+of papers (126:11). On the skew: "Barriers to collection and reflection are
+natural HCI problems, as entry and display of information are central to many
+interfaces." (126:18)
+
+**Principles.**
+
+- **P22. Design for preparation and action, not only collection and reflection**
+  [Epstein 2020].
+
+**How it updates the earlier papers.**
+
+- **Li 2010:** it *confirms* that the stage model still frames the field, and
+  that collection and reflection dominate. It also shows Li's preparation stage
+  is still the least studied. **Interpretation:** this supports reworked N8
+  (#37), choosing a sport and the research behind the coach, as an
+  under-served preparation step.
+- **Epstein 2015:** lapsing remains rare in the literature (9%), so P6 still
+  rests mostly on the 2015 interviews and on Attig 2020 below.
+- **N5 (pause tracking):** the paper notes few designs that protect data from
+  onlookers or handle sensitive domains. Injury details in a pause, such as body
+  part and pain, are sensitive, so they belong behind discreet mode (N7).
+
+### 1.6 Attig and Franke (2020): why people stop using activity trackers
+
+**Reference.** Christiane Attig and Thomas Franke. 2020. Abandonment of personal
+quantification: A review and empirical study investigating reasons for wearable
+activity tracking attrition. *Computers in Human Behavior* 102 (January 2020),
+223–237. https://doi.org/10.1016/j.chb.2019.08.025
+
+**Summary.** A literature review of reasons for abandoning fitness trackers,
+followed by a questionnaire for former users. Losing interest in tracking was
+the most agreed reason. Then came disrupted routines, and changed priorities or
+life circumstances. Device problems such as inaccuracy, discomfort and usability
+ranked lower. About a third said obsessive tracking played a part. About a third
+stopped because the activity had become a habit, which the authors call "happy
+abandonment". About a quarter cited privacy. Losing motivation went with worse
+attitudes towards tracking and more permanent quitting. The authors give six
+design guidelines. These include meaningful reminders, tailored interpretations
+instead of bare numbers, and more control over data sharing.
+
+**Study details.**
+
+| | |
+| --- | --- |
+| Year | 2020 (Computers in Human Behavior), online September 2019 |
+| Method | Systematic review, then an online questionnaire (September–November 2018), 6-point agreement scales, factor analysis and correlations. Cross-sectional and retrospective (pp. 224–229). |
+| Participants | 159 German-speaking former users, 74% female, mean age 32.4 (18–80), recruited via social media and a press release (p. 227) |
+| Devices | Former trackers: 96% wrist-worn, 44% Fitbit (p. 229) |
+
+25% had had a gap of over a month before stopping (p. 229). "Feedback about
+failure is demotivating" is one of the reasons listed from the literature
+(p. 225, Table 1). On ranking: "The most agreed upon reason for abandonment was
+decreasing intrinsic tracking motivation." (p. 228)
+
+**Principles.**
+
+- **P23. Expect life to interrupt tracking, and let some endings be success**
+  [Attig 2020].
+- **P24. Interpret numbers for the person, and never frame them as failure**
+  [Attig 2020].
+
+**How it updates the earlier papers.**
+
+- **Li 2010:** Li found collection barriers (the tool, forgetting, lack of time)
+  most common. For *automatic* trackers, Attig finds motivation and life
+  disruptions outrank device problems. **Interpretation:** we log by hand, so
+  Li's collection barriers still apply (P1), and Attig's motivation barriers come
+  on top. The newer study doesn't replace Li for manual logging; it adds a layer.
+- **Epstein 2015:** it *confirms* lapses with ranked reasons. Disrupted routines
+  and changed circumstances are in the top three, and a quarter had month-long
+  gaps. It *adds* "happy abandonment": stopping because the goal or habit is
+  reached is not failure.
+- **Consolvo 2009:** it *agrees* with P17 (negative feedback demotivates). It
+  partly conflicts with P14, since Attig recommends reminders. That advice rests
+  on cited work and correlations, not a test, so we keep P14 and allow only
+  opt-in reminders that explain why.
+- **N1 (weekly review, #29):** this supports a coach sentence built from the
+  numbers that interprets rather than counts, and never says "failed" (P24).
+  It also supports a fresh start after an empty week.
+- **N5 (pause tracking, #33):** this is the strongest support for N5. Life
+  disruptions are among the top reasons people stop (P23), and a pause with a
+  reason turns an interruption into an expected state instead of a decline. It
+  also suggests letting "I've built the habit" be a legitimate reason to pause
+  or stop.
+
 ## 2. Limits
 
 For each principle: how strong the evidence is, and whether current guidelines
@@ -209,7 +327,7 @@ not that it disagrees.
 
 **General caveats** (interpretation):
 
-- All four papers are 10–20 years old.
+- The first four papers are 10–20 years old. The two added later (2020) are newer but still predate today's phones and apps.
 - Three rely on self-report from enthusiastic, tech-savvy, mostly US samples.
 - Parhi used a resistive PDA screen that is far smaller than today's phones.
 - None of the papers studied runners or climbers specifically. Consolvo's
@@ -237,6 +355,9 @@ not that it disagrees.
 | P18 | All sensor users called editing essential (Consolvo p. 413) | Moderate | Not addressed | Not addressed | 3.3.4 (AA) agrees for deletes: reversible, checked or confirmed |
 | P19 | Only short-term evidence. The authors call it limited (p. 413). | Weak, by the authors' own account | Not addressed | Not addressed | Not addressed |
 | P20 | Manual journaling covered what the sensor missed. No one avoided activities (Consolvo p. 413). | Moderate | Not addressed | Not addressed | Not addressed |
+| P22 | Preparation in 11% of 523 papers, action in 29% (Epstein 2020, 126:10) | Moderate: a map of research attention, not of user outcomes | Not addressed | Not addressed | Not addressed |
+| P23 | Disrupted routines and changed circumstances among the top reasons; 25% had month-long gaps (Attig pp. 228–229) | Moderate: n = 159, retrospective self-report, cross-sectional, about wearables rather than manual logs | Not addressed | Not addressed | Not addressed |
+| P24 | Demotivating feedback listed as a reason; motivation loss linked to permanent quitting (Attig pp. 225, 231) | Weak to moderate: a correlation and a derived guideline. It agrees with P17. | Not addressed | Not addressed | Not addressed |
 
 **From millimetres to CSS pixels** (interpretation, P10). Assume an iPhone-class
 screen at about 460 ppi with a device pixel ratio of 3. That gives about 153
@@ -329,11 +450,23 @@ Apple Inc. 2026. Charts. *Human Interface Guidelines*. Retrieved November 14, 20
 from https://developer.apple.com/design/human-interface-guidelines/charts
 [Apple HIG Charts]
 
+Christiane Attig and Thomas Franke. 2020. Abandonment of personal
+quantification: A review and empirical study investigating reasons for wearable
+activity tracking attrition. *Computers in Human Behavior* 102 (2020), 223–237.
+https://doi.org/10.1016/j.chb.2019.08.025 [Attig 2020]
+
 Sunny Consolvo, David W. McDonald, and James A. Landay. 2009. Theory-Driven Design
 Strategies for Technologies that Support Behavior Change in Everyday Life. In
 *Proceedings of the SIGCHI Conference on Human Factors in Computing Systems
 (CHI '09)*. ACM, New York, NY, USA, 405–414. https://doi.org/10.1145/1518701.1518766
 [Consolvo 2009]
+
+Daniel A. Epstein, Clara Caldeira, Mayara Costa Figueiredo, Xi Lu, Lucas M.
+Silva, Lucretia Williams, Jong Ho Lee, Qingyang Li, Simran Ahuja, Qiuer Chen,
+Payam Dowlatyari, Craig Hilby, Sazeda Sultana, Elizabeth V. Eikey, and Yunan
+Chen. 2020. Mapping and Taking Stock of the Personal Informatics Literature.
+*Proc. ACM Interact. Mob. Wearable Ubiquitous Technol.* 4, 4, Article 126
+(December 2020), 38 pages. https://doi.org/10.1145/3432231 [Epstein 2020]
 
 Daniel A. Epstein, An Ping, James Fogarty, and Sean A. Munson. 2015. A Lived
 Informatics Model of Personal Informatics. In *Proceedings of the 2015 ACM
