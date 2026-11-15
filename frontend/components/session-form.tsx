@@ -58,6 +58,8 @@ export function nextOutcome(c: FormClimb): FormClimb {
 // block + min-w-0: a field never grows past its grid cell (iOS date inputs did).
 const field =
   "block min-h-11 w-full min-w-0 rounded-md border border-control bg-surface px-3 text-base text-ink tabular-nums";
+/** Extra classes for the date input: fixed height, value centred and left-aligned. */
+export const DATE_FIELD = "h-11 appearance-none text-left leading-[calc(2.75rem-2px)]";
 const label = "mb-1 block text-sm font-medium";
 /** Two equal columns that can shrink below their content's width. */
 const pair = "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3";
@@ -170,7 +172,11 @@ export function SessionForm({
                 value={date}
                 max={todayIso || undefined}
                 onChange={(e) => setDate(e.target.value)}
-                className={`${field} appearance-none text-left`}
+                // iOS draws the value at the top of the box. A line-height of the
+                // inner height (44 px minus the 2 px border) centres it. It must be
+                // a utility: text-base sets its own line-height, which beats any
+                // @layer base rule (#88 tried that).
+                className={`${field} ${DATE_FIELD}`}
               />
             </div>
             <div>

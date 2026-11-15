@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { SessionForm } from "@/components/session-form";
+import { DATE_FIELD, SessionForm } from "@/components/session-form";
 import type { Session } from "@/lib/api";
 
 vi.mock("@/lib/supabase/client", () => ({
@@ -35,6 +35,10 @@ function expectDateFits() {
   for (const c of ["block", "w-full", "min-w-0", "min-h-11", "px-3", "appearance-none", "text-left"]) {
     expect(date).toHaveClass(c);
   }
+  // The value is centred by a line-height utility on the input itself (44 px
+  // minus the 2 px border), not by a base rule that text-base would beat.
+  expect(date).toHaveClass("h-11", "leading-[calc(2.75rem-2px)]");
+  expect(date.className).toContain(DATE_FIELD);
   // Same height and padding as Duration next to it.
   const duration = screen.getByLabelText("Duration (min)");
   for (const c of ["min-h-11", "px-3", "rounded-md", "text-base"]) expect(duration).toHaveClass(c);
