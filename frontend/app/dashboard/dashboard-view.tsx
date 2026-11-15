@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { GradeDot } from "@/components/grade";
-import { ChartIcon } from "@/components/icons";
+import { ChartIcon, ChevronIcon } from "@/components/icons";
 import { GoalsSection } from "@/components/goals-panel";
 import { PauseBanner } from "@/components/pause-panel";
 import { EmptyState, ErrorState, Skeleton } from "@/components/states";
@@ -20,10 +20,13 @@ import {
 } from "@/lib/api";
 import {
   BAND_LABELS,
+  mainPaceBand,
   RATIO_MIN_HISTORY_DAYS,
   RATIO_MODERATE,
   RATIO_SPIKE,
   ratioView,
+  summarySentence,
+  ZONE_WORD,
 } from "@/lib/dashboard";
 import { SENSITIVE } from "@/lib/discreet";
 import { formatPace, formatRate, nf, shortDate } from "@/lib/format";
@@ -133,8 +136,47 @@ export function Dashboard({
           </p>
         )
       )}
+      <Summary load={load} progression={progression} />
       <DashboardGrid load={load} progression={progression} />
     </>
+  );
+}
+
+/** Phones only (#59, design-visual V-M3): three headline numbers and one
+ *  sentence first; the charts below start as rows. From `md` the grid shows all. */
+function Summary({ load, progression }: { load: TrainingLoad; progression: Progression }) {
+  const thisWeek = load.weekly[load.weekly.length - 1];
+  const lastWeek = load.weekly[load.weekly.length - 2];
+  const view = ratioView(load);
+  const tiles = [
+    { label: "Sessions", value: String(thisWeek?.sessions ?? 0), sub: "this week" },
+    {
+      label: "Load",
+      value: nf.format(thisWeek?.load ?? 0),
+      sub: lastWeek ? `${nf.format(lastWeek.load)} last wk` : "this week",
+    },
+    {
+      label: "Ratio",
+      value: view.kind === "ok" ? view.ratio.toFixed(2) : "–",
+      sub: view.kind === "ok" ? ZONE_WORD[view.zone] : view.kind === "paused" ? "paused" : "not enough data",
+    },
+  ];
+  return (
+    <section aria-labelledby="summary-title" className="mb-4 md:hidden">
+      <h2 id="summary-title" className="sr-only">
+        Summary
+      </h2>
+      <dl {...SENSITIVE} className="grid grid-cols-3 gap-2">
+        {tiles.map((t) => (
+          <div key={t.label} className="min-w-0 rounded-md border border-line bg-surface p-2.5">
+            <dt className="text-meta text-ink-muted">{t.label}</dt>
+            <dd className="font-display text-xl font-semibold tabular-nums">{t.value}</dd>
+            <dd className="truncate text-meta text-ink-muted">{t.sub}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-3 text-sm">{summarySentence(load, progression)}</p>
+    </section>
   );
 }
 
@@ -153,10 +195,13 @@ function DashboardGrid({ load, progression }: { load: TrainingLoad; progression:
 
 // --- Building blocks -----------------------------------------------------------
 
+/** A chart card. Below 768 px it starts as a row (title, trend chip, chevron)
+ *  that expands in place (#59, design-visual V-M3); from `md` it is always open. */
 function Card({
   title,
   subtitle,
   aside,
+  rowAside,
   className = "",
   children,
   labelledBy,
@@ -164,25 +209,48 @@ function Card({
   title: string;
   subtitle?: ReactNode;
   aside?: ReactNode;
+  /** Shown only on the collapsible phone row, e.g. the trend chip. */
+  rowAside?: ReactNode;
   className?: string;
   children: ReactNode;
   labelledBy: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const bodyId = `${labelledBy}-body`;
+  const shut = open ? "" : "max-md:hidden";
   return (
     <section
       aria-labelledby={labelledBy}
-      className={`min-w-0 animate-rise rounded-lg border border-line bg-surface p-4 ${className}`}
+      className={`relative min-w-0 animate-rise rounded-lg border border-line bg-surface p-4 ${className}`}
     >
-      <div className="mb-3 flex items-start justify-between gap-3">
+      <div className={`flex items-start justify-between gap-3 md:mb-3 ${open ? "mb-3" : ""}`}>
         <div className="min-w-0">
           <h2 id={labelledBy} className="font-display text-lg font-semibold">
             {title}
           </h2>
-          {subtitle && <p className="text-sm text-ink-muted">{subtitle}</p>}
+          {subtitle && <p className={`text-sm text-ink-muted ${shut}`}>{subtitle}</p>}
         </div>
-        {aside}
+        <div className="flex shrink-0 items-center gap-2">
+          {rowAside && <span className="flex items-center gap-2 md:hidden">{rowAside}</span>}
+          {aside}
+          <ChevronIcon
+            size={18}
+            className={`text-ink-muted transition-transform md:hidden ${open ? "rotate-90" : ""}`}
+          />
+        </div>
       </div>
-      {children}
+      {/* The whole row is the tap target on phones; the heading names the button. */}
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={bodyId}
+        aria-labelledby={labelledBy}
+        onClick={() => setOpen((o) => !o)}
+        className="absolute inset-x-0 top-0 h-15 rounded-lg md:hidden"
+      />
+      <div id={bodyId} className={shut}>
+        {children}
+      </div>
     </section>
   );
 }
@@ -396,11 +464,20 @@ function RatioCard({ load }: { load: TrainingLoad }) {
 // --- Running -------------------------------------------------------------------
 
 function PaceCard({ running, className }: { running: Progression["running"]; className?: string }) {
+  const band = mainPaceBand(running);
   return (
     <Card
       labelledBy="pace-title"
       title="Running pace"
       subtitle="Per distance band, so long runs are compared with long runs. Higher is faster."
+      rowAside={
+        band && (
+          <>
+            <span className="text-meta text-ink-muted">{BAND_LABELS[band]}</span>
+            <TrendChip trend={running.trends.pace_by_distance[band].trend} />
+          </>
+        )
+      }
       className={className}
     >
       {running.sessions === 0 ? (
@@ -479,6 +556,7 @@ function GradeCard({ climbing, className }: { climbing: Progression["climbing"];
       labelledBy="grade-title"
       title="Hardest grades"
       subtitle="Hardest send and hardest flash each week"
+      rowAside={anySend && <TrendChip trend={send.trend} />}
       className={className}
     >
       {!anySend ? (

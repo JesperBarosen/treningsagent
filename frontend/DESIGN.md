@@ -195,3 +195,4 @@ Material 3 tonal elevation; design-visual V-M1). One shadow,
 | States | `components/states.tsx` | Skeleton, EmptyState, ErrorState (with retry) |
 | Dashboard charts | `app/dashboard/charts.tsx` | weekly load (stacked columns), pace per band (line), hardest send / flash (grade dots on a grade axis) |
 | TrendChip | `app/dashboard/dashboard-view.tsx` | the backend's trend word; accent-soft only for "improving" |
+| Dashboard summary | `app/dashboard/dashboard-view.tsx` | phones only: three headline numbers (sessions, load, ratio) and one sentence from the backend's ratio zone and trend words (`lib/dashboard.ts`); below 768 px each chart card starts as a row with its trend chip and opens in place, from `md` the grid shows everything (design-visual V-M3) |
