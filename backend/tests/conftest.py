@@ -15,6 +15,7 @@ class FakeStore:
         self.model_calls: list[dict] = []
         self.chat_requests = 0
         self.pauses: list[dict] = []
+        self.goal_rows: list[dict] = []
 
     def insert_session(self, row: dict, climbs: list[dict] = ()) -> int:
         session_id = len(self.rows) + 1
@@ -74,6 +75,27 @@ class FakeStore:
                 p.update(ended_on=ended_on, resume_choice=resume_choice)
                 return dict(p)
         return None
+
+    def goals(self) -> list[dict]:
+        return [dict(g) for g in self.goal_rows]
+
+    def insert_goal(self, row: dict) -> dict:
+        goal = {"id": len(self.goal_rows) + 1, "status": "active", "achieved_on": None,
+                "start_pace": None, **row}
+        self.goal_rows.append(goal)
+        return dict(goal)
+
+    def update_goal(self, goal_id: int, changes: dict) -> dict | None:
+        goal = next((g for g in self.goal_rows if g["id"] == goal_id), None)
+        if goal is None:
+            return None
+        goal.update(changes)
+        return dict(goal)
+
+    def delete_goal(self, goal_id: int) -> bool:
+        before = len(self.goal_rows)
+        self.goal_rows = [g for g in self.goal_rows if g["id"] != goal_id]
+        return len(self.goal_rows) < before
 
     def claim_chat_request(self, daily_limit: int) -> bool:
         if self.chat_requests >= daily_limit:

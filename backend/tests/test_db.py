@@ -218,3 +218,25 @@ def test_pauses_are_private_and_one_at_a_time(conn):
 def test_injury_details_belong_to_an_injury(conn):
     with pytest.raises(ValueError):
         make_store(conn).start_pause({**PAUSE, "reason": "illness"})
+
+
+# --- Goals (N2; needs migration 20261115130000_create_goals.sql) -----------------------
+
+GOAL = {"kind": "climb_grade", "grade": "red", "climb_mode": "send", "band": None,
+        "target_pace": None, "target_date": None, "created_on": "2026-11-15"}
+
+
+def test_goals_are_private_and_changeable(conn):
+    alice, bob = make_store(conn), make_store(conn)
+    goal = alice.insert_goal(GOAL)
+    assert goal["status"] == "active" and alice.goals()[0]["grade"] == "red"
+    assert bob.goals() == [] and bob.update_goal(goal["id"], {"status": "paused"}) is None
+    assert alice.update_goal(goal["id"], {"target_date": "2027-03-01"})["target_date"] == "2027-03-01"
+    assert bob.delete_goal(goal["id"]) is False and alice.delete_goal(goal["id"]) is True
+
+
+def test_a_goal_has_only_its_kinds_fields(conn):
+    with pytest.raises(ValueError):
+        make_store(conn).insert_goal({**GOAL, "band": "7_to_15km"})
+    with pytest.raises(ValueError):
+        make_store(conn).insert_goal({**GOAL, "kind": "run_pace"})

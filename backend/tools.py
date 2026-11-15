@@ -10,6 +10,7 @@ import json
 from datetime import date, timedelta
 from typing import Protocol
 
+import goals
 import pauses
 import progression
 
@@ -255,6 +256,40 @@ def get_training_load(store: Store, weeks: int = 4, today: date | None = None) -
     }
 
 
+def list_goals(store: Store, today: date | None = None) -> list[dict]:
+    """Every goal with its progress (goals.py). An active goal that has been
+    reached is marked achieved, with the day it was reached."""
+    today = today or date.today()
+    rows = store.goals()
+    if not rows:
+        return []
+    since = min(_parse_date(g["created_on"]) for g in rows) - timedelta(days=goals.LOOKBACK)
+    sessions, climbs = store.sessions_since(since.isoformat()), store.climbs_since(since.isoformat())
+    out = []
+    for g in rows:
+        g = goals.with_progress(g, sessions, climbs, today)
+        reached = g["progress"]["reached_on"]
+        if g["status"] == "active" and reached:
+            g = {**g, **store.update_goal(g["id"], {"status": "achieved", "achieved_on": reached}),
+                 "overdue": False}
+        out.append(g)
+    return out
+
+
+def set_goal(store: Store, kind: str, grade: str | None = None, climb_mode: str | None = None,
+             band: str | None = None, target_pace: float | None = None,
+             target_date: str | None = None, today: date | None = None) -> dict:
+    """Add a goal the user chose. A pace goal starts from the user's recent pace
+    in that band, so progress shows how far they have come."""
+    today = today or date.today()
+    row = goals.validate_goal(kind, grade, climb_mode, band, target_pace, target_date, today)
+    if kind == "run_pace":
+        since = (today - timedelta(days=goals.NOW_DAYS)).isoformat()
+        row["start_pace"] = goals.start_pace(store.sessions_since(since), band, today)
+    row["created_on"] = today.isoformat()
+    return store.insert_goal(row)
+
+
 def _pause_days(store: Store, since: date, today: date) -> tuple[frozenset, dict | None]:
     """Days to leave out of trends and the ratio, and the pause that is on now.
     A store without pauses (the eval runner's) has neither."""
@@ -440,6 +475,46 @@ TOOLS = [
 ]
 
 
+SET_GOAL = {
+    "name": "set_goal",
+    "description": (
+        "Add an outcome goal the user asked for, e.g. 'set a goal to send a red by March' or "
+        "'I want to run 7-15 km under 5:00 per km'. Only when the user clearly asks for a "
+        "goal; never invent one. Two kinds: climb_grade (grade + climb_mode send or flash) "
+        "and run_pace (band + target_pace in min/km, e.g. 5:00 = 5.0, 4:45 = 4.75). "
+        "target_date is optional (YYYY-MM-DD). Afterwards say the goal was added and that "
+        "it can be changed or let go at any time on the Dashboard."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "kind": {"type": "string", "enum": list(goals.KINDS)},
+            "grade": {"type": "string", "enum": list(GRADES)},
+            "climb_mode": {"type": "string", "enum": ["send", "flash"]},
+            "band": {"type": "string", "enum": list(goals.BANDS),
+                     "description": "Running distance band"},
+            "target_pace": {"type": "number", "description": "min/km, e.g. 5.0"},
+            "target_date": {"type": "string", "description": "YYYY-MM-DD, optional"},
+        },
+        "required": ["kind"],
+        "additionalProperties": False,
+    },
+}
+
+GET_GOALS = {
+    "name": "get_goals",
+    "description": (
+        "Get the user's outcome goals with progress: for a grade goal the hardest grade "
+        "reached as steps on the scale; for a pace goal the pace at the start, now (last 28 "
+        "days) and the target. Use this when the user asks about their goals or how close "
+        "they are. A goal is never 'failed': if `overdue`, say the date has passed and that "
+        "they can keep it, move the date or let it go."
+    ),
+    "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
+}
+
+TOOLS += [SET_GOAL, GET_GOALS]
+
 DRAFT_SESSION = {
     "name": "draft_session",
     "description": (
@@ -485,6 +560,10 @@ def run_tool(store: Store, name: str, tool_input: dict) -> str:
         result = get_training_load(store, **tool_input)
     elif name == "calculate_progression":
         result = calculate_progression(store, **tool_input)
+    elif name == "set_goal":
+        result = set_goal(store, **tool_input)
+    elif name == "get_goals":
+        result = list_goals(store, **tool_input)
     else:
         raise ValueError(f"unknown tool {name!r}")
     return json.dumps(result)

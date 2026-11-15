@@ -1,0 +1,35 @@
+{
+  "id": "set_goal_on_request",
+  "note": "N2 (#30, docs/design-proposals-2.md): 'set a goal to send red' should work in chat. The agent calls set_goal with the grade and mode the user named, confirms it, and says it can be changed or let go. Needs migration 20261115130000_create_goals.sql on the eval database; until then set_goal's insert fails there.",
+  "seed": {
+    "dates": "days_ago is relative to the day the case runs (0 = today)",
+    "running": [],
+    "climbing": [
+      {"days_ago": 6, "duration_min": 90, "effort": 7, "climbs": [
+        {"grade": "purple", "style": "boulder", "sent": true, "attempts": 2},
+        {"grade": "red", "style": "boulder", "sent": false, "attempts": 4}]},
+      {"days_ago": 2, "duration_min": 80, "effort": 7, "climbs": [
+        {"grade": "purple", "style": "boulder", "sent": true, "attempts": 1}]}
+    ]
+  },
+  "known_bad": {
+    "source": "Written for this case: a reply that pressures and judges instead of confirming the user's goal.",
+    "why": "Frames the goal as a test the user might fail.",
+    "should_fail": "must_not-1",
+    "answer": "Done: goal set to send a red. You've failed red four times this week, so you'll need to push harder or you'll miss it."
+  },
+  "question": "Set me a goal to send a red. No date.",
+  "expect": {
+    "tools_called": ["set_goal"],
+    "tool_inputs": {
+      "set_goal": {"kind": "climb_grade", "grade": "red", "climb_mode": "send"}
+    },
+    "must": [
+      "Confirm a goal to send a red was added"
+    ],
+    "must_not": [
+      "Use failure or pressure framing, such as 'failed', 'you'll miss it' or 'push harder'",
+      "Add a date or a different grade the user didn't ask for"
+    ]
+  }
+}

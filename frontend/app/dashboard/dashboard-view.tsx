@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { GradeDot } from "@/components/grade";
 import { ChartIcon } from "@/components/icons";
+import { GoalsSection } from "@/components/goals-panel";
 import { PauseBanner } from "@/components/pause-panel";
 import { EmptyState, ErrorState, Skeleton } from "@/components/states";
 import {
@@ -77,7 +78,11 @@ export function DashboardView() {
           <ErrorState offline={state.error.status === null} message={state.error.message} onRetry={retry} />
         )}
         {state.status === "ready" && (
-          <Dashboard load={state.load} progression={state.progression} onPauseEnded={retry} />
+          <>
+            {/* N2: what the user is aiming for comes first. */}
+            <GoalsSection />
+            <Dashboard load={state.load} progression={state.progression} onPauseEnded={retry} />
+          </>
         )}
       </div>
     </div>
