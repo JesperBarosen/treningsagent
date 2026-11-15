@@ -69,6 +69,13 @@ class FakeStore:
         self.pauses.append(pause)
         return dict(pause)
 
+    def update_pause(self, changes: dict) -> dict | None:
+        for p in self.pauses:
+            if not p["ended_on"]:
+                p.update(changes)
+                return dict(p)
+        return None
+
     def end_pause(self, ended_on: str, resume_choice: str) -> dict | None:
         for p in self.pauses:
             if not p["ended_on"]:

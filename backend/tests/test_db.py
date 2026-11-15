@@ -215,6 +215,22 @@ def test_pauses_are_private_and_one_at_a_time(conn):
     assert bob.end_pause("2026-11-14", "continue") is None
 
 
+def test_a_pause_that_is_on_can_be_edited_by_its_owner_only(conn):
+    # Needs migration 20261115150000_edit_pauses.sql (#82).
+    alice, bob = make_store(conn), make_store(conn)
+    alice.start_pause(PAUSE)
+    changes = {"reason": "illness", "body_part": None, "pain": None, "note": "flu",
+               "planned_end": "2026-11-20"}
+    edited = alice.update_pause(changes)
+    assert edited["reason"] == "illness" and edited["start_date"] == "2026-11-10"
+    assert edited["planned_end"] == "2026-11-20" and edited["pain"] is None
+    assert bob.update_pause(changes) is None
+    with pytest.raises(ValueError):  # the table still checks the planned end
+        alice.update_pause({**changes, "planned_end": "2026-11-01"})
+    alice.end_pause("2026-11-14", "continue")
+    assert alice.update_pause(changes) is None  # only the pause that is on
+
+
 def test_injury_details_belong_to_an_injury(conn):
     with pytest.raises(ValueError):
         make_store(conn).start_pause({**PAUSE, "reason": "illness"})

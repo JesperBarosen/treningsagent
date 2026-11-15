@@ -26,6 +26,25 @@ def validate_pause(reason: str, body_part: str | None = None, pain: int | None =
                    today: date | None = None) -> dict:
     """The row for a new pause starting today, or ValueError."""
     today = today or date.today()
+    details = _details(reason, body_part, pain, note, planned_end, earliest=today,
+                       earliest_name="today")
+    return {"start_date": today.isoformat(), **details}
+
+
+def validate_edit(active: dict, reason: str, body_part: str | None = None,
+                  pain: int | None = None, note: str | None = None,
+                  planned_end: str | None = None) -> dict:
+    """The new details for the pause that is on (#82), or ValueError. The start
+    date stays; the planned end can't be before it. Every editable field is
+    replaced, so switching away from an injury needs body part and pain cleared."""
+    return _details(reason, body_part, pain, note, planned_end,
+                    earliest=_d(active["start_date"]), earliest_name="the start of the break")
+
+
+def _details(reason: str, body_part: str | None, pain: int | None, note: str | None,
+             planned_end: str | None, earliest: date, earliest_name: str) -> dict:
+    """The checked reason, injury details, note and planned end shared by
+    starting and editing a pause."""
     if reason not in REASONS:
         raise ValueError(f"reason must be one of {REASONS}, got {reason!r}")
     body_part = (body_part or "").strip() or None
@@ -43,10 +62,10 @@ def validate_pause(reason: str, body_part: str | None = None, pain: int | None =
             end = date.fromisoformat(planned_end)
         except ValueError:
             raise ValueError(f"planned_end must be YYYY-MM-DD, got {planned_end!r}") from None
-        if end < today:
-            raise ValueError("planned_end can't be before today")
-    return {"start_date": today.isoformat(), "planned_end": planned_end, "reason": reason,
-            "body_part": body_part, "pain": pain, "note": note}
+        if end < earliest:
+            raise ValueError(f"planned_end can't be before {earliest_name}")
+    return {"planned_end": planned_end, "reason": reason, "body_part": body_part, "pain": pain,
+            "note": note}
 
 
 def _d(value) -> date:

@@ -210,6 +210,22 @@ class PostgresStore:
             raise ValueError(e.diag.message_primary) from None
         return {"id": pause_id, **row, "ended_on": None, "resume_choice": None}
 
+    def update_pause(self, changes: dict) -> dict | None:
+        """Change the details of the pause that is on (pauses.validate_edit's
+        dict). None if there is none. Needs migration 20261115150000_edit_pauses.sql
+        (the column grants); without it, RuntimeError."""
+        query = sql.SQL("update public.pauses set {} where ended_on is null returning {}").format(
+            sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(k)) for k in changes),
+            sql.SQL(", ").join(map(sql.Identifier, PAUSE_COLUMNS)))
+        try:
+            with self._as_user() as conn:
+                row = conn.execute(query, list(changes.values())).fetchone()
+        except psycopg.errors.InsufficientPrivilege:
+            raise RuntimeError("editing breaks needs migration 20261115150000_edit_pauses.sql") from None
+        except psycopg.errors.IntegrityError as e:  # a check the validation missed
+            raise ValueError(e.diag.message_primary) from None
+        return self._pause(row) if row else None
+
     def end_pause(self, ended_on: str, resume_choice: str) -> dict | None:
         """End the pause that is on. None if there is none."""
         query = sql.SQL("update public.pauses set ended_on = %s, resume_choice = %s"
