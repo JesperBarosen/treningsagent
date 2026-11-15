@@ -108,6 +108,30 @@
   }
 }
 
+/* Colour-blind friendly chart colours (#61, design-visual V-L1), chosen on the
+   Account page (lib/chart-prefs.ts sets data-chart-palette on <html> before the
+   first paint). Blue, orange and plum keep every pair apart for protan, deutan
+   and tritan vision (worst ΔE 22.3 light / 15.7 dark; the default palette's
+   worst is 7.5 / 5.7, for tritan). Charts only: sport icons keep their colours.
+   tests/chart-prefs.test.ts checks the dataviz rules for both themes. */
+:root[data-chart-palette="cvd"] {
+  --chart-run: #0046ee;
+  --chart-climb: #e5753c;
+  --chart-strength: #96285a;
+}
+:root[data-chart-palette="cvd"][data-theme="dark"] {
+  --chart-run: #6446ff;
+  --chart-climb: #f25a00;
+  --chart-strength: #a85e9c;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-chart-palette="cvd"]:not([data-theme="light"]) {
+    --chart-run: #6446ff;
+    --chart-climb: #f25a00;
+    --chart-strength: #a85e9c;
+  }
+}
+
 @theme static {
   --color-*: initial;
   --color-transparent: transparent;

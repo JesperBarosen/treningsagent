@@ -77,6 +77,22 @@ normal 18.9 / 19.6; `tests/sport-colours.test.ts`). Two limits:
 - Under simulated tritanopia it is close to running (ΔE 7.5 light / 5.7 dark),
   so a chart with all three keeps its legend and gaps between segments.
 
+People can switch charts to a **colour-blind friendly** palette on the Account
+page (`lib/chart-prefs.ts`, saved per device and set as
+`data-chart-palette="cvd"` on `<html>` before the first paint; design-visual
+V-L1). Only the chart tokens change; sport icons keep spruce and ochre.
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `--chart-run` | `#0046EE` blue | `#6446FF` |
+| `--chart-climb` | `#E5753C` orange | `#F25A00` |
+| `--chart-strength` | `#96285A` plum | `#A85E9C` |
+
+Every pair passes for protan, deutan **and tritan** (worst ΔE 22.3 light / 15.7
+dark, against 7.5 / 5.7 for the standard palette), with 15+ for normal vision
+and 3:1 on the surface (`tests/chart-prefs.test.tsx`). The same page sets the
+Dashboard on a phone to "Summary first" (default) or "Everything open".
+
 Chart rules: bars at most 24px wide with a rounded 4px top and a square
 baseline, a 2px surface gap between stacked segments, 2px lines, dots of at
 least 8px with a 2px surface ring, and solid hairline gridlines in `--line`.
