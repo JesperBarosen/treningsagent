@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getTrainingLoad, type TrainingLoad } from "@/lib/api";
+import { coachGoal, GoalLine } from "@/components/goals-panel";
+import { getGoals, getTrainingLoad, type Goal, type TrainingLoad } from "@/lib/api";
 import { SENSITIVE } from "@/lib/discreet";
 import { recordEvent } from "@/lib/events";
 import { nf } from "@/lib/format";
@@ -17,8 +18,18 @@ type Glance = { load: TrainingLoad; reviewed: boolean };
  *  It's extra, so on any error it simply doesn't show. */
 export function WeekGlance() {
   const [glance, setGlance] = useState<Glance | null>(null);
+  const [goal, setGoal] = useState<Goal | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const lastWeek = lastWeekStart();
+
+  // The goal line (#83) loads on its own: a failure hides only the line.
+  useEffect(() => {
+    const controller = new AbortController();
+    getGoals(controller.signal)
+      .then((goals) => setGoal(coachGoal(goals)))
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -32,9 +43,15 @@ export function WeekGlance() {
     return () => controller.abort();
   }, [lastWeek]);
 
-  if (!glance) return null;
-  const [prev, now] = glance.load.weekly;
-  if (!prev || !now || glance.load.history_days === 0) return null;
+  const [prev, now] = glance?.load.weekly ?? [];
+  if (!glance || !prev || !now || glance.load.history_days === 0) {
+    // No week to show yet; a goal set before the first session still shows.
+    return goal ? (
+      <div className="mb-4">
+        <GoalLine goal={goal} />
+      </div>
+    ) : null;
+  }
 
   function skip() {
     setDismissed(true); // quiet after one dismissal, even if saving fails
@@ -81,6 +98,7 @@ export function WeekGlance() {
         </span>
         <span {...SENSITIVE}>last week {nf.format(prev.load)}</span>
       </p>
+      <GoalLine goal={goal} />
     </div>
   );
 }
