@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
+import { DateInput } from "@/components/date-input";
 import {
   ApiError,
   endPause,
@@ -142,6 +143,7 @@ export function PauseForm({ onStarted, onCancel }: { onStarted: (p: Pause) => vo
   const [pain, setPain] = useState<number | null>(null);
   const [note, setNote] = useState("");
   const [until, setUntil] = useState("");
+  const uid = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const field =
@@ -237,10 +239,12 @@ export function PauseForm({ onStarted, onCancel }: { onStarted: (p: Pause) => vo
               className={`${field} mt-1.5 resize-none py-2`}
             />
           </label>
-          <label className="text-sm font-medium">
-            Back by <span className="font-normal text-ink-muted">(optional)</span>
-            <input type="date" value={until} onChange={(e) => setUntil(e.target.value)} className={`${field} mt-1.5`} />
-          </label>
+          <div>
+            <label htmlFor={`${uid}-until`} className="text-sm font-medium">
+              Back by <span className="font-normal text-ink-muted">(optional)</span>
+            </label>
+            <DateInput id={`${uid}-until`} value={until} onChange={setUntil} optional className="mt-1.5" />
+          </div>
         </>
       )}
 

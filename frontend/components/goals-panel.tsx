@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
+import { DateInput } from "@/components/date-input";
 import {
   addGoal,
   ApiError,
@@ -97,6 +98,7 @@ function PaceBar({ goal }: { goal: PaceGoal }) {
 function GoalCard({ goal, onChanged }: { goal: Goal; onChanged: () => void }) {
   const [moving, setMoving] = useState(false);
   const [date, setDate] = useState(goal.target_date ?? "");
+  const uid = useId();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -161,16 +163,14 @@ function GoalCard({ goal, onChanged }: { goal: Goal; onChanged: () => void }) {
 
       {moving && (
         <div className="mt-3 flex flex-wrap items-end gap-2">
-          <label className="text-sm font-medium">
-            New date
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="mt-1 block min-h-11 rounded-md border border-control bg-surface px-3 text-base"
-            />
-          </label>
-          <Button disabled={busy || !date} onClick={() => act(() => changeGoal(goal.id, { target_date: date }))}>
+          <div className="min-w-0 basis-56">
+            <label htmlFor={`${uid}-date`} className="text-sm font-medium">
+              New date
+            </label>
+            <DateInput id={`${uid}-date`} value={date} onChange={setDate} optional className="mt-1" />
+          </div>
+          {/* An empty date saves the goal without one (Clear, then Save). */}
+          <Button disabled={busy} onClick={() => act(() => changeGoal(goal.id, { target_date: date || null }))}>
             Save date
           </Button>
           <Button variant="ghost" onClick={() => setMoving(false)}>
@@ -219,6 +219,7 @@ export function AddGoalForm({ onAdded, onCancel }: { onAdded: () => void; onCanc
   const [band, setBand] = useState<DistanceBand>("7_to_15km");
   const [pace, setPace] = useState("");
   const [date, setDate] = useState("");
+  const uid = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const field = "mt-1 block min-h-11 w-full rounded-md border border-control bg-surface px-3 text-base";
@@ -305,10 +306,12 @@ export function AddGoalForm({ onAdded, onCancel }: { onAdded: () => void; onCanc
         </div>
       )}
 
-      <label className="text-sm font-medium">
-        By <span className="font-normal text-ink-muted">(optional)</span>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={field} />
-      </label>
+      <div>
+        <label htmlFor={`${uid}-by`} className="text-sm font-medium">
+          By <span className="font-normal text-ink-muted">(optional)</span>
+        </label>
+        <DateInput id={`${uid}-by`} value={date} onChange={setDate} optional className="mt-1" />
+      </div>
 
       {error && (
         <p role="alert" className="rounded-md bg-danger-soft px-4 py-3 text-sm text-danger">
