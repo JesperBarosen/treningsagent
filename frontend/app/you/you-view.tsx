@@ -13,7 +13,7 @@ export function YouView() {
   const { busy, signOut } = useSignOut();
   const row = "flex min-h-14 w-full items-center gap-3 px-4 text-left";
   return (
-    <div className="pt-4 pb-24 md:pb-12">
+    <div className="pt-4 pb-12">
       <h1 className="font-display text-xl font-semibold">You</h1>
       <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-surface">
         <li className={row}>

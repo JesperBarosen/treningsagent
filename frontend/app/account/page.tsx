@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Account" };
 
 export default function AccountPage() {
   return (
-    <div className="mx-auto max-w-sm pt-4 pb-24 md:pb-12">
+    <div className="mx-auto max-w-sm pt-4 pb-12">
       <h1 className="font-display text-xl font-semibold">Account</h1>
       <section aria-labelledby="password-title" className="mt-4 rounded-lg border border-line bg-surface p-4">
         <h2 id="password-title" className="font-semibold">

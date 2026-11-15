@@ -232,8 +232,9 @@ export function Chat() {
         )}
       </div>
 
-      {/* Bottom padding leaves room for the fixed composer (and the tab bar on mobile). */}
-      <div className="pb-64 md:pb-52">
+      {/* Bottom padding leaves room for the fixed composer; <main> already
+          leaves room for the tab bar on phones. */}
+      <div className="pb-52">
         {userId && <WeekGlance />}
         {empty && <Welcome />}
         <ol aria-label="Conversation" aria-live="polite" className="space-y-4">
@@ -282,7 +283,7 @@ export function Chat() {
         }}
       />
 
-      <div className="fixed inset-x-0 bottom-14 z-20 border-t border-line bg-elevated/95 shadow-sheet backdrop-blur md:bottom-0">
+      <div className="fixed inset-x-0 bottom-tab-bar z-20 border-t border-line bg-elevated/95 shadow-sheet backdrop-blur md:bottom-0">
         <div className="mx-auto max-w-content px-4 pt-3 pb-3 sm:px-6">
           <LogShortcuts />
           <div

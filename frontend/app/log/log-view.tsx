@@ -51,7 +51,7 @@ export function LogView() {
   }
 
   return (
-    <div className="pt-4 pb-24 md:pb-12">
+    <div className="pt-4 pb-12">
       <div className="flex items-end justify-between gap-4">
         <h1 className="font-display text-xl font-semibold">Log a session</h1>
         {last && (

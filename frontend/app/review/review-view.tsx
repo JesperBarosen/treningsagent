@@ -48,7 +48,7 @@ export function ReviewViewFromUrl() {
 /** What the prerendered page shows until the browser has read `?week=`. */
 export function ReviewSkeleton() {
   return (
-    <div className="pt-4 pb-24 md:pb-12">
+    <div className="pt-4 pb-12">
       <h1 className="font-display text-xl font-semibold">Your week</h1>
       <div className="mt-4">
         <LoadingReview />
@@ -98,7 +98,7 @@ export function ReviewView({ week: weekParam }: { week?: string }) {
   const fresh = weeksAgo(week) === 1;
 
   return (
-    <div className="pt-4 pb-24 md:pb-12">
+    <div className="pt-4 pb-12">
       <h1 className="font-display text-xl font-semibold">Your week</h1>
       <p className="text-sm text-ink-muted">
         {weekRange(week)}

@@ -50,7 +50,7 @@ export function SessionsView() {
   }
 
   return (
-    <div className="pt-4 pb-24 md:pb-12">
+    <div className="pt-4 pb-12">
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-xl font-semibold">Sessions</h1>
