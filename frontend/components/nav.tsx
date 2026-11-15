@@ -128,6 +128,7 @@ export function TabBar() {
   return (
     <nav
       aria-label="Main"
+      data-tab-bar
       className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <ul className="mx-auto flex max-w-md">

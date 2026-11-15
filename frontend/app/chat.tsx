@@ -18,6 +18,7 @@ import {
   type DraftRef,
 } from "@/lib/chat-drafts";
 import { dropLegacyChats, loadChat, saveChat } from "@/lib/chat-storage";
+import { useComposerKeyboard } from "@/lib/keyboard";
 import { SENSITIVE } from "@/lib/discreet";
 import { currentUserId } from "@/lib/supabase/client";
 import { sessionSummary } from "@/lib/format";
@@ -82,6 +83,7 @@ export function Chat() {
   const [editing, setEditing] = useState<Session | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const keyboard = useComposerKeyboard();
 
   // Restore after mount (the server render has no localStorage), for the signed-in user only.
   useEffect(() => {
@@ -283,8 +285,21 @@ export function Chat() {
         }}
       />
 
-      <div className="fixed inset-x-0 bottom-tab-bar z-20 border-t border-line bg-elevated/95 shadow-sheet backdrop-blur md:bottom-0">
-        <div className="mx-auto max-w-content px-4 pt-3 pb-3 sm:px-6">
+      {/* While typing on a phone the tab bar hides and the composer sits on the
+          keyboard (lib/keyboard.ts); otherwise it sits on the tab bar. */}
+      <div
+        data-testid="composer"
+        onFocus={keyboard.onFocus}
+        onBlur={keyboard.onBlur}
+        style={keyboard.active ? { bottom: keyboard.inset } : undefined}
+        className="fixed inset-x-0 bottom-tab-bar z-20 border-t border-line bg-elevated/95 shadow-sheet backdrop-blur md:bottom-0"
+      >
+        <div
+          className={`mx-auto max-w-content px-4 pt-3 sm:px-6 ${
+            // No keyboard on screen (e.g. a hardware one): keep clear of the home indicator.
+            keyboard.active && keyboard.inset === 0 ? "pb-[max(0.75rem,env(safe-area-inset-bottom))]" : "pb-3"
+          }`}
+        >
           <LogShortcuts />
           <div
             className="scrollbar-none -mx-4 mb-2 flex gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6"
