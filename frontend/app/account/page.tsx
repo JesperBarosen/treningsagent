@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BreakSection } from "@/components/break-section";
 import { AutoSaveSetting } from "./auto-save-setting";
 import { ChartSettings } from "./chart-settings";
 import { SetPasswordForm } from "./set-password-form";
@@ -19,6 +20,8 @@ export default function AccountPage() {
         </p>
         <SetPasswordForm />
       </section>
+      {/* Also on the You tab; here it is reachable at every width (key icon in the top bar). */}
+      <BreakSection className="mt-4 rounded-lg border border-line bg-surface p-4" />
       <section aria-labelledby="chat-title" className="mt-4 rounded-lg border border-line bg-surface p-4">
         <h2 id="chat-title" className="mb-3 font-semibold">
           Coach

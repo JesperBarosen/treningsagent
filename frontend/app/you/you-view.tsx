@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { ChevronIcon, KeyIcon, SignOutIcon } from "@/components/icons";
 import { useSignOut } from "@/components/nav";
-import { PauseControl } from "@/components/pause-panel";
+import { BreakSection } from "@/components/break-section";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 /** The You tab (N3): what used to sit in the top-right corner, now in thumb
- *  reach as full-width rows. On desktop the top bar still has these too. */
+ *  reach as full-width rows. On desktop the top bar has theme, account and sign
+ *  out, and the Account page has the break section. */
 export function YouView() {
   const { busy, signOut } = useSignOut();
   const row = "flex min-h-14 w-full items-center gap-3 px-4 text-left";
@@ -24,7 +25,7 @@ export function YouView() {
             <KeyIcon size={20} />
             <span className="flex-1">
               <span className="block font-medium">Account</span>
-              <span className="block text-sm text-ink-muted">Password and coach settings</span>
+              <span className="block text-sm text-ink-muted">Password, breaks, charts and coach settings</span>
             </span>
             <ChevronIcon size={18} />
           </Link>
@@ -42,15 +43,7 @@ export function YouView() {
         </li>
       </ul>
 
-      <section aria-labelledby="break-title" className="mt-6">
-        <h2 id="break-title" className="font-semibold">
-          A break from training
-        </h2>
-        <p className="mt-1 mb-3 text-sm text-ink-muted">
-          Injured, ill or away? Pause tracking so trends and the load ratio don&apos;t read the gap as a drop.
-        </p>
-        <PauseControl />
-      </section>
+      <BreakSection className="mt-6" />
     </div>
   );
 }
