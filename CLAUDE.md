@@ -28,14 +28,17 @@
 - Don't merge until the user says so. Then merge with a merge commit (not squash), delete the branch, check out `main` and pull.
 
 ## Project board
-- Every new issue and PR goes in the GitHub Project "Treningsagent roadmap"
+- Every new issue goes in the GitHub Project "Treningsagent roadmap"
   (https://github.com/users/JesperBarosen/projects/1) with all fields set:
   Status, Priority (`P0 critical`, `P1 high`, `P2 medium`, `P3 later`), Size (`S`, `M`, `L`)
   and Phase (`MVP`, `Design`, `Plans and proposals`, `Research (Phase 3)`, `Polish (Phase 4-5)`).
-- Status: new work starts in `Backlog` (or `Next` when it is up next). Move the issue to
-  `In progress` when work on it starts, and to `In review` when its PR opens. `Done` is for
-  merged PRs and closed issues.
-- When a PR has an issue, link it in the PR body (`Closes #n`).
+- A PR that closes an issue stays off the board: link the issue in the PR body
+  (`Closes #n`) and track the work through the issue.
+- A PR that closes no issue goes on the board itself, with the same fields set. Don't create
+  an issue just to track it; link any related issues from the PR description instead.
+- Status: new work starts in `Backlog` (or `Next` when it is up next). Move the item (the issue,
+  or the PR when it has no issue) to `In progress` when work on it starts, and to `In review`
+  when its PR opens. `Done` is for merged PRs and closed issues.
 - Use `gh project item-add` and `gh project item-edit`.
 
 ## Secrets
