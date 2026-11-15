@@ -5,7 +5,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { DATE_FIELD, SessionForm } from "@/components/session-form";
+import { DATE_FIELD } from "@/components/date-input";
+import { SessionForm } from "@/components/session-form";
 import type { Session } from "@/lib/api";
 
 vi.mock("@/lib/supabase/client", () => ({
@@ -43,7 +44,7 @@ function expectDateFits() {
   const duration = screen.getByLabelText("Duration (min)");
   for (const c of ["min-h-11", "px-3", "rounded-md", "text-base"]) expect(duration).toHaveClass(c);
   // Both rows are two shrinkable columns, not grid-cols-2 (minmax(auto, 1fr)).
-  const rows = [date, screen.getByLabelText("Distance (km)")].map((el) => el.parentElement!.parentElement!);
+  const rows = [date, screen.getByLabelText("Distance (km)")].map((el) => el.closest<HTMLElement>(".grid")!);
   for (const row of rows) {
     expect(row).toHaveClass(PAIR);
     expect(row).not.toHaveClass("grid-cols-2");
