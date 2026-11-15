@@ -12,9 +12,10 @@ with `@theme`). The default Tailwind palette is switched off
 
 ## Colour
 
-Light and dark follow the system setting (`prefers-color-scheme`) unless the
-user picks Light or Dark with the theme switch in the top bar (System / Light /
-Dark, `components/theme-toggle.tsx`). An explicit choice is saved in
+Light and dark follow the system setting (`prefers-color-scheme`) until the
+user taps the theme switch in the top bar (`components/theme-toggle.tsx`). It
+toggles Light and Dark only: a moon in light mode, a sun in dark mode, with the
+icon picked by CSS so it is right on the first paint. An explicit choice is saved in
 localStorage and set as `data-theme` on `<html>` by an inline script before the
 first paint (`lib/theme.ts`), and it also sets the browser's `theme-color`.
 The dark tokens appear twice in `globals.css`, for `data-theme="dark"` and for

@@ -4,7 +4,15 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { applyTheme, readTheme, THEME_COLORS, THEME_KEY, THEME_SCRIPT } from "@/lib/theme";
+import {
+  applyTheme,
+  currentAppearance,
+  readTheme,
+  THEME_COLORS,
+  THEME_KEY,
+  THEME_SCRIPT,
+  toggleTheme,
+} from "@/lib/theme";
 
 const html = document.documentElement;
 const metas = () => [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')];
@@ -73,25 +81,87 @@ describe("THEME_SCRIPT (inline in <head>)", () => {
   });
 });
 
-describe("ThemeToggle", () => {
-  it("cycles System -> Light -> Dark -> System and remembers the choice", async () => {
-    render(<ThemeToggle />);
-    const button = () => screen.getByRole("button", { name: /^Theme:/ });
-    expect(button()).toHaveAccessibleName("Theme: System. Switch to Light");
+/** A controllable prefers-color-scheme: `os.dark = true; os.fire()` flips the OS. */
+const os = { dark: false, listeners: new Set<() => void>(), fire() { this.listeners.forEach((l) => l()); } };
+beforeEach(() => {
+  os.dark = false;
+  os.listeners.clear();
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    get matches() { return query.includes("dark") && os.dark; },
+    media: query,
+    addEventListener: (_: string, l: () => void) => os.listeners.add(l),
+    removeEventListener: (_: string, l: () => void) => os.listeners.delete(l),
+  }));
+});
+afterEach(() => vi.unstubAllGlobals());
 
-    await userEvent.click(button());
-    expect(button()).toHaveAccessibleName("Theme: Light. Switch to Dark");
+describe("currentAppearance and toggleTheme", () => {
+  it("follow the OS until a choice is saved, then the choice", () => {
+    expect(currentAppearance()).toBe("light");
+    os.dark = true;
+    expect(currentAppearance()).toBe("dark");
+    expect(localStorage.getItem(THEME_KEY)).toBeNull(); // nothing stored by looking
+
+    expect(toggleTheme()).toBe("light"); // the opposite of what is shown
     expect(localStorage.getItem(THEME_KEY)).toBe("light");
-    expect(html.dataset.theme).toBe("light");
+    expect(currentAppearance()).toBe("light"); // the OS no longer decides
+  });
+
+  it("never offers System again once a choice is made", () => {
+    toggleTheme();
+    toggleTheme();
+    expect(["light", "dark"]).toContain(localStorage.getItem(THEME_KEY));
+  });
+});
+
+describe("ThemeToggle", () => {
+  const button = () => screen.getByRole("button", { name: /^Switch to/ });
+
+  it("in light mode shows a moon and switches to dark; then a sun and back to light", async () => {
+    render(<ThemeToggle />);
+    expect(button()).toHaveAccessibleName("Switch to dark mode");
+    expect(button()).toHaveAttribute("title", "Switch to dark mode");
+    expect(button()).toHaveClass("size-11"); // 44 px target
+    expect(localStorage.getItem(THEME_KEY)).toBeNull();
 
     await userEvent.click(button());
+    expect(button()).toHaveAccessibleName("Switch to light mode");
     expect(localStorage.getItem(THEME_KEY)).toBe("dark");
     expect(html.dataset.theme).toBe("dark");
 
     await userEvent.click(button());
-    expect(button()).toHaveAccessibleName("Theme: System. Switch to Light");
+    expect(button()).toHaveAccessibleName("Switch to dark mode");
+    expect(localStorage.getItem(THEME_KEY)).toBe("light");
+    expect(html.dataset.theme).toBe("light");
+  });
+
+  it("has a sun for dark and a moon for light, chosen by CSS", () => {
+    render(<ThemeToggle />);
+    expect(button().querySelector(".theme-icon-dark svg")).not.toBeNull();
+    expect(button().querySelector(".theme-icon-light svg")).not.toBeNull();
+    expect(button().querySelectorAll("svg")).toHaveLength(2); // no System/monitor icon
+  });
+
+  it("follows the OS until tapped, and the choice after", async () => {
+    render(<ThemeToggle />);
+    act(() => {
+      os.dark = true;
+      os.fire();
+    });
+    expect(button()).toHaveAccessibleName("Switch to light mode");
     expect(localStorage.getItem(THEME_KEY)).toBeNull();
-    expect(html.hasAttribute("data-theme")).toBe(false);
+
+    await userEvent.click(button()); // dark shown -> light chosen
+    act(() => {
+      os.dark = false;
+      os.fire();
+    });
+    expect(button()).toHaveAccessibleName("Switch to dark mode");
+    act(() => {
+      os.dark = true;
+      os.fire();
+    });
+    expect(button()).toHaveAccessibleName("Switch to dark mode"); // the saved choice wins
   });
 
   it("still switches when storage is blocked, just without remembering", async () => {
@@ -99,8 +169,8 @@ describe("ThemeToggle", () => {
       throw new DOMException("full", "QuotaExceededError");
     });
     render(<ThemeToggle />);
-    await userEvent.click(screen.getByRole("button", { name: /^Theme:/ }));
-    expect(html.dataset.theme).toBe("light");
+    await userEvent.click(button());
+    expect(html.dataset.theme).toBe("dark");
   });
 
   it("follows a change made in another tab", () => {
@@ -109,7 +179,7 @@ describe("ThemeToggle", () => {
     act(() => {
       window.dispatchEvent(new StorageEvent("storage", { key: THEME_KEY, newValue: "dark" }));
     });
-    expect(screen.getByRole("button", { name: /^Theme:/ })).toHaveAccessibleName("Theme: Dark. Switch to System");
+    expect(button()).toHaveAccessibleName("Switch to light mode");
     expect(html.dataset.theme).toBe("dark");
   });
 });
@@ -128,6 +198,12 @@ describe("globals.css", () => {
     const explicit = block(':root[data-theme="dark"]');
     expect(explicit).toContain("--canvas: #0e1214;");
     expect(block(':root:not([data-theme="light"])')).toEqual(explicit);
+  });
+
+  it("picks the toggle's icon with the same rules as the colours", () => {
+    expect(css).toContain(':root[data-theme="dark"] .theme-icon-dark');
+    expect(css).toContain(':root:not([data-theme="light"]) .theme-icon-dark');
+    expect(block(".theme-icon-dark")).toContain("display: none;");
   });
 
   it("only lets the OS turn things dark when Light wasn't chosen", () => {
