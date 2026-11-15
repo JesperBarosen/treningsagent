@@ -1,8 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it } from "vitest";
 import { Dashboard } from "@/app/dashboard/dashboard-view";
 import type { Progression, TrainingLoad, Trend } from "@/lib/api";
-import { ratioView } from "@/lib/dashboard";
+import { mainPaceBand, ratioView, summarySentence } from "@/lib/dashboard";
 
 beforeAll(() => {
   // Recharts' ResponsiveContainer needs ResizeObserver, which jsdom lacks.
@@ -136,5 +137,61 @@ describe("Dashboard", () => {
       />,
     );
     expect(screen.getByText("Nothing to chart yet")).toBeInTheDocument();
+  });
+});
+
+// #59 (design-visual V-M3): summary first on phones, charts as rows.
+describe("summary first on mobile", () => {
+  it("builds one sentence from the backend's ratio zone and trend words only", () => {
+    expect(summarySentence(load(), progression())).toBe(
+      "Your load is in your usual range. Pace on 7–15 km runs is getting faster. Your hardest sends are going up.",
+    );
+  });
+
+  it("leaves out what the backend has not enough data for", () => {
+    const p = progression();
+    p.running.trends.pace_by_distance["7_to_15km"] = trend("not enough data");
+    p.running.trends.pace_by_distance.over_15km = trend("not enough data");
+    p.climbing.trends.avg_session_hardest_sent.trend = "not enough data";
+    const young = load({ ratio_status: "not_enough_data", history_days: 10 });
+    expect(summarySentence(young, p)).toBe("Not enough data for trends yet. Keep logging and they show up here.");
+    expect(summarySentence(load({ ratio_status: "paused" }), p)).toBe("Your load ratio is paused for your break.");
+  });
+
+  it("picks the pace band with the most recent runs for the row chip", () => {
+    const p = progression();
+    p.running.trends.pace_by_distance.over_15km = { ...trend("flat"), recent_sessions: 5 };
+    expect(mainPaceBand(p.running)).toBe("over_15km");
+    expect(mainPaceBand(progression().running)).toBe("7_to_15km");
+  });
+
+  it("shows three headline numbers, blurred in discreet mode", () => {
+    render(<Dashboard load={load()} progression={progression()} />);
+    const summary = screen.getByRole("region", { name: "Summary" });
+    const numbers = within(summary).getAllByRole("definition").map((d) => d.textContent);
+    expect(numbers).toEqual(["2", "this week", "400", "900 last wk", "1.07", "moderate"]);
+    expect(summary.querySelector("dl")).toHaveAttribute("data-sensitive");
+    expect(summary).toHaveClass("md:hidden");
+  });
+
+  it("starts each chart as a row on phones that opens in place", async () => {
+    const user = userEvent.setup();
+    render(<Dashboard load={load()} progression={progression()} />);
+    const toggle = screen.getByRole("button", { name: "Hardest grades" });
+    const body = document.getElementById(toggle.getAttribute("aria-controls")!)!;
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(body).toHaveClass("max-md:hidden");
+    expect(toggle).toHaveClass("md:hidden"); // from 768 px the grid stays open
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(body).not.toHaveClass("max-md:hidden");
+  });
+
+  it("keeps the trend chip on the collapsed row", () => {
+    render(<Dashboard load={load()} progression={progression()} />);
+    const pace = screen.getByRole("region", { name: "Running pace" });
+    const header = pace.firstElementChild as HTMLElement;
+    expect(within(header).getByText("7–15 km")).toBeInTheDocument();
+    expect(within(header).getByText("Improving")).toBeInTheDocument();
   });
 });
