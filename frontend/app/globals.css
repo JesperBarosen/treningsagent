@@ -287,13 +287,13 @@
 /* iOS Safari draws a native date field narrower than its grid cell would
    allow (it overflowed into Duration) and shorter than other fields, with its
    value centred. Plain appearance lets min-height and padding apply; the value
-   aligns left like the other fields. tests/iphone-layout.test.ts checks it. */
+   aligns left like the other fields. Height and line-height live on the input
+   as utilities (DATE_FIELD in components/session-form.tsx): here they would
+   lose to text-base's line-height. tests/iphone-css.test.ts checks it. */
 @layer base {
   input[type="date"] {
     -webkit-appearance: none;
     appearance: none;
-    height: 2.75rem;
-    line-height: calc(2.75rem - 2px);
   }
   input[type="date"]::-webkit-date-and-time-value {
     text-align: left;

@@ -56,10 +56,24 @@ describe("date field on iOS", () => {
     const body = rule('input[type="date"]', "appearance").body;
     expect(body).toMatch(/-webkit-appearance:\s*none/);
     expect(body).toMatch(/(^|[^-])appearance:\s*none/);
+    // Height and line-height belong to utilities on the input; in the base
+    // layer, text-base's line-height would beat them.
+    expect(body).not.toMatch(/(^|[\s;{])(height|line-height):/);
   });
 
   it("aligns the value left like the other fields", () => {
-    expect(rule('input[type="date"]::-webkit-date-and-time-value').body).toMatch(/text-align:\s*left/);
+    const body = rule('input[type="date"]::-webkit-date-and-time-value').body;
+    expect(body).toMatch(/text-align:\s*left/);
+    expect(body).toMatch(/margin:\s*0/);
+  });
+
+  it("centres the value with a line-height utility that overrides text-base", () => {
+    expect(rule(".h-11").body).toMatch(/height:\s*calc\(var\(--spacing\) \* 11\)/);
+    const leading = rule(String.raw`.leading-\[calc\(2\.75rem-2px\)\]`).body;
+    expect(leading).toMatch(/line-height:\s*calc\(2\.75rem - 2px\)/);
+    // text-base's line-height yields to --tw-leading, which the utility sets.
+    expect(leading).toMatch(/--tw-leading:\s*calc\(2\.75rem - 2px\)/);
+    expect(rule(".text-base").body).toMatch(/line-height:\s*var\(--tw-leading,/);
   });
 
   it("compiles the shrinkable two-column grid", () => {
