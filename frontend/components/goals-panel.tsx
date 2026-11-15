@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
 import { DateInput } from "@/components/date-input";
 import {
@@ -21,7 +22,7 @@ import { BAND_LABELS } from "@/lib/dashboard";
 import { SENSITIVE } from "@/lib/discreet";
 import { formatPace, shortDate } from "@/lib/format";
 import { GradeDot } from "./grade";
-import { CheckIcon, PlusIcon } from "./icons";
+import { CheckIcon, ChevronIcon, PlusIcon } from "./icons";
 import { Button } from "./states";
 
 // Outcome goals (N2, docs/design-proposals-2.md). Progress is shown abstractly
@@ -30,11 +31,55 @@ import { Button } from "./states";
 
 /** "Send a red by 1 Mar" / "7–15 km at 5:00 /km by 30 Apr". */
 export function goalTitle(g: Goal): string {
-  const what =
-    g.kind === "climb_grade"
-      ? `${g.climb_mode === "flash" ? "Flash" : "Send"} a ${g.grade}`
-      : `${BAND_LABELS[g.band]} at ${formatPace(g.target_pace)} /km`;
+  const what = goalWhat(g);
   return g.target_date ? `${what} by ${shortDate(g.target_date)}` : what;
+}
+
+/** The goal Coach shows (#83): an active goal not yet reached, the one with the
+ *  nearest date first, then the oldest. Null when there is none. */
+export function coachGoal(goals: Goal[]): Goal | null {
+  const open = goals.filter((g) => g.status === "active" && !g.progress.reached_on);
+  const key = (g: Goal) => g.target_date ?? "9999-12-31";
+  return open.sort((a, b) => key(a).localeCompare(key(b)) || a.id - b.id)[0] ?? null;
+}
+
+/** "3 weeks left", "5 days left", "due today", "date passed", or null without a date. */
+export function timeLeft(target: string | null, today: Date = new Date()): string | null {
+  if (!target) return null;
+  const [y, m, d] = target.split("-").map(Number);
+  const start = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  const days = Math.round((Date.UTC(y, m - 1, d) - start) / 86_400_000);
+  if (days < 0) return "date passed";
+  if (days === 0) return "due today";
+  if (days < 14) return `${days} ${days === 1 ? "day" : "days"} left`;
+  return `${Math.floor(days / 7)} weeks left`;
+}
+
+/** What the goal is, without the date: "Send a red", "7–15 km at 5:00 /km". */
+function goalWhat(g: Goal): string {
+  return g.kind === "climb_grade"
+    ? `${g.climb_mode === "flash" ? "Flash" : "Send"} a ${g.grade}`
+    : `${BAND_LABELS[g.band]} at ${formatPace(g.target_pace)} /km`;
+}
+
+/** One line on Coach, in the "This week" glance (#83): the goal and the time
+ *  left, linking to the goal on the Dashboard. Nothing (no height) without one. */
+export function GoalLine({ goal, today }: { goal: Goal | null; today?: Date }) {
+  if (!goal) return null;
+  const left = timeLeft(goal.target_date, today);
+  return (
+    <Link
+      href={`/dashboard#goal-${goal.id}`}
+      className="flex min-h-11 items-center gap-1 text-sm text-ink-muted hover:text-ink"
+    >
+      <span className="font-medium text-ink">Goal</span>
+      <span {...SENSITIVE} className="min-w-0 truncate tabular-nums">
+        {goalWhat(goal)}
+        {left && ` · ${left}`}
+      </span>
+      <ChevronIcon size={14} className="shrink-0" />
+    </Link>
+  );
 }
 
 /** Pace typed as "5:00" or "5.0" -> 5.0 min/km; null if it can't be read. */
@@ -121,7 +166,11 @@ function GoalCard({ goal, onChanged }: { goal: Goal; onChanged: () => void }) {
   const reached = goal.status === "achieved";
   const outline = "border border-control";
   return (
-    <li aria-label={goalTitle(goal)} className="rounded-lg border border-line bg-surface p-4">
+    <li
+      id={`goal-${goal.id}`}
+      aria-label={goalTitle(goal)}
+      className="scroll-mt-20 rounded-lg border border-line bg-surface p-4 target:border-accent"
+    >
       <div className="flex items-start justify-between gap-3">
         <p className="font-semibold">
           {goal.kind === "climb_grade" && (
@@ -348,6 +397,14 @@ export function GoalsSection() {
     load(controller.signal);
     return () => controller.abort();
   }, [load]);
+
+  // Coach's goal line links to /dashboard#goal-<id> (#83). The cards render
+  // after the goals load, too late for the browser's own jump, so scroll here.
+  const loaded = goals !== null;
+  useEffect(() => {
+    if (!loaded || !window.location.hash.startsWith("#goal-")) return;
+    document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ block: "start" });
+  }, [loaded]);
 
   const shown = (goals ?? []).filter((g) => g.status !== "dropped");
   return (

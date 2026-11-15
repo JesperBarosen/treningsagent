@@ -69,6 +69,29 @@ describe("SessionForm", () => {
     ]);
   });
 
+  it("sends a run's elevation gain in whole metres, only when given (#84)", () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<SessionForm onSubmit={onSubmit} />);
+    pick("Run");
+    type("Duration (min)", "65");
+    type("Distance (km)", "12");
+    const submit = screen.getByRole("button", { name: "Log session" });
+    for (const bad of ["-5", "2.5"]) {
+      type("Elevation gain (m) (optional)", bad);
+      expect(submit).toHaveProperty("disabled", true);
+    }
+    type("Elevation gain (m) (optional)", "300");
+    fireEvent.click(submit);
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({ distance_km: 12, elevation_m: 300 });
+    // Left empty, nothing is sent: see "shows the pace live and submits a run".
+  });
+
+  it("has no elevation field for a climb", () => {
+    render(<SessionForm onSubmit={vi.fn()} />);
+    pick("Climb");
+    expect(screen.queryByLabelText(/Elevation gain/)).toBeNull();
+  });
+
   it("can't submit without a duration", () => {
     render(<SessionForm onSubmit={vi.fn()} />);
     pick("Run");

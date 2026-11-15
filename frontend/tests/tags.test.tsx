@@ -69,6 +69,14 @@ describe("tags elsewhere", () => {
     expect(draftInput({ ...DRAFT, tags: [] })).not.toHaveProperty("tags");
   });
 
+  it("a run draft keeps its elevation gain, 0 included; a climb never sends one (#84)", () => {
+    expect(draftInput({ ...DRAFT, elevation_m: 300 }).elevation_m).toBe(300);
+    expect(draftInput({ ...DRAFT, elevation_m: 0 }).elevation_m).toBe(0);
+    expect(draftInput({ ...DRAFT, elevation_m: null })).not.toHaveProperty("elevation_m");
+    expect(draftInput(DRAFT)).not.toHaveProperty("elevation_m");
+    expect(draftInput({ ...DRAFT, sport: "climbing", elevation_m: 300 })).not.toHaveProperty("elevation_m");
+  });
+
   it("an untagged session shows nothing", () => {
     const { container } = render(<TagList tags={[]} />);
     expect(container).toBeEmptyDOMElement();
