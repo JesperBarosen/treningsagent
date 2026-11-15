@@ -274,12 +274,12 @@ function LoadCard({ load, className }: { load: TrainingLoad; className?: string 
     >
       <dl {...SENSITIVE} className="mb-3 flex gap-6">
         <div>
-          <dt className="text-xs text-ink-muted">This week so far</dt>
+          <dt className="text-meta text-ink-muted">This week so far</dt>
           <dd className="font-display text-2xl font-semibold">{nf.format(thisWeek?.load ?? 0)}</dd>
         </div>
         {lastWeek && (
           <div>
-            <dt className="text-xs text-ink-muted">Last week</dt>
+            <dt className="text-meta text-ink-muted">Last week</dt>
             <dd className="font-display text-2xl font-semibold text-ink-muted">{nf.format(lastWeek.load)}</dd>
           </div>
         )}
@@ -377,11 +377,11 @@ function RatioCard({ load }: { load: TrainingLoad }) {
       )}
       <dl {...SENSITIVE} className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3 text-sm">
         <div>
-          <dt className="text-xs text-ink-muted">7-day daily average</dt>
+          <dt className="text-meta text-ink-muted">7-day daily average</dt>
           <dd className="font-medium tabular-nums">{nf.format(load.acute_7d_avg)}</dd>
         </div>
         <div>
-          <dt className="text-xs text-ink-muted">28-day daily average</dt>
+          <dt className="text-meta text-ink-muted">28-day daily average</dt>
           <dd className="font-medium tabular-nums">{nf.format(load.chronic_28d_avg)}</dd>
         </div>
       </dl>
@@ -447,12 +447,12 @@ function PaceCard({ running, className }: { running: Progression["running"]; cla
 
 function PaceTrendLine({ trend }: { trend: Trend }) {
   if (trend.recent === null && trend.baseline === null) {
-    return <p className="mb-1 text-xs text-ink-muted">No runs in the last 6 weeks</p>;
+    return <p className="mb-1 text-meta text-ink-muted">No runs in the last 6 weeks</p>;
   }
   const part = (v: number | null, n: number, when: string) =>
     v === null ? `– ${when}` : `${formatPace(v)} ${when} (${n} ${n === 1 ? "run" : "runs"})`;
   return (
-    <p {...SENSITIVE} className="mb-1 text-xs text-ink-muted tabular-nums">
+    <p {...SENSITIVE} className="mb-1 text-meta text-ink-muted tabular-nums">
       {part(trend.recent, trend.recent_sessions, "last 2 wks")} · {part(trend.baseline, trend.baseline_sessions, "4 wks before")}
     </p>
   );
@@ -500,10 +500,10 @@ function GradeCard({ climbing, className }: { climbing: Progression["climbing"];
               { label: "Average hardest flash per session", t: flash },
             ].map(({ label, t }) => (
               <div key={label}>
-                <dt className="text-xs text-ink-muted">{label}</dt>
+                <dt className="text-meta text-ink-muted">{label}</dt>
                 <dd className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                   <GradeName grade={t.recent_grade} />
-                  <span className="text-xs text-ink-muted">last 2 wks, was</span>
+                  <span className="text-meta text-ink-muted">last 2 wks, was</span>
                   <GradeName grade={t.baseline_grade} />
                   <TrendChip trend={t.trend} />
                 </dd>

@@ -246,10 +246,10 @@ function WeekNumbers({ review: r }: { review: WeekReviewData }) {
 function Tile({ label, value, sub }: { label: string; value: string; sub: string | null }) {
   return (
     <div className="rounded-lg border border-line bg-surface px-4 py-3">
-      <dt className="text-xs text-ink-muted">{label}</dt>
+      <dt className="text-meta text-ink-muted">{label}</dt>
       <dd>
         <span className="block font-display text-2xl font-semibold tabular-nums">{value}</span>
-        {sub && <span className="block text-xs text-ink-muted tabular-nums">{sub}</span>}
+        {sub && <span className="block text-meta text-ink-muted tabular-nums">{sub}</span>}
       </dd>
     </div>
   );

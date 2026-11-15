@@ -54,7 +54,7 @@ export function LoggedSessionCard({
   if (undone) {
     return (
       <div className="rounded-lg border border-dashed border-line p-3 text-ink-muted">
-        <p className="text-xs font-medium">Undone · removed from your log</p>
+        <p className="text-meta font-medium">Undone · removed from your log</p>
         <p {...SENSITIVE} className="truncate text-sm line-through tabular-nums">
           {sessionSummary(session)}
         </p>
@@ -67,7 +67,7 @@ export function LoggedSessionCard({
       <div className="flex items-center gap-3">
         <SportBadge sport={session.sport} size="sm" />
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1 text-xs font-medium text-accent">
+          <p className="flex items-center gap-1 text-meta font-medium text-accent">
             <CheckIcon size={12} /> {edited ? "Edited" : "Logged"} · {dayLabel(session.date)}
           </p>
           <p {...SENSITIVE} className="truncate text-sm font-semibold tabular-nums">
@@ -137,7 +137,7 @@ export function SessionRow({ session, onOpen }: { session: Session; onOpen: () =
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <p className="font-semibold">{sportName(session)}</p>
-          <p className="shrink-0 text-xs text-ink-muted">{dayLabel(session.date)}</p>
+          <p className="shrink-0 text-meta text-ink-muted">{dayLabel(session.date)}</p>
         </div>
         <p {...SENSITIVE} className="mt-0.5 text-sm text-ink-muted tabular-nums">
           {stats(session).join(" · ")}

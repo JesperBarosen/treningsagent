@@ -64,7 +64,7 @@ export function SetPasswordForm() {
           aria-describedby="password-hint"
           className={field}
         />
-        <p id="password-hint" className={`mt-1 text-xs ${tooShort ? "text-danger" : "text-ink-muted"}`}>
+        <p id="password-hint" className={`mt-1 text-meta ${tooShort ? "text-danger" : "text-ink-muted"}`}>
           At least {MIN_PASSWORD_LENGTH} characters.
         </p>
       </div>
@@ -83,7 +83,7 @@ export function SetPasswordForm() {
           className={field}
         />
         {mismatch && (
-          <p id="confirm-hint" className="mt-1 text-xs text-danger">
+          <p id="confirm-hint" className="mt-1 text-meta text-danger">
             The passwords don&apos;t match.
           </p>
         )}
