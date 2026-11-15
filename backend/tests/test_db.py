@@ -54,6 +54,10 @@ def test_first_session_date(conn):
     store.insert_session({**ROW, "date": "2026-09-01"})
     assert store.first_session_date() == "2026-09-01"
     assert make_store(conn).first_session_date() is None  # another user's rows are hidden
+    # One sport only (#46): ROW is a run.
+    assert store.first_session_date(ROW["sport"]) == "2026-09-01"
+    other = "climbing" if ROW["sport"] == "running" else "running"
+    assert store.first_session_date(other) is None
 
 
 def test_chat_requests_are_limited_per_user(conn):
