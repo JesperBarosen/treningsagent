@@ -25,9 +25,17 @@ import {
   RATIO_MODERATE,
   RATIO_SPIKE,
   ratioView,
+  sessionsPerWeek,
   summarySentence,
   ZONE_WORD,
 } from "@/lib/dashboard";
+import {
+  saveSportFilter,
+  SPORT_FILTER_LABELS,
+  SPORT_FILTERS,
+  useSportFilter,
+  type SportFilter,
+} from "@/lib/sport-filter";
 import { readDensity, subscribeChartPrefs } from "@/lib/chart-prefs";
 import { SENSITIVE } from "@/lib/discreet";
 import { formatPace, formatRate, nf, shortDate } from "@/lib/format";
@@ -46,14 +54,42 @@ const WEEKS = 8;
 type State =
   | { status: "loading" }
   | { status: "error"; error: ApiError }
-  | { status: "ready"; load: TrainingLoad; progression: Progression };
+  | { status: "ready"; load: TrainingLoad; progression: Progression; sport: SportFilter };
+
+/** All / Running / Climbing at the top of the Dashboard (#46); remembered on this device. */
+export function SportFilterControl({ value }: { value: SportFilter }) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Show sport"
+      className="mt-3 inline-flex rounded-full border border-control bg-surface p-0.5"
+    >
+      {SPORT_FILTERS.map((f) => (
+        <button
+          key={f}
+          type="button"
+          role="radio"
+          aria-checked={value === f}
+          onClick={() => saveSportFilter(f)}
+          className="min-h-11 rounded-full px-4 text-sm font-medium text-ink-muted aria-checked:bg-accent-soft aria-checked:text-accent"
+        >
+          {SPORT_FILTER_LABELS[f]}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function DashboardView() {
   const [state, setState] = useState<State>({ status: "loading" });
+  const sport = useSportFilter();
 
-  const fetchAll = useCallback((signal?: AbortSignal) => {
-    Promise.all([getTrainingLoad(WEEKS, signal), getProgression(WEEKS, signal)])
-      .then(([load, progression]) => setState({ status: "ready", load, progression }))
+  // Switching sport keeps the shown numbers until the new ones arrive (no
+  // skeleton flash); the load is fetched for the chosen sport only (#46).
+  const fetchAll = useCallback((filter: SportFilter, signal?: AbortSignal) => {
+    const loadSport = filter === "all" ? undefined : filter;
+    Promise.all([getTrainingLoad(WEEKS, signal, loadSport), getProgression(WEEKS, signal)])
+      .then(([load, progression]) => setState({ status: "ready", load, progression, sport: filter }))
       .catch((e) => {
         if (signal?.aborted) return;
         setState({ status: "error", error: e instanceof ApiError ? e : new ApiError(String(e), 0) });
@@ -62,21 +98,22 @@ export function DashboardView() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchAll(controller.signal);
+    fetchAll(sport, controller.signal);
     return () => controller.abort();
-  }, [fetchAll]);
+  }, [fetchAll, sport]);
 
   function retry() {
     setState({ status: "loading" });
-    fetchAll();
+    fetchAll(sport);
   }
 
   return (
     <div className="mx-auto max-w-5xl pt-4 pb-12">
       <h1 className="font-display text-xl font-semibold">Dashboard</h1>
       <p className="text-sm text-ink-muted">The last {WEEKS} weeks · the current week is partial</p>
+      <SportFilterControl value={sport} />
 
-      <div className="mt-4">
+      <div className="mt-4" aria-busy={state.status === "ready" && state.sport !== sport}>
         {state.status === "loading" && <LoadingDashboard />}
         {state.status === "error" && (
           <ErrorState offline={state.error.status === null} message={state.error.message} onRetry={retry} />
@@ -85,7 +122,12 @@ export function DashboardView() {
           <>
             {/* N2: what the user is aiming for comes first. */}
             <GoalsSection />
-            <Dashboard load={state.load} progression={state.progression} onPauseEnded={retry} />
+            <Dashboard
+              load={state.load}
+              progression={state.progression}
+              sport={state.sport}
+              onPauseEnded={retry}
+            />
           </>
         )}
       </div>
@@ -96,16 +138,39 @@ export function DashboardView() {
 export function Dashboard({
   load,
   progression,
+  sport = "all",
   onPauseEnded,
 }: {
+  /** For `sport` only when one is chosen (the backend filters it). */
   load: TrainingLoad;
   progression: Progression;
+  /** The Dashboard filter (#46): All shows the combined picture, a sport only its own. */
+  sport?: SportFilter;
   /** After End break: reload, since trends change. */
   onPauseEnded?: () => void;
 }) {
   const { running, climbing } = progression;
-  const nothing =
-    running.sessions === 0 && climbing.sessions === 0 && load.weekly.every((w) => w.sessions === 0);
+  const noLoad = load.weekly.every((w) => w.sessions === 0);
+  const nothing = running.sessions === 0 && climbing.sessions === 0 && noLoad;
+  const noneOfSport = sport !== "all" && noLoad && progression[sport].sessions === 0;
+  if (noneOfSport) {
+    return (
+      <EmptyState
+        icon={<ChartIcon size={26} />}
+        title={sport === "running" ? "No runs yet" : "No climbing yet"}
+        action={
+          <Link
+            href="/log"
+            className="inline-flex min-h-11 items-center rounded-full bg-accent px-5 text-sm font-semibold text-on-accent"
+          >
+            Log a session
+          </Link>
+        }
+      >
+        {`Nothing logged for ${sport} in the last ${WEEKS} weeks. Choose All to see everything.`}
+      </EmptyState>
+    );
+  }
   if (nothing) {
     return (
       <EmptyState
@@ -138,18 +203,20 @@ export function Dashboard({
           </p>
         )
       )}
-      <Summary load={load} progression={progression} />
-      <DashboardGrid load={load} progression={progression} />
+      <Summary load={load} progression={progression} sport={sport} />
+      <DashboardGrid load={load} progression={progression} sport={sport} />
     </>
   );
 }
 
+type SummaryProps = { load: TrainingLoad; progression: Progression; sport: SportFilter };
+
 /** Phones only (#59, design-visual V-M3): three headline numbers and one
  *  sentence first; the charts below start as rows. From `md` the grid shows all. */
-function Summary({ load, progression }: { load: TrainingLoad; progression: Progression }) {
+function Summary(props: SummaryProps) {
   const density = useDensity();
   if (density === "full") return null; // "Everything open" (#61): the charts say it all
-  return <SummaryTiles load={load} progression={progression} />;
+  return <SummaryTiles {...props} />;
 }
 
 /** The Dashboard density from the Account page (#61); "summary" on the server. */
@@ -157,12 +224,20 @@ function useDensity() {
   return useSyncExternalStore(subscribeChartPrefs, readDensity, () => "summary" as const);
 }
 
-function SummaryTiles({ load, progression }: { load: TrainingLoad; progression: Progression }) {
+const oneDecimal = new Intl.NumberFormat("en", { maximumFractionDigits: 1 });
+
+/** "3.1/wk avg" or "4/wk avg", or null without a complete week. */
+function perWeek(load: TrainingLoad): string | null {
+  const avg = sessionsPerWeek(load);
+  return avg === null ? null : `${oneDecimal.format(avg)}/wk avg`;
+}
+
+function SummaryTiles({ load, progression, sport }: SummaryProps) {
   const thisWeek = load.weekly[load.weekly.length - 1];
   const lastWeek = load.weekly[load.weekly.length - 2];
   const view = ratioView(load);
   const tiles = [
-    { label: "Sessions", value: String(thisWeek?.sessions ?? 0), sub: "this week" },
+    { label: "Sessions", value: String(thisWeek?.sessions ?? 0), sub: perWeek(load) ?? "this week" },
     {
       label: "Load",
       value: nf.format(thisWeek?.load ?? 0),
@@ -188,21 +263,46 @@ function SummaryTiles({ load, progression }: { load: TrainingLoad; progression: 
           </div>
         ))}
       </dl>
-      <p className="mt-3 text-sm">{summarySentence(load, progression)}</p>
+      <p className="mt-3 text-sm">{summarySentence(load, progression, sport)}</p>
     </section>
   );
 }
 
-function DashboardGrid({ load, progression }: { load: TrainingLoad; progression: Progression }) {
+/** From `md`, where the summary tiles are hidden: the same assessment as one
+ *  line above the cards, with sessions per week (#46). */
+function Assessment({ load, progression, sport }: SummaryProps) {
+  const avg = perWeek(load);
+  return (
+    <p className="mb-4 hidden text-sm md:block" aria-label="Assessment">
+      {summarySentence(load, progression, sport)}
+      {avg && (
+        <span {...SENSITIVE} className="ml-1 text-ink-muted tabular-nums">
+          {`Sessions: ${avg.replace("/wk avg", " a week on average")}.`}
+        </span>
+      )}
+    </p>
+  );
+}
+
+/** The cards for the chosen sport (#46): All shows the combined load and ratio
+ *  and both sports' cards; a single sport shows its own load, ratio and charts. */
+function DashboardGrid({ load, progression, sport }: SummaryProps) {
   const { running, climbing } = progression;
   return (
-    <div className="grid gap-4 md:grid-cols-3">
-      <LoadCard load={load} className="md:col-span-2" />
-      <RatioCard load={load} />
-      <PaceCard running={running} className="md:col-span-3" />
-      <GradeCard climbing={climbing} className="md:col-span-2" />
-      <SendRateCard climbing={climbing} />
-    </div>
+    <>
+      <Assessment load={load} progression={progression} sport={sport} />
+      <div className="grid gap-4 md:grid-cols-3">
+        <LoadCard load={load} sport={sport} className="md:col-span-2" />
+        <RatioCard load={load} sport={sport} />
+        {sport !== "climbing" && <PaceCard running={running} className="md:col-span-3" />}
+        {sport !== "running" && (
+          <>
+            <GradeCard climbing={climbing} className="md:col-span-2" />
+            <SendRateCard climbing={climbing} />
+          </>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -346,15 +446,21 @@ function Legend({ items }: { items: { swatch: ReactNode; label: string }[] }) {
 
 // --- Training load -------------------------------------------------------------
 
-function LoadCard({ load, className }: { load: TrainingLoad; className?: string }) {
+const SPORT_SERIES = {
+  running: { label: "Running", colour: SERIES.RUN },
+  climbing: { label: "Climbing", colour: SERIES.CLIMB },
+} as const;
+
+function LoadCard({ load, sport, className }: { load: TrainingLoad; sport: SportFilter; className?: string }) {
   const rows = loadRows(load);
   const thisWeek = load.weekly[load.weekly.length - 1];
   const lastWeek = load.weekly[load.weekly.length - 2];
+  const sports = sport === "all" ? (["running", "climbing"] as const) : ([sport] as const);
   return (
     <Card
       labelledBy="load-title"
-      title="Weekly load"
-      subtitle="Minutes × effort (session RPE), by sport"
+      title={sport === "all" ? "Weekly load" : `Weekly ${sport} load`}
+      subtitle={`Minutes × effort (session RPE), ${sport === "all" ? "by sport" : `${sport} only`}`}
       className={className}
     >
       <dl {...SENSITIVE} className="mb-3 flex gap-6">
@@ -370,20 +476,19 @@ function LoadCard({ load, className }: { load: TrainingLoad; className?: string 
         )}
       </dl>
       <Legend
-        items={[
-          { swatch: <LegendSwatch kind="bar" colour={SERIES.RUN} />, label: "Running" },
-          { swatch: <LegendSwatch kind="bar" colour={SERIES.CLIMB} />, label: "Climbing" },
-        ]}
+        items={sports.map((s) => ({
+          swatch: <LegendSwatch kind="bar" colour={SPORT_SERIES[s].colour} />,
+          label: SPORT_SERIES[s].label,
+        }))}
       />
-      <WeeklyLoadChart load={load} />
+      <WeeklyLoadChart load={load} sports={sports} />
       <NumbersTable
-        caption="Weekly load by sport"
-        head={["Week of", "Running", "Climbing", "Total", "Sessions"]}
+        caption={sport === "all" ? "Weekly load by sport" : `Weekly ${sport} load`}
+        head={["Week of", ...sports.map((s) => SPORT_SERIES[s].label), ...(sport === "all" ? ["Total"] : []), "Sessions"]}
         rows={rows.map((r, i) => [
           r.label,
-          nf.format(r.running),
-          nf.format(r.climbing),
-          nf.format(r.total),
+          ...sports.map((s) => nf.format(r[s])),
+          ...(sport === "all" ? [nf.format(r.total)] : []),
           load.weekly[i].sessions,
         ])}
       />
@@ -400,14 +505,14 @@ const ZONE_TEXT = {
 
 const SCALE_MAX = 2;
 
-function RatioCard({ load }: { load: TrainingLoad }) {
+function RatioCard({ load, sport = "all" }: { load: TrainingLoad; sport?: SportFilter }) {
   const view = ratioView(load);
   const pct = (v: number) => `${(Math.min(v, SCALE_MAX) / SCALE_MAX) * 100}%`;
   return (
     <Card
       labelledBy="ratio-title"
       title="Acute:chronic ratio"
-      subtitle="Last 7 days vs last 28 days"
+      subtitle={sport === "all" ? "Last 7 days vs last 28 days, all sports" : `Last 7 days vs last 28 days, ${sport} only`}
       aside={
         <span className="inline-flex h-6 shrink-0 items-center rounded-full border border-line px-2.5 text-xs font-medium whitespace-nowrap text-ink-muted">
           Rough guide

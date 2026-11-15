@@ -2,6 +2,7 @@
 // backend (/training-load and /progression); these only decide how to show them.
 
 import { DISTANCE_BANDS, type DistanceBand, type Progression, type TrainingLoad, type TrendWord } from "./api";
+import type { SportFilter } from "./sport-filter";
 
 /** The backend's minimum history for the ratio (tools.RATIO_MIN_HISTORY_DAYS),
  *  used only in the explanatory text; the backend decides ratio_status. */
@@ -57,11 +58,33 @@ export function mainPaceBand(running: Progression["running"]): DistanceBand | nu
 }
 
 const LOAD_SENTENCE = {
-  below: "Your load is lighter than your recent usual.",
-  moderate: "Your load is in your usual range.",
-  above: "Your load is higher than your recent usual.",
-  spike: "Your load is well above your recent usual.",
+  below: "load is lighter than your recent usual.",
+  moderate: "load is in your usual range.",
+  above: "load is higher than your recent usual.",
+  spike: "load is well above your recent usual.",
 } as const;
+
+/** Whose load the sentence is about: everything (All) or one sport (#46). */
+const LOAD_SUBJECT: Record<SportFilter, string> = {
+  all: "Your",
+  running: "Your running",
+  climbing: "Your climbing",
+};
+
+/** Average sessions per week over the complete weeks shown (the current week is
+ *  partial), leaving out weeks a break that is on has reached, so a break
+ *  doesn't drag the average down. Null with no complete week to count. */
+export function sessionsPerWeek(load: TrainingLoad): number | null {
+  const breakStart = load.pause?.start_date;
+  const weeks = load.weekly.slice(0, -1).filter((w) => {
+    if (!breakStart) return true;
+    const end = new Date(`${w.week_start}T00:00:00Z`);
+    end.setUTCDate(end.getUTCDate() + 6);
+    return end.toISOString().slice(0, 10) < breakStart;
+  });
+  if (weeks.length === 0) return null;
+  return weeks.reduce((sum, w) => sum + w.sessions, 0) / weeks.length;
+}
 
 const PACE_SENTENCE: Partial<Record<TrendWord, string>> = {
   improving: "is getting faster",
@@ -76,16 +99,21 @@ const GRADE_SENTENCE: Partial<Record<TrendWord, string>> = {
 };
 
 /** One plain sentence built only from the backend's ratio status and trend
- *  words. No new judgements: words the backend says "not enough data" to are left out. */
-export function summarySentence(load: TrainingLoad, progression: Progression): string {
+ *  words. No new judgements: words the backend says "not enough data" to are left out.
+ *  `load` is the filtered one; with a single sport (#46) only that sport's trend is used. */
+export function summarySentence(load: TrainingLoad, progression: Progression, sport: SportFilter = "all"): string {
   const parts: string[] = [];
   const view = ratioView(load);
-  if (view.kind === "ok") parts.push(LOAD_SENTENCE[view.zone]);
-  else if (view.kind === "paused") parts.push("Your load ratio is paused for your break.");
-  const band = mainPaceBand(progression.running);
-  const pace = band && PACE_SENTENCE[progression.running.trends.pace_by_distance[band].trend];
-  if (band && pace) parts.push(`Pace on ${BAND_LABELS[band].toLowerCase()} runs ${pace}.`);
-  const grade = GRADE_SENTENCE[progression.climbing.trends.avg_session_hardest_sent.trend];
-  if (grade) parts.push(grade);
+  if (view.kind === "ok") parts.push(`${LOAD_SUBJECT[sport]} ${LOAD_SENTENCE[view.zone]}`);
+  else if (view.kind === "paused") parts.push(`${LOAD_SUBJECT[sport]} load ratio is paused for your break.`);
+  if (sport !== "climbing") {
+    const band = mainPaceBand(progression.running);
+    const pace = band && PACE_SENTENCE[progression.running.trends.pace_by_distance[band].trend];
+    if (band && pace) parts.push(`Pace on ${BAND_LABELS[band].toLowerCase()} runs ${pace}.`);
+  }
+  if (sport !== "running") {
+    const grade = GRADE_SENTENCE[progression.climbing.trends.avg_session_hardest_sent.trend];
+    if (grade) parts.push(grade);
+  }
   return parts.length > 0 ? parts.join(" ") : "Not enough data for trends yet. Keep logging and they show up here.";
 }

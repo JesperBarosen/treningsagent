@@ -217,6 +217,42 @@ def test_ratio_status_without_recent_load(store):
     assert load["ratio_status"] == "not_enough_data"
 
 
+def test_training_load_for_one_sport_counts_only_that_sport(store):
+    # #46: the Dashboard filter. Running started 2026-10-01; climbing 2026-11-10.
+    tools.log_session(store, "running", "2026-10-01", 30, 5)    # 150, long ago
+    tools.log_session(store, "running", "2026-11-02", 30, 5)    # 150
+    tools.log_session(store, "climbing", "2026-11-10", 60, 7)   # 420
+    tools.log_session(store, "running", "2026-11-11", 40, 6)    # 240, today
+
+    run = tools.get_training_load(store, weeks=2, today=WED, sport="running")
+    assert [w["load_by_sport"] for w in run["weekly"]] == [{"running": 150}, {"running": 240}]
+    assert [w["sessions"] for w in run["weekly"]] == [1, 1]
+    assert {d["date"]: d["load"] for d in run["daily"]}["2026-11-10"] == 0  # the climb is left out
+    assert run["acute_7d_avg"] == round(240 / 7, 1)
+    assert run["history_days"] == 42 and run["ratio_status"] == "ok"
+
+    climb = tools.get_training_load(store, weeks=2, today=WED, sport="climbing")
+    assert [w["load"] for w in climb["weekly"]] == [0, 420]
+    assert climb["history_days"] == 2 and climb["ratio_status"] == "not_enough_data"
+
+    every = tools.get_training_load(store, weeks=2, today=WED)
+    assert every["weekly"][1]["load"] == 660 and every["history_days"] == 42
+
+
+def test_training_load_for_one_sport_still_respects_a_break(store):
+    tools.log_session(store, "running", "2026-09-01", 30, 5)
+    store.start_pause({"start_date": "2026-11-09", "planned_end": None, "reason": "travel",
+                       "body_part": None, "pain": None, "note": None})
+    load = tools.get_training_load(store, weeks=1, today=WED, sport="running")
+    assert load["ratio_status"] == "paused" and load["pause"]["reason"] == "travel"
+    assert load["paused_days"] == 3
+
+
+def test_training_load_rejects_an_unknown_sport(store):
+    with pytest.raises(ValueError, match="sport must be one of"):
+        tools.get_training_load(store, sport="swimming")
+
+
 @pytest.mark.parametrize("weeks", [0, 13])
 def test_training_load_rejects_bad_weeks(store, weeks):
     with pytest.raises(ValueError, match="weeks"):

@@ -157,6 +157,12 @@ def test_get_training_load_matches_the_tool(make_app, store):
     assert body == tools.get_training_load(store, 4)
     assert len(body["weekly"]) == 4
 
+    # #46: one sport only; anything else is refused.
+    climbing = http.get("/training-load", params={"weeks": 4, "sport": "climbing"}).json()
+    assert climbing == tools.get_training_load(store, 4, sport="climbing")
+    assert all(set(w["load_by_sport"]) <= {"climbing"} for w in climbing["weekly"])
+    assert http.get("/training-load", params={"sport": "swimming"}).status_code == 422
+
 
 def test_get_progression_matches_the_tool(make_app, store):
     seed_store(store)

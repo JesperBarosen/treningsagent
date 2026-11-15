@@ -124,9 +124,12 @@ class PostgresStore:
             rows = conn.execute(query, (since,)).fetchall()
         return [{**r, "date": r["date"].isoformat()} for r in rows]
 
-    def first_session_date(self) -> str | None:
+    def first_session_date(self, sport: str | None = None) -> str | None:
+        """The date of the first session, of `sport` only when given."""
         with self._as_user() as conn:
-            row = conn.execute("select min(date) as first from public.sessions").fetchone()
+            row = conn.execute("select min(date) as first from public.sessions"
+                               " where %(sport)s::text is null or sport = %(sport)s",
+                               {"sport": sport}).fetchone()
         return row["first"].isoformat() if row["first"] else None
 
     def climbs_since(self, since: str) -> list[dict]:

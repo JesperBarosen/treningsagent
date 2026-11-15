@@ -29,7 +29,7 @@ class Store(Protocol):
 
     def insert_session(self, row: dict, climbs: list[dict] = ()) -> int: ...
     def sessions_since(self, since: str) -> list[dict]: ...
-    def first_session_date(self) -> str | None: ...
+    def first_session_date(self, sport: str | None = None) -> str | None: ...
     def climbs_since(self, since: str) -> list[dict]: ...
     def log_model_call(self, call: dict) -> None: ...
     def get_session(self, session_id: int) -> dict | None: ...
@@ -216,21 +216,30 @@ def session_load(session: dict) -> int:
     return session["duration_min"] * session["effort"]
 
 
-def get_training_load(store: Store, weeks: int = 4, today: date | None = None) -> dict:
+def get_training_load(store: Store, weeks: int = 4, today: date | None = None,
+                      sport: str | None = None) -> dict:
     """Session-RPE load per day and per calendar week (Monday start) across all
     sports, for the current week and the `weeks - 1` before it, plus the
     acute:chronic workload ratio: average daily load over the last 7 days
     divided by the average over the last 28 (today included in both).
+
+    With `sport` (#46, the Dashboard filter), everything counts that sport's
+    sessions only: load, sessions, the ratio and its history. Breaks apply to
+    every sport alike.
 
     ratio_status is "not_enough_data" when under RATIO_MIN_HISTORY_DAYS days
     have passed since the first logged session (today included), or when there
     is no ratio at all; otherwise "ok". history_days is that day count."""
     if not 1 <= weeks <= 12:
         raise ValueError("weeks must be between 1 and 12")
+    if sport is not None and sport not in SPORTS:
+        raise ValueError(f"sport must be one of {SPORTS}, got {sport!r}")
     today = today or date.today()
     start = today - timedelta(days=today.weekday() + 7 * (weeks - 1))
     chronic_start = today - timedelta(days=27)
     sessions = store.sessions_since(min(start, chronic_start).isoformat())
+    if sport is not None:
+        sessions = [s for s in sessions if s["sport"] == sport]
 
     by_day: dict[date, int] = {}
     for s in sessions:
@@ -262,7 +271,7 @@ def get_training_load(store: Store, weeks: int = 4, today: date | None = None) -
     acute = daily_avg(today - timedelta(days=6))
     chronic = daily_avg(chronic_start)
     ratio = round(acute / chronic, 2) if acute is not None and chronic else None
-    first = store.first_session_date()
+    first = store.first_session_date(sport)
     history_days = max((today - _parse_date(first)).days + 1, 0) if first else 0
     enough = ratio is not None and history_days >= RATIO_MIN_HISTORY_DAYS
     return {
