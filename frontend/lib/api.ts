@@ -298,6 +298,11 @@ export function startPause(input: PauseStart): Promise<Pause> {
   return request("/pause", { method: "POST", body: JSON.stringify(input) });
 }
 
+/** Edit the break that is on (#82). Every field is replaced; the start date stays. */
+export function editPause(input: PauseStart): Promise<Pause> {
+  return request("/pause", { method: "PATCH", body: JSON.stringify(input) });
+}
+
 export function endPause(resumeChoice: "continue" | "fresh"): Promise<Pause> {
   return request("/pause/end", { method: "POST", body: JSON.stringify({ resume_choice: resumeChoice }) });
 }

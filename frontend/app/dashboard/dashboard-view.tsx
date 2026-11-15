@@ -129,7 +129,8 @@ export function Dashboard({
   return (
     <>
       {load.pause ? (
-        <PauseBanner pause={load.pause} onEnded={() => onPauseEnded?.()} />
+        // An edit reloads too: the planned end and reason feed the load numbers' context.
+        <PauseBanner pause={load.pause} onEnded={() => onPauseEnded?.()} onEdited={() => onPauseEnded?.()} />
       ) : (
         pausedDays > 0 && (
           <p className="mb-4 rounded-md bg-sunken px-4 py-3 text-sm text-ink-muted">
