@@ -83,6 +83,31 @@
   }
 }
 
+/* Increase Contrast (#60, design-visual V-M4): with prefers-contrast: more,
+   hairlines and control edges become real outlines (5.7:1 or more) and
+   secondary text uses ink. After the dark blocks so it wins over them; the two
+   dark versions match (tests/contrast-more.test.ts). */
+@media (prefers-contrast: more) {
+  :root {
+    --line: #5a6166;
+    --control: #5a6166;
+    --ink-muted: #15191b;
+  }
+  :root[data-theme="dark"] {
+    --line: #9aa3a7;
+    --control: #9aa3a7;
+    --ink-muted: #e8ebe9;
+  }
+}
+
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --line: #9aa3a7;
+    --control: #9aa3a7;
+    --ink-muted: #e8ebe9;
+  }
+}
+
 @theme static {
   --color-*: initial;
   --color-transparent: transparent;
