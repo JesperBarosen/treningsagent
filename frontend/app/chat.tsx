@@ -282,7 +282,7 @@ export function Chat() {
         }}
       />
 
-      <div className="fixed inset-x-0 bottom-14 z-20 border-t border-line bg-canvas/95 shadow-sheet backdrop-blur md:bottom-0">
+      <div className="fixed inset-x-0 bottom-14 z-20 border-t border-line bg-elevated/95 shadow-sheet backdrop-blur md:bottom-0">
         <div className="mx-auto max-w-content px-4 pt-3 pb-3 sm:px-6">
           <LogShortcuts />
           <div

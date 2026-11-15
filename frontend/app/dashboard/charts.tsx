@@ -69,7 +69,7 @@ function TooltipCard({ title, rows }: { title: string; rows: { key: ReactNode; n
   return (
     <div
       {...HIDE_IN_DISCREET}
-      className="rounded-md border border-line bg-surface px-3 py-2 text-xs shadow-sheet"
+      className="rounded-md border border-line bg-elevated px-3 py-2 text-xs shadow-sheet"
     >
       <p className="mb-1 font-medium text-ink-muted">{title}</p>
       <ul className="space-y-0.5">

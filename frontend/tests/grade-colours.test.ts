@@ -33,10 +33,17 @@ describe("grade colours (#55)", () => {
     }
   });
 
-  it("the darker re-stepped dots stand out on the dark surface by themselves too", () => {
+  // Since #57 lifted the dark layers, red's fill is 2.94:1 on the dark surface
+  // (it was just over 3:1). The ring on every dot (components/grade.tsx) keeps
+  // the edge at 3:1 (WCAG 1.4.11); lightening red to pass alone would cut the
+  // green/red deutan gap from 12.3 to about 8.8.
+  it("every dark-theme dot has a 3:1 edge, from its fill or its ring", () => {
     const dark = tokens(THEMES.dark);
-    for (const name of ["red", "purple", "blue"]) {
-      expect(ratio(grade(name), dark.surface), name).toBeGreaterThanOrEqual(3);
+    for (const layer of ["surface", "elevated"]) {
+      for (const name of ["red", "purple", "blue"]) {
+        const edge = Math.max(ratio(grade(name), dark[layer]), ratio(dark["grade-ring"], dark[layer]));
+        expect(edge, `${name} on ${layer}`).toBeGreaterThanOrEqual(3);
+      }
     }
   });
 });

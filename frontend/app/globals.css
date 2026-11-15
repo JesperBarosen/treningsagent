@@ -7,6 +7,7 @@
 :root {
   --canvas: #f5f4ef;
   --surface: #ffffff;
+  --elevated: #ffffff; /* sheets, dialogs, composer (#57) */
   --sunken: #eceae3;
   --line: #d9d6cc; /* decorative hairlines only */
   --control: #8a857a; /* edges of fields, chips, outlined buttons: 3.67:1 surface, 3.34:1 canvas */
@@ -32,12 +33,13 @@
    lib/theme.ts), and once for System when the OS is dark, unless the user
    chose Light. */
 :root[data-theme="dark"] {
-  --canvas: #0e1214;
-  --surface: #161b1e;
-  --sunken: #1e2529;
-  --line: #2c3439;
+  --canvas: #121618;
+  --surface: #191f22;
+  --elevated: #222a2e;
+  --sunken: #222a2e;
+  --line: #30393e;
   --control: #6b767c;
-  --ink: #eceeec;
+  --ink: #e8ebe9;
   --ink-muted: #b0b8bc;
   --accent: #4fd1b5;
   --on-accent: #062621;
@@ -55,12 +57,13 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --canvas: #0e1214;
-    --surface: #161b1e;
-    --sunken: #1e2529;
-    --line: #2c3439;
+    --canvas: #121618;
+    --surface: #191f22;
+    --elevated: #222a2e;
+    --sunken: #222a2e;
+    --line: #30393e;
     --control: #6b767c;
-    --ink: #eceeec;
+    --ink: #e8ebe9;
     --ink-muted: #b0b8bc;
     --accent: #4fd1b5;
     --on-accent: #062621;
@@ -133,6 +136,7 @@
 @theme inline {
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
   --color-sunken: var(--sunken);
   --color-line: var(--line);
   --color-control: var(--control);
