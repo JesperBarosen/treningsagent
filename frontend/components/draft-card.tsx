@@ -51,7 +51,7 @@ export function DraftCard({
       <div className="flex items-start gap-3">
         <SportBadge sport={draft.sport} size="sm" />
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-ink-muted">Not saved yet · {dayLabel(draft.date)}</p>
+          <p className="text-meta font-medium text-ink-muted">Not saved yet · {dayLabel(draft.date)}</p>
           <p {...SENSITIVE} className="truncate text-sm font-semibold tabular-nums">
             {sessionSummary(session)}
           </p>

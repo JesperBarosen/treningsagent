@@ -224,7 +224,7 @@ function Details({
       <dl {...SENSITIVE} className="mt-5 grid grid-cols-2 gap-2 min-[400px]:grid-cols-3">
         {stats.map(([label, value]) => (
           <div key={label} className="rounded-md border border-line bg-canvas px-3 py-2.5">
-            <dt className="text-xs text-ink-muted">{label}</dt>
+            <dt className="text-meta text-ink-muted">{label}</dt>
             <dd className="font-display text-lg font-semibold tabular-nums">{value}</dd>
           </div>
         ))}

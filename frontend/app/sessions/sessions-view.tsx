@@ -155,11 +155,11 @@ function WeekList({
             <div className="mb-1 flex items-baseline justify-between px-3">
               <h2
                 id={`week-${week.weekStart}`}
-                className="text-xs font-semibold tracking-[0.06em] text-ink-muted uppercase"
+                className="text-meta font-semibold text-ink-muted"
               >
                 {weekLabel(week.weekStart)}
               </h2>
-              <p {...SENSITIVE} className="text-xs text-ink-muted tabular-nums">
+              <p {...SENSITIVE} className="text-meta text-ink-muted tabular-nums">
                 {n} {n === 1 ? "session" : "sessions"} · load {nf.format(load)}
               </p>
             </div>

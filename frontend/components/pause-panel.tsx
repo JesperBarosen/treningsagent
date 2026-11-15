@@ -62,7 +62,7 @@ function ResumeChoice({ onDone }: { onDone: () => void }) {
           Start fresh
         </Button>
       </div>
-      <p className="mt-2 text-xs text-ink-muted">Start fresh hides the old baseline for 4 weeks. Nothing is deleted.</p>
+      <p className="mt-2 text-meta text-ink-muted">Start fresh hides the old baseline for 4 weeks. Nothing is deleted.</p>
       {error && (
         <p role="alert" className="mt-2 text-sm text-danger">
           {error}

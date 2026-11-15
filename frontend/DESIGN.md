@@ -113,15 +113,17 @@ All numbers use `tabular-nums` so stats line up.
 
 | Step | Tailwind | Size / line | Use |
 | --- | --- | --- | --- |
-| caption | `text-xs` | 12 / 16 | labels, week headings, metadata |
+| caption | `text-xs` | 12 / 16 | chart ticks, chips, legends, table headers, footnotes |
+| meta | `text-meta` | 13 / 18 | captions that carry information: dates, weekly totals and headings, trend lines, stat labels, form hints |
 | small | `text-sm` | 14 / 20 | secondary text, chips |
 | body | `text-base` | 16 / 24 | chat messages, inputs (16px stops iOS zoom) |
 | lead | `text-lg` | 18 / 26 | card titles |
 | title | `text-xl` | 22 / 28 | page titles |
 | display | `text-2xl` | 28 / 34 | big stats |
 
-Weights: 400 body, 500 labels, 600 headings. Week headings are uppercase
-caption with 0.06em tracking.
+Weights: 400 body, 500 labels, 600 headings. Week headings are sentence-case
+meta at 600. Small characters lose the most legibility, especially light on
+dark (Piepenbrock et al. 2013/2014), so information never goes below 13 px.
 
 ## Spacing
 
