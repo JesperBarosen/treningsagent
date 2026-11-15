@@ -11,7 +11,7 @@
   --line: #d9d6cc; /* decorative hairlines only */
   --control: #8a857a; /* edges of fields, chips, outlined buttons: 3.67:1 surface, 3.34:1 canvas */
   --ink: #15191b;
-  --ink-muted: #5a6166;
+  --ink-muted: #474e53; /* 7:1 or more on surface, canvas and sunken (#54) */
   --accent: #0f6b5c;
   --on-accent: #ffffff;
   --accent-soft: #dcefea;
@@ -38,7 +38,7 @@
   --line: #2c3439;
   --control: #6b767c;
   --ink: #eceeec;
-  --ink-muted: #9aa3a7;
+  --ink-muted: #b0b8bc;
   --accent: #4fd1b5;
   --on-accent: #062621;
   --accent-soft: #13312c;
@@ -61,7 +61,7 @@
     --line: #2c3439;
     --control: #6b767c;
     --ink: #eceeec;
-    --ink-muted: #9aa3a7;
+    --ink-muted: #b0b8bc;
     --accent: #4fd1b5;
     --on-accent: #062621;
     --accent-soft: #13312c;

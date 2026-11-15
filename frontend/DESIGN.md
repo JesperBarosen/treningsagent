@@ -31,7 +31,7 @@ text, 3:1 for large text and UI outlines).
 | `--line` | `border-line` | `#D9D6CC` | `#2C3439` | decorative hairlines, card borders, dividers (1.45:1, never a control's only edge) |
 | `--control` | `border-control` | `#8A857A` | `#6B767C` | edges of text fields, chips, segmented toggles and outlined buttons (≥ 3:1 on surface, canvas and sunken, WCAG 1.4.11) |
 | `--ink` | `text-ink` | `#15191B` | `#ECEEEC` | primary text (16:1 / 16:1) |
-| `--ink-muted` | `text-ink-muted` | `#5A6166` | `#9AA3A7` | secondary text (5.7:1 / 7.3:1) |
+| `--ink-muted` | `text-ink-muted` | `#474E53` | `#B0B8BC` | secondary text, at least 7:1 on canvas, surface and sunken in both themes (Apple's aim for small text; `tests/token-contrast.test.ts`) |
 | `--accent` | `bg-accent`, `text-accent` | `#0F6B5C` spruce | `#4FD1B5` | primary actions, focus, running |
 | `--on-accent` | `text-on-accent` | `#FFFFFF` | `#062621` | text on accent (6.4:1 / 8.5:1) |
 | `--accent-soft` | `bg-accent-soft` | `#DCEFEA` | `#13312C` | selected states, logged-session card |
