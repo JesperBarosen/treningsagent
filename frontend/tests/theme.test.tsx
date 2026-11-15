@@ -196,7 +196,7 @@ describe("globals.css", () => {
 
   it("has the same dark tokens for an explicit Dark choice and for a dark OS", () => {
     const explicit = block(':root[data-theme="dark"]');
-    expect(explicit).toContain("--canvas: #0e1214;");
+    expect(explicit).toContain("--canvas: #121618;");
     expect(block(':root:not([data-theme="light"])')).toEqual(explicit);
   });
 

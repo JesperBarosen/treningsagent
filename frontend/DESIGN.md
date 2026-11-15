@@ -25,12 +25,13 @@ text, 3:1 for large text and UI outlines).
 
 | Token | Tailwind | Light | Dark | Use |
 | --- | --- | --- | --- | --- |
-| `--canvas` | `bg-canvas` | `#F5F4EF` chalk | `#0E1214` night slate | page background |
-| `--surface` | `bg-surface` | `#FFFFFF` | `#161B1E` | cards, input, sheets |
-| `--sunken` | `bg-sunken` | `#ECEAE3` | `#1E2529` | user bubbles, chips, skeletons |
-| `--line` | `border-line` | `#D9D6CC` | `#2C3439` | decorative hairlines, card borders, dividers (1.45:1, never a control's only edge) |
+| `--canvas` | `bg-canvas` | `#F5F4EF` chalk | `#121618` night slate | page background |
+| `--surface` | `bg-surface` | `#FFFFFF` | `#191F22` | cards, inputs |
+| `--elevated` | `bg-elevated` | `#FFFFFF` | `#222A2E` | sheets, dialogs, chart tooltips, the chat composer: one step above the page, since dark mode cannot use shadows for depth |
+| `--sunken` | `bg-sunken` | `#ECEAE3` | `#222A2E` | user bubbles, chips, skeletons |
+| `--line` | `border-line` | `#D9D6CC` | `#30393E` | decorative hairlines, card borders, dividers (1.45:1, never a control's only edge) |
 | `--control` | `border-control` | `#8A857A` | `#6B767C` | edges of text fields, chips, segmented toggles and outlined buttons (≥ 3:1 on surface, canvas and sunken, WCAG 1.4.11) |
-| `--ink` | `text-ink` | `#15191B` | `#ECEEEC` | primary text (16:1 / 16:1) |
+| `--ink` | `text-ink` | `#15191B` | `#E8EBE9` | primary text (16:1 light; 15.2:1 on dark canvas, 12.2:1 on elevated) |
 | `--ink-muted` | `text-ink-muted` | `#474E53` | `#B0B8BC` | secondary text, at least 7:1 on canvas, surface and sunken in both themes (Apple's aim for small text; `tests/token-contrast.test.ts`) |
 | `--accent` | `bg-accent`, `text-accent` | `#0F6B5C` spruce | `#4FD1B5` | primary actions, focus, running |
 | `--on-accent` | `text-on-accent` | `#FFFFFF` | `#062621` | text on accent (6.4:1 / 8.5:1) |
@@ -143,7 +144,10 @@ desktop.
 
 ## Elevation
 
-Flat by default; separation comes from `--line` borders. One shadow,
+Flat by default; separation comes from `--line` borders. Dark mode lifts
+its greys off near-black (canvas `#121618`) so layers read by lightness:
+canvas, then surface, then elevated (Apple's base and elevated backgrounds,
+Material 3 tonal elevation; design-visual V-M1). One shadow,
 `shadow-sheet`, for the bottom sheet and the fixed chat composer.
 
 ## Interaction and accessibility

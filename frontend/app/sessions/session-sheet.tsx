@@ -57,7 +57,7 @@ export function SessionSheet({
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()} // backdrop click
       aria-labelledby="session-title"
-      className="m-0 mt-auto max-h-[88dvh] w-full max-w-none overflow-y-auto rounded-t-lg bg-surface text-ink shadow-sheet backdrop:bg-ink/40 open:animate-rise sm:m-auto sm:max-w-lg sm:rounded-lg"
+      className="m-0 mt-auto max-h-[88dvh] w-full max-w-none overflow-y-auto rounded-t-lg bg-elevated text-ink shadow-sheet backdrop:bg-ink/40 open:animate-rise sm:m-auto sm:max-w-lg sm:rounded-lg"
     >
       {session && (
         <SheetBody

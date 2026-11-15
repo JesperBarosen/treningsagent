@@ -18,6 +18,9 @@ const PAIRS: [string, string, number][] = [
   ["control", "canvas", 3], ["control", "surface", 3], ["control", "sunken", 3],
   ["grade-ring", "surface", 3],
   ["chart-run", "surface", 3], ["chart-climb", "surface", 3],
+  // Sheets, dialogs and the composer sit on --elevated (#57).
+  ["ink", "elevated", 7], ["ink-muted", "elevated", 7], ["accent", "elevated", 4.5],
+  ["danger", "elevated", 4.5], ["control", "elevated", 3],
 ];
 
 describe("token contrast", () => {
@@ -40,6 +43,14 @@ describe("token contrast", () => {
     for (const selector of Object.values(THEMES)) {
       const t = tokens(selector);
       expect(ratio(t.ink, t.surface) - ratio(t["ink-muted"], t.surface)).toBeGreaterThan(3);
+    }
+  });
+
+  it("steps the dark layers up in lightness: canvas, surface, elevated (#57)", () => {
+    for (const selector of [THEMES.dark, THEMES["dark (OS)"]]) {
+      const t = tokens(selector);
+      expect(ratio(t.surface, t.canvas)).toBeGreaterThan(1.05);
+      expect(ratio(t.elevated, t.canvas)).toBeGreaterThan(ratio(t.surface, t.canvas) + 0.05);
     }
   });
 });
