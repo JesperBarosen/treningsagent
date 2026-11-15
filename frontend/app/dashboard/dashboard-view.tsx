@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { GradeDot } from "@/components/grade";
 import { ChartIcon, ChevronIcon } from "@/components/icons";
 import { GoalsSection } from "@/components/goals-panel";
@@ -28,6 +28,7 @@ import {
   summarySentence,
   ZONE_WORD,
 } from "@/lib/dashboard";
+import { readDensity, subscribeChartPrefs } from "@/lib/chart-prefs";
 import { SENSITIVE } from "@/lib/discreet";
 import { formatPace, formatRate, nf, shortDate } from "@/lib/format";
 import {
@@ -145,6 +146,17 @@ export function Dashboard({
 /** Phones only (#59, design-visual V-M3): three headline numbers and one
  *  sentence first; the charts below start as rows. From `md` the grid shows all. */
 function Summary({ load, progression }: { load: TrainingLoad; progression: Progression }) {
+  const density = useDensity();
+  if (density === "full") return null; // "Everything open" (#61): the charts say it all
+  return <SummaryTiles load={load} progression={progression} />;
+}
+
+/** The Dashboard density from the Account page (#61); "summary" on the server. */
+function useDensity() {
+  return useSyncExternalStore(subscribeChartPrefs, readDensity, () => "summary" as const);
+}
+
+function SummaryTiles({ load, progression }: { load: TrainingLoad; progression: Progression }) {
   const thisWeek = load.weekly[load.weekly.length - 1];
   const lastWeek = load.weekly[load.weekly.length - 2];
   const view = ratioView(load);
@@ -215,7 +227,11 @@ function Card({
   children: ReactNode;
   labelledBy: string;
 }) {
-  const [open, setOpen] = useState(false);
+  // "Everything open" on the Account page (#61) starts each card open; a tap
+  // still folds it. null = not tapped yet, so the setting decides.
+  const density = useDensity();
+  const [tapped, setOpen] = useState<boolean | null>(null);
+  const open = tapped ?? density === "full";
   const bodyId = `${labelledBy}-body`;
   const shut = open ? "" : "max-md:hidden";
   return (
@@ -245,7 +261,7 @@ function Card({
         aria-expanded={open}
         aria-controls={bodyId}
         aria-labelledby={labelledBy}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpen(!open)}
         className="absolute inset-x-0 top-0 h-15 rounded-lg md:hidden"
       />
       <div id={bodyId} className={shut}>

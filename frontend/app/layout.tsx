@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import { TabBar, TopBar } from "@/components/nav";
+import { CHART_PREFS_SCRIPT } from "@/lib/chart-prefs";
 import { DISCREET_SCRIPT } from "@/lib/discreet";
 import { THEME_COLORS, THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
@@ -45,6 +46,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         {/* Discreet mode, also before the first paint, so numbers never flash readable. */}
         <script dangerouslySetInnerHTML={{ __html: DISCREET_SCRIPT }} />
+        {/* The chosen chart palette (#61), also before the first paint. */}
+        <script dangerouslySetInnerHTML={{ __html: CHART_PREFS_SCRIPT }} />
       </head>
       <body className="min-h-dvh font-sans">
         <a

@@ -187,6 +187,21 @@ describe("summary first on mobile", () => {
     expect(body).not.toHaveClass("max-md:hidden");
   });
 
+  it("opens every chart and drops the summary with Everything open (#61)", async () => {
+    localStorage.setItem("treningsagent.dashboardDensity", "full");
+    try {
+      const user = userEvent.setup();
+      render(<Dashboard load={load()} progression={progression()} />);
+      expect(screen.queryByRole("region", { name: "Summary" })).toBeNull();
+      const toggle = screen.getByRole("button", { name: "Weekly load" });
+      expect(toggle).toHaveAttribute("aria-expanded", "true");
+      await user.click(toggle); // a tap still folds it
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+    } finally {
+      localStorage.clear();
+    }
+  });
+
   it("keeps the trend chip on the collapsed row", () => {
     render(<Dashboard load={load()} progression={progression()} />);
     const pace = screen.getByRole("region", { name: "Running pace" });

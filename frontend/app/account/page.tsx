@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AutoSaveSetting } from "./auto-save-setting";
+import { ChartSettings } from "./chart-settings";
 import { SetPasswordForm } from "./set-password-form";
 
 export const metadata: Metadata = { title: "Account" };
@@ -23,6 +24,12 @@ export default function AccountPage() {
           Coach
         </h2>
         <AutoSaveSetting />
+      </section>
+      <section aria-labelledby="charts-title" className="mt-4 rounded-lg border border-line bg-surface p-4">
+        <h2 id="charts-title" className="mb-3 font-semibold">
+          Charts and Dashboard
+        </h2>
+        <ChartSettings />
       </section>
     </div>
   );
