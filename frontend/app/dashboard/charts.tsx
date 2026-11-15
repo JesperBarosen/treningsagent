@@ -115,8 +115,16 @@ export function loadRows(load: TrainingLoad): LoadRow[] {
   }));
 }
 
-export function WeeklyLoadChart({ load }: { load: TrainingLoad }) {
+/** `sports`: the series to show (the Dashboard filter, #46); both by default. */
+export function WeeklyLoadChart({
+  load,
+  sports = ["running", "climbing"],
+}: {
+  load: TrainingLoad;
+  sports?: readonly ("running" | "climbing")[];
+}) {
   const rows = loadRows(load);
+  const both = sports.length > 1;
   return (
     <div className="h-56">
       <ResponsiveContainer width="100%" height="100%">
@@ -145,9 +153,13 @@ export function WeeklyLoadChart({ load }: { load: TrainingLoad }) {
                 <TooltipCard
                   title={`Week of ${row.label}`}
                   rows={[
-                    { key: <LineKey colour={CLIMB} />, name: "climbing", value: nf.format(row.climbing) },
-                    { key: <LineKey colour={RUN} />, name: "running", value: nf.format(row.running) },
-                    { key: <span className="w-3.5" />, name: "total", value: nf.format(row.total) },
+                    ...(sports.includes("climbing")
+                      ? [{ key: <LineKey colour={CLIMB} />, name: "climbing", value: nf.format(row.climbing) }]
+                      : []),
+                    ...(sports.includes("running")
+                      ? [{ key: <LineKey colour={RUN} />, name: "running", value: nf.format(row.running) }]
+                      : []),
+                    ...(both ? [{ key: <span className="w-3.5" />, name: "total", value: nf.format(row.total) }] : []),
                   ]}
                 />
               );

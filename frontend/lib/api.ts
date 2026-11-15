@@ -377,8 +377,9 @@ export type Progression = {
   climbing: ClimbingProgression;
 };
 
-export function getTrainingLoad(weeks = 8, signal?: AbortSignal): Promise<TrainingLoad> {
-  return request(`/training-load?weeks=${weeks}`, { signal });
+/** With `sport` (the Dashboard filter, #46), load, sessions and the ratio count that sport only. */
+export function getTrainingLoad(weeks = 8, signal?: AbortSignal, sport?: Sport): Promise<TrainingLoad> {
+  return request(`/training-load?weeks=${weeks}${sport ? `&sport=${sport}` : ""}`, { signal });
 }
 
 export function getProgression(weeks = 8, signal?: AbortSignal): Promise<Progression> {

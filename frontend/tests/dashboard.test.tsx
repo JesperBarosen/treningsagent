@@ -169,7 +169,8 @@ describe("summary first on mobile", () => {
     render(<Dashboard load={load()} progression={progression()} />);
     const summary = screen.getByRole("region", { name: "Summary" });
     const numbers = within(summary).getAllByRole("definition").map((d) => d.textContent);
-    expect(numbers).toEqual(["2", "this week", "400", "900 last wk", "1.07", "moderate"]);
+    // Sessions this week, with the average over the complete weeks (#46).
+    expect(numbers).toEqual(["2", "4/wk avg", "400", "900 last wk", "1.07", "moderate"]);
     expect(summary.querySelector("dl")).toHaveAttribute("data-sensitive");
     expect(summary).toHaveClass("md:hidden");
   });
