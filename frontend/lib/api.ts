@@ -78,6 +78,7 @@ export function draftInput(d: Draft): SessionInput {
     notes: d.notes ?? null,
   };
   if (d.sport === "running" && d.distance_km) input.distance_km = d.distance_km;
+  if (d.sport === "running" && d.elevation_m != null) input.elevation_m = d.elevation_m;
   if (d.sport === "climbing" && d.climbs?.length) {
     input.climbs = d.climbs.map(({ grade, style, sent, attempts }) => ({
       grade,
@@ -145,6 +146,8 @@ export type SessionInput = {
   effort: number;
   notes: string | null;
   distance_km?: number;
+  /** Running only: elevation gain in whole metres (#84). */
+  elevation_m?: number;
   climbs?: Pick<Climb, "grade" | "style" | "sent" | "attempts">[];
   /** Context tags (N6); [] clears a session's tags on edit. */
   tags?: Tag[];

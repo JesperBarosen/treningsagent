@@ -97,6 +97,16 @@ describe("a chat draft (N4)", () => {
     });
   });
 
+  it("Save keeps a run's elevation gain (#84)", async () => {
+    api.sendChat.mockResolvedValue({
+      reply: "Ready to save.", history: HISTORY, conversation_id: "c1", logged_sessions: [],
+      drafts: [{ ...DRAFT, elevation_m: 300 }],
+    });
+    const { user, card } = await chatWithDraft();
+    await user.click(within(card).getByRole("button", { name: "Save" }));
+    expect(api.createSession).toHaveBeenCalledWith(expect.objectContaining({ distance_km: 8, elevation_m: 300 }));
+  });
+
   it("keeps the draft and shows the error when Save fails", async () => {
     const { ApiError } = await import("@/lib/api");
     api.createSession.mockRejectedValue(new ApiError("Network down.", null));
@@ -155,6 +165,15 @@ describe("the Log form opened from a draft", () => {
     expect(drafts.takeSavedDraft()).toEqual({ ref, session: SAVED });
     expect(drafts.peekDraftForForm()).toBeNull(); // used once
     expect(screen.queryByText(/Filled in from the coach/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the draft's elevation gain in the form and on save (#84)", async () => {
+    drafts.handDraftToForm(ref, { ...DRAFT, elevation_m: 300 });
+    const user = userEvent.setup();
+    render(<LogView />);
+    expect(await screen.findByLabelText(/Elevation gain/)).toHaveValue(300);
+    await user.click(screen.getByRole("button", { name: "Log session" }));
+    expect(api.createSession).toHaveBeenCalledWith(expect.objectContaining({ elevation_m: 300 }));
   });
 
   it("the chat marks the draft saved when it opens again", async () => {

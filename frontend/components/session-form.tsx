@@ -88,6 +88,7 @@ export function SessionForm({
   const date = pickedDate ?? todayIso;
   const [duration, setDuration] = useState(session ? String(session.duration_min) : "");
   const [distance, setDistance] = useState(session?.distance_km ? String(session.distance_km) : "");
+  const [elevation, setElevation] = useState(session?.elevation_m != null ? String(session.elevation_m) : "");
   const [effort, setEffort] = useState(session?.effort ?? 5);
   const [notes, setNotes] = useState(session?.notes ?? "");
   const [tags, setTags] = useState<Tag[]>(session?.tags ?? []);
@@ -107,7 +108,10 @@ export function SessionForm({
   const km = Number(distance.replace(",", "."));
   const durationOk = Number.isInteger(minutes) && minutes > 0;
   const distanceOk = distance === "" || km > 0;
-  const valid = sport !== null && date !== "" && durationOk && distanceOk;
+  const metres = Number(elevation);
+  const elevationOk = elevation === "" || (Number.isInteger(metres) && metres >= 0);
+  const valid =
+    sport !== null && date !== "" && durationOk && distanceOk && (sport !== "running" || elevationOk);
   const pace = sport === "running" && durationOk && km > 0 ? formatPace(minutes / km) : null;
 
   const updateClimb = (i: number, f: (c: FormClimb) => FormClimb) =>
@@ -124,6 +128,8 @@ export function SessionForm({
       notes: notes.trim() || null,
     };
     if (sport === "running" && distance !== "") input.distance_km = km;
+    // A chat draft's elevation survives "Review in Log form" (#84).
+    if (sport === "running" && elevation !== "") input.elevation_m = metres;
     if (sport === "climbing") input.climbs = climbs;
     // Only when used: [] is sent to clear tags a session already had.
     if (tags.length || session?.tags?.length) input.tags = tags;
@@ -210,6 +216,21 @@ export function SessionForm({
                 >
                   {pace ? `${pace} /km` : "–"}
                 </output>
+              </div>
+              <div>
+                <label htmlFor="elevation" className={label}>
+                  Elevation gain (m) <span className="font-normal text-ink-muted">(optional)</span>
+                </label>
+                <input
+                  id="elevation"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={elevation}
+                  onChange={(e) => setElevation(e.target.value)}
+                  aria-invalid={!elevationOk}
+                  className={field}
+                />
               </div>
             </div>
           )}
