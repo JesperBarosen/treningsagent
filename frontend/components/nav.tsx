@@ -8,7 +8,7 @@ import { DiscreetToggle } from "@/components/discreet-toggle";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { clearSavedChats } from "@/lib/chat-storage";
-import { ChartIcon, ChatIcon, KeyIcon, ListIcon, PlusIcon, SignOutIcon } from "./icons";
+import { ChartIcon, ChatIcon, KeyIcon, ListIcon, PlusIcon, SignOutIcon, UserIcon } from "./icons";
 
 const LINKS = [
   { href: "/", label: "Coach", Icon: ChatIcon },
@@ -27,7 +27,8 @@ function Wordmark() {
 
 const isPublic = (pathname: string) => PUBLIC_PATHS.includes(pathname);
 
-function SignOutButton() {
+/** Sign out and land on /sign-in; shared by the top bar and the You page. */
+export function useSignOut() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   async function signOut() {
@@ -37,6 +38,11 @@ function SignOutButton() {
     router.replace("/sign-in");
     router.refresh();
   }
+  return { busy, signOut };
+}
+
+function SignOutButton() {
+  const { busy, signOut } = useSignOut();
   return (
     <button
       type="button"
@@ -76,28 +82,44 @@ export function TopBar() {
               ))}
             </nav>
           )}
+          {/* Discreet stays in the top bar on every width, so its pill is always visible. */}
           {signedIn && <DiscreetToggle />}
-          {/* Also on the sign-in page, and on mobile, where the top bar stays visible. */}
-          <ThemeToggle />
-          {signedIn && (
-            <>
-              <Link
-                href="/account"
-                aria-label="Account"
-                title="Account"
-                aria-current={pathname === "/account" ? "page" : undefined}
-                className="grid size-11 place-items-center rounded-full text-ink-muted transition hover:bg-sunken hover:text-ink aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent"
-              >
-                <KeyIcon size={20} />
-              </Link>
-              <SignOutButton />
-            </>
-          )}
+          {/* Signed in, on mobile, theme, account and sign out live on the You tab
+              (N3: the top corners are hardest to reach one-handed). Signed out
+              there is no You tab, so the theme switch stays here. */}
+          <div className={`items-center gap-2 ${signedIn ? "hidden md:flex" : "flex"}`} data-testid="top-bar-account">
+            <ThemeToggle />
+            {signedIn && (
+              <>
+                <Link
+                  href="/account"
+                  aria-label="Account"
+                  title="Account"
+                  aria-current={pathname === "/account" ? "page" : undefined}
+                  className="grid size-11 place-items-center rounded-full text-ink-muted transition hover:bg-sunken hover:text-ink aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent"
+                >
+                  <KeyIcon size={20} />
+                </Link>
+                <SignOutButton />
+              </>
+            )}
+          </div>
         </div>
       </div>
     </header>
   );
 }
+
+/** The mobile tabs (N3): Log, the most frequent action, is a raised button in
+ *  the centre, the most comfortable thumb zone (Parhi p. 208); account things
+ *  move from the top corner to You. */
+export const TABS = [
+  { href: "/", label: "Coach", Icon: ChatIcon },
+  { href: "/sessions", label: "Sessions", Icon: ListIcon },
+  { href: "/log", label: "Log", Icon: PlusIcon, raised: true },
+  { href: "/dashboard", label: "Dashboard", Icon: ChartIcon },
+  { href: "/you", label: "You", Icon: UserIcon },
+];
 
 /** Bottom tab bar on mobile. */
 export function TabBar() {
@@ -109,16 +131,23 @@ export function TabBar() {
       className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <ul className="mx-auto flex max-w-md">
-        {LINKS.map(({ href, label, Icon }) => (
+        {TABS.map(({ href, label, Icon, raised }) => (
           <li key={href} className="flex-1">
             <Link
               href={href}
               aria-current={pathname === href ? "page" : undefined}
               className="group flex h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium text-ink-muted aria-[current=page]:text-accent"
             >
-              <span className="grid h-7 w-12 place-items-center rounded-full group-aria-[current=page]:bg-accent-soft">
-                <Icon size={20} />
-              </span>
+              {raised ? (
+                // Raised: a filled accent circle lifted half above the bar.
+                <span className="-mt-6 grid size-12 place-items-center rounded-full bg-accent text-on-accent shadow-sheet ring-4 ring-surface">
+                  <Icon size={22} />
+                </span>
+              ) : (
+                <span className="grid h-7 w-12 place-items-center rounded-full group-aria-[current=page]:bg-accent-soft">
+                  <Icon size={20} />
+                </span>
+              )}
               {label}
             </Link>
           </li>

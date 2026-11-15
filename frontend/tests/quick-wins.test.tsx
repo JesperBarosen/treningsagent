@@ -45,6 +45,7 @@ describe("tap targets (DESIGN.md: at least 44 px)", () => {
   });
 
   it("Coach quick replies", async () => {
+    api.getSessions.mockResolvedValue([]); // the Coach's Log shortcuts look up the last session
     render(<Chat />);
     const group = await screen.findByRole("group", { name: "Quick replies" });
     const chips = within(group).getAllByRole("button");
