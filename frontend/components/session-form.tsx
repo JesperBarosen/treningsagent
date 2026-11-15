@@ -55,9 +55,12 @@ export function nextOutcome(c: FormClimb): FormClimb {
   }
 }
 
+// block + min-w-0: a field never grows past its grid cell (iOS date inputs did).
 const field =
-  "min-h-11 w-full rounded-md border border-control bg-surface px-3 text-base text-ink tabular-nums";
+  "block min-h-11 w-full min-w-0 rounded-md border border-control bg-surface px-3 text-base text-ink tabular-nums";
 const label = "mb-1 block text-sm font-medium";
+/** Two equal columns that can shrink below their content's width. */
+const pair = "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3";
 
 /** The Log form. Without `session` it logs a new one; with `session` and
  *  `editing` it edits that session; with `session` alone it starts as a copy
@@ -156,7 +159,7 @@ export function SessionForm({
 
       {sport && (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className={pair}>
             <div>
               <label htmlFor="date" className={label}>
                 Date
@@ -167,7 +170,7 @@ export function SessionForm({
                 value={date}
                 max={todayIso || undefined}
                 onChange={(e) => setDate(e.target.value)}
-                className={field}
+                className={`${field} appearance-none text-left`}
               />
             </div>
             <div>
@@ -187,7 +190,7 @@ export function SessionForm({
           </div>
 
           {sport === "running" && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className={pair}>
               <div>
                 <label htmlFor="distance" className={label}>
                   Distance (km)
