@@ -156,6 +156,61 @@ def test_start_read_and_end_a_pause(http):
     assert http.post("/pause/end", json={"resume_choice": "continue"}).status_code == 404
 
 
+def test_a_pause_that_is_on_can_be_edited_and_keeps_its_start(http):
+    # #82: an injury takes longer, or turns out to be something else.
+    assert http.patch("/pause", json={"reason": "travel"}).status_code == 404  # none on
+    started = http.post("/pause", json={"reason": "injury", "body_part": "ankle", "pain": 4}).json()
+    later = iso(date.today() + timedelta(days=21))
+    res = http.patch("/pause", json={"reason": "injury", "body_part": "left ankle", "pain": 2,
+                                     "note": "slower than hoped", "planned_end": later})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["id"] == started["id"] and body["start_date"] == started["start_date"]
+    assert (body["body_part"], body["pain"], body["note"], body["planned_end"]) == (
+        "left ankle", 2, "slower than hoped", later)
+    assert http.get("/pause").json()["active"]["planned_end"] == later
+
+    # Switching to another reason clears the injury details; the date can be removed.
+    res = http.patch("/pause", json={"reason": "illness", "planned_end": None})
+    assert res.status_code == 200
+    assert res.json()["body_part"] is None and res.json()["pain"] is None
+    assert res.json()["planned_end"] is None
+
+
+def test_editing_a_pause_has_the_same_checks_as_starting_one(http):
+    http.post("/pause", json={"reason": "travel"})
+    bad = [
+        ({"reason": "illness", "pain": 3}, "only for an injury"),
+        ({"reason": "injury", "pain": 11}, "pain must be"),
+        ({"reason": "travel", "planned_end": iso(date.today() - timedelta(days=1))},
+         "before the start of the break"),
+        ({"reason": "travel", "planned_end": "soon"}, "YYYY-MM-DD"),
+    ]
+    for body, message in bad:
+        res = http.patch("/pause", json=body)
+        assert res.status_code == 422 and message in res.json()["detail"], body
+    assert http.patch("/pause", json={"reason": "holiday"}).status_code == 422
+
+
+def test_an_edit_may_keep_a_planned_end_that_has_passed_but_not_one_before_the_start():
+    active = {"start_date": "2026-11-01"}
+    edited = pauses.validate_edit(active, "other", note=" still away ", planned_end="2026-11-05")
+    assert edited == {"planned_end": "2026-11-05", "reason": "other", "body_part": None,
+                      "pain": None, "note": "still away"}
+    with pytest.raises(ValueError, match="before the start of the break"):
+        pauses.validate_edit(active, "other", planned_end="2026-10-31")
+
+
+def test_editing_before_the_migration_says_so(http, store, monkeypatch):
+    http.post("/pause", json={"reason": "travel"})
+
+    def no_grant(changes):
+        raise RuntimeError("editing breaks needs migration 20261115150000_edit_pauses.sql")
+    monkeypatch.setattr(store, "update_pause", no_grant)
+    res = http.patch("/pause", json={"reason": "travel"})
+    assert res.status_code == 503 and "migration" in res.json()["detail"]
+
+
 def test_the_api_refuses_injury_details_on_other_reasons(http):
     res = http.post("/pause", json={"reason": "illness", "pain": 3})
     assert res.status_code == 422 and "only for an injury" in res.json()["detail"]

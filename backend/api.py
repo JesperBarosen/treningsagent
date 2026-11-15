@@ -264,6 +264,25 @@ def post_pause(body: PauseStart, store: db.PostgresStore = Depends(get_store)) -
         raise HTTPException(409, str(e)) from None
 
 
+@app.patch("/pause")
+def patch_pause(body: PauseStart, store: db.PostgresStore = Depends(get_store)) -> dict:
+    """Edit the pause that is on (#82): reason, injury details, note and planned
+    end. The start date stays. 404 if no pause is on."""
+    active = store.active_pause()
+    if active is None:
+        raise HTTPException(404, "No pause is on.")
+    try:
+        changes = pauses.validate_edit(active, **body.model_dump())
+        updated = store.update_pause(changes)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+    except RuntimeError as e:  # the migration isn't applied yet
+        raise HTTPException(503, str(e)) from None
+    if updated is None:  # ended between the read and the update
+        raise HTTPException(404, "No pause is on.")
+    return updated
+
+
 @app.post("/pause/end")
 def post_pause_end(body: PauseEnd, store: db.PostgresStore = Depends(get_store)) -> dict:
     """End the pause that is on, today. 404 if there is none."""

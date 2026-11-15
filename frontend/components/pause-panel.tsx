@@ -4,6 +4,7 @@ import { useEffect, useId, useState, type FormEvent } from "react";
 import { DateInput } from "@/components/date-input";
 import {
   ApiError,
+  editPause,
   endPause,
   getPause,
   PAUSE_REASONS,
@@ -73,9 +74,33 @@ function ResumeChoice({ onDone }: { onDone: () => void }) {
   );
 }
 
-/** The Dashboard's calm banner while a break is on, with End break. */
-export function PauseBanner({ pause, onEnded }: { pause: Pause; onEnded: () => void }) {
+/** The calm banner while a break is on (Dashboard and You), with Edit and End break. */
+export function PauseBanner({
+  pause,
+  onEnded,
+  onEdited,
+}: {
+  pause: Pause;
+  onEnded: () => void;
+  /** After an edit (#82), with the updated break. */
+  onEdited: (p: Pause) => void;
+}) {
   const [ending, setEnding] = useState(false);
+  const [editing, setEditing] = useState(false);
+  if (editing) {
+    return (
+      <section aria-label="Edit break" className="mb-4">
+        <PauseForm
+          pause={pause}
+          onCancel={() => setEditing(false)}
+          onStarted={(p) => {
+            setEditing(false);
+            onEdited(p);
+          }}
+        />
+      </section>
+    );
+  }
   return (
     <section aria-label="On a break" className="mb-4 rounded-lg border border-line bg-sunken p-4">
       <p className="font-semibold">On a break</p>
@@ -87,9 +112,14 @@ export function PauseBanner({ pause, onEnded }: { pause: Pause; onEnded: () => v
       {ending ? (
         <ResumeChoice onDone={onEnded} />
       ) : (
-        <Button variant="ghost" onClick={() => setEnding(true)} className="mt-3 -ml-1 border border-control">
-          End break
-        </Button>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button variant="ghost" onClick={() => setEditing(true)} className="-ml-1 border border-control">
+            Edit
+          </Button>
+          <Button variant="ghost" onClick={() => setEnding(true)} className="border border-control">
+            End break
+          </Button>
+        </div>
       )}
     </section>
   );
@@ -116,6 +146,7 @@ export function PauseControl() {
           setOpen(false);
           load();
         }}
+        onEdited={(p) => setState({ loaded: true, active: p })}
       />
     );
   }
@@ -137,12 +168,24 @@ export function PauseControl() {
   );
 }
 
-export function PauseForm({ onStarted, onCancel }: { onStarted: (p: Pause) => void; onCancel: () => void }) {
-  const [reason, setReason] = useState<PauseReason | null>(null);
-  const [bodyPart, setBodyPart] = useState("");
-  const [pain, setPain] = useState<number | null>(null);
-  const [note, setNote] = useState("");
-  const [until, setUntil] = useState("");
+/** Start a break, or with `pause`, edit the one that is on (#82): the same
+ *  form, prefilled. Switching away from Injury drops body part and pain. */
+export function PauseForm({
+  pause,
+  onStarted,
+  onCancel,
+}: {
+  pause?: Pause;
+  /** With the started or edited break. */
+  onStarted: (p: Pause) => void;
+  onCancel: () => void;
+}) {
+  const editing = pause !== undefined;
+  const [reason, setReason] = useState<PauseReason | null>(pause?.reason ?? null);
+  const [bodyPart, setBodyPart] = useState(pause?.body_part ?? "");
+  const [pain, setPain] = useState<number | null>(pause?.pain ?? null);
+  const [note, setNote] = useState(pause?.note ?? "");
+  const [until, setUntil] = useState(pause?.planned_end ?? "");
   const uid = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,17 +199,17 @@ export function PauseForm({ onStarted, onCancel }: { onStarted: (p: Pause) => vo
     setError(null);
     try {
       const injury = reason === "injury";
-      onStarted(
-        await startPause({
-          reason,
-          body_part: injury ? bodyPart.trim() || null : null,
-          pain: injury ? pain : null,
-          note: note.trim() || null,
-          planned_end: until || null,
-        }),
-      );
+      const input = {
+        reason,
+        body_part: injury ? bodyPart.trim() || null : null,
+        pain: injury ? pain : null,
+        note: note.trim() || null,
+        planned_end: until || null,
+      };
+      onStarted(await (editing ? editPause(input) : startPause(input)));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't start the break.");
+      const fallback = editing ? "Couldn't save the break." : "Couldn't start the break.";
+      setError(err instanceof ApiError ? err.message : fallback);
       setBusy(false);
     }
   }
@@ -243,7 +286,14 @@ export function PauseForm({ onStarted, onCancel }: { onStarted: (p: Pause) => vo
             <label htmlFor={`${uid}-until`} className="text-sm font-medium">
               Back by <span className="font-normal text-ink-muted">(optional)</span>
             </label>
-            <DateInput id={`${uid}-until`} value={until} onChange={setUntil} optional className="mt-1.5" />
+            <DateInput
+              id={`${uid}-until`}
+              value={until}
+              onChange={setUntil}
+              optional
+              min={pause?.start_date}
+              className="mt-1.5"
+            />
           </div>
         </>
       )}
@@ -255,7 +305,7 @@ export function PauseForm({ onStarted, onCancel }: { onStarted: (p: Pause) => vo
       )}
       <div className="flex gap-2">
         <Button type="submit" disabled={!reason || busy} className="flex-1">
-          {busy ? "Starting…" : "Start break"}
+          {editing ? (busy ? "Saving…" : "Save break") : busy ? "Starting…" : "Start break"}
         </Button>
         <Button variant="ghost" onClick={onCancel} disabled={busy}>
           Cancel

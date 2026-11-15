@@ -1,14 +1,15 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Pause, Progression, TrainingLoad, Trend } from "@/lib/api";
 
-const api = vi.hoisted(() => ({ getPause: vi.fn(), startPause: vi.fn(), endPause: vi.fn() }));
+const api = vi.hoisted(() => ({ getPause: vi.fn(), startPause: vi.fn(), endPause: vi.fn(), editPause: vi.fn() }));
 vi.mock("@/lib/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api")>()),
   getPause: api.getPause,
   startPause: api.startPause,
   endPause: api.endPause,
+  editPause: api.editPause,
 }));
 
 const { PauseControl, PauseBanner, PHYSIO_HINT } = await import("@/components/pause-panel");
@@ -33,6 +34,7 @@ beforeEach(() => {
   api.getPause.mockResolvedValue({ active: null, recent: null });
   api.startPause.mockImplementation(async (input) => ({ ...INJURY, ...input, id: 2 }));
   api.endPause.mockResolvedValue({ ...INJURY, ended_on: "2026-11-15", resume_choice: "fresh" });
+  api.editPause.mockImplementation(async (input) => ({ ...INJURY, ...input }));
 });
 
 describe("taking a break (N5)", () => {
@@ -88,7 +90,7 @@ describe("the break banner", () => {
   it("is calm, neutral, suggests a physio for an injury, and asks how to come back", async () => {
     const user = userEvent.setup();
     const onEnded = vi.fn();
-    render(<PauseBanner pause={INJURY} onEnded={onEnded} />);
+    render(<PauseBanner pause={INJURY} onEnded={onEnded} onEdited={() => {}} />);
     const banner = screen.getByRole("region", { name: "On a break" });
     expect(banner).toHaveTextContent("Trends and the ratio leave these days out.");
     expect(banner).toHaveTextContent(PHYSIO_HINT);
@@ -103,8 +105,81 @@ describe("the break banner", () => {
   });
 
   it("has no physio line for travel", () => {
-    render(<PauseBanner pause={{ ...INJURY, reason: "travel", body_part: null, pain: null }} onEnded={() => {}} />);
+    render(<PauseBanner pause={{ ...INJURY, reason: "travel", body_part: null, pain: null }} onEnded={() => {}} onEdited={() => {}} />);
     expect(screen.queryByText(PHYSIO_HINT)).not.toBeInTheDocument();
+  });
+});
+
+describe("editing a break that is on (#82)", () => {
+  it("opens the start form prefilled and saves every field without ending the break", async () => {
+    const user = userEvent.setup();
+    const onEdited = vi.fn();
+    render(<PauseBanner pause={INJURY} onEnded={vi.fn()} onEdited={onEdited} />);
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+
+    const form = screen.getByRole("region", { name: "Edit break" });
+    expect(within(form).getByRole("radio", { name: "Injury" })).toHaveAttribute("aria-checked", "true");
+    expect(within(form).getByLabelText(/Where\?/)).toHaveValue("left ankle");
+    expect(within(form).getByRole("radio", { name: "Pain 4" })).toHaveAttribute("aria-checked", "true");
+    expect(within(form).getByLabelText(/Note/)).toHaveValue("rolled it");
+    const backBy = within(form).getByLabelText(/Back by/);
+    expect(backBy).toHaveValue("2026-11-23");
+    expect(backBy).toHaveAttribute("min", "2026-11-02"); // not before the start
+
+    await user.clear(within(form).getByLabelText(/Note/));
+    await user.type(within(form).getByLabelText(/Note/), "slower than hoped");
+    await user.click(within(form).getByRole("radio", { name: "Pain 2" }));
+    fireEvent.change(backBy, { target: { value: "2026-12-07" } });
+    await user.click(within(form).getByRole("button", { name: "Save break" }));
+
+    expect(api.editPause).toHaveBeenCalledWith({
+      reason: "injury", body_part: "left ankle", pain: 2, note: "slower than hoped", planned_end: "2026-12-07",
+    });
+    expect(api.startPause).not.toHaveBeenCalled();
+    expect(api.endPause).not.toHaveBeenCalled();
+    expect(onEdited).toHaveBeenCalledWith(expect.objectContaining({ planned_end: "2026-12-07", start_date: "2026-11-02" }));
+  });
+
+  it("drops the injury details and the date when the reason changes and Back by is cleared", async () => {
+    const user = userEvent.setup();
+    render(<PauseBanner pause={INJURY} onEnded={vi.fn()} onEdited={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("radio", { name: "Illness" }));
+    await user.click(screen.getByRole("button", { name: "Clear date" }));
+    await user.click(screen.getByRole("button", { name: "Save break" }));
+    expect(api.editPause).toHaveBeenCalledWith({
+      reason: "illness", body_part: null, pain: null, note: "rolled it", planned_end: null,
+    });
+  });
+
+  it("Cancel goes back to the banner without saving", async () => {
+    const user = userEvent.setup();
+    render(<PauseBanner pause={INJURY} onEnded={vi.fn()} onEdited={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("region", { name: "On a break" })).toBeInTheDocument();
+    expect(api.editPause).not.toHaveBeenCalled();
+  });
+
+  it("shows the server's message when the edit is refused", async () => {
+    const { ApiError } = await import("@/lib/api");
+    api.editPause.mockRejectedValue(new ApiError("planned_end can't be before the start of the break", 422));
+    const user = userEvent.setup();
+    render(<PauseBanner pause={INJURY} onEnded={vi.fn()} onEdited={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Save break" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("before the start of the break");
+  });
+
+  it("updates the You tab's banner after an edit", async () => {
+    api.getPause.mockResolvedValue({ active: INJURY, recent: null });
+    const user = userEvent.setup();
+    render(<PauseControl />);
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("radio", { name: "Travel" }));
+    await user.click(screen.getByRole("button", { name: "Clear date" }));
+    await user.click(screen.getByRole("button", { name: "Save break" }));
+    expect(await screen.findByText("since 2 Nov · travel")).toBeInTheDocument();
   });
 });
 
