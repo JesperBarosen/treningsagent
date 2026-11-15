@@ -59,6 +59,17 @@ normal-vision separation and 3:1 contrast with the surface.
 | --- | --- | --- | --- | --- |
 | `--chart-run` | `bg-chart-run` | `#008571` | `#21A589` | running series |
 | `--chart-climb` | `bg-chart-climb` | `#A85F12` | `#C98030` | climbing series |
+| `--chart-strength` | `bg-chart-strength` | `#4A5BB5` | `#7083E0` | reserved for a third sport (strength or other training), not used yet |
+
+The order is fixed: running, climbing, strength. A filter that hides a sport
+never repaints the others. The third colour passes the same checks with the
+other two in both themes (worst protan/deutan ΔE 11.5 light / 11.0 dark, worst
+normal 18.9 / 19.6; `tests/sport-colours.test.ts`). Two limits:
+
+- It is ΔE 6.9 from grade blue in light mode, so sports and grades never share
+  a chart. If they ever must, the strength series takes a 45° hatch texture.
+- Under simulated tritanopia it is close to running (ΔE 7.5 light / 5.7 dark),
+  so a chart with all three keeps its legend and gaps between segments.
 
 Chart rules: bars at most 24px wide with a rounded 4px top and a square
 baseline, a 2px surface gap between stacked segments, 2px lines, dots of at
