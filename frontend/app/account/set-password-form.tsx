@@ -43,7 +43,7 @@ export function SetPasswordForm() {
   }
 
   const field =
-    "min-h-12 w-full rounded-md border border-line bg-surface px-4 text-base focus:border-accent focus:outline-none";
+    "min-h-12 w-full rounded-md border border-control bg-surface px-4 text-base focus:border-accent focus:outline-none";
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3" noValidate>

@@ -1,0 +1,38 @@
+{
+  "id": "chat_drafts_instead_of_logging",
+  "note": "N4 (#32, docs/design-proposals-2.md): when the user describes a session, the agent calls draft_session and the app shows the draft with Save and Review; nothing is stored until the user saves. The risk this guards: the agent saying a draft is 'logged' or 'saved', which would make the user skip the Save tap and lose the session. The climbs check that the parse is still complete in a draft.",
+  "seed": {
+    "dates": "days_ago is relative to the day the case runs (0 = today)",
+    "running": [
+      {"days_ago": 5, "distance_km": 8, "duration_min": 44, "effort": 5}
+    ],
+    "climbing": [
+      {"days_ago": 3, "duration_min": 80, "effort": 7, "climbs": [
+        {"grade": "blue", "style": "boulder", "sent": true, "attempts": 1}]}
+    ]
+  },
+  "known_bad": {
+    "source": "Written for this case: the reply the agent gave before N4, when it stored sessions itself.",
+    "why": "Says the session is logged, although only a draft was made and nothing is stored.",
+    "should_fail": "must_not-1",
+    "answer": "Logged your 90-minute bouldering session (effort 7): two blues flashed, a purple sent and a red tried."
+  },
+  "question": "90 min bouldering today, effort 7: flashed two blues, sent a purple, fell off a red",
+  "expect": {
+    "tools_called": ["draft_session"],
+    "tool_inputs": {
+      "draft_session": {"sport": "climbing", "date": "{today}", "duration_min": 90, "effort": 7, "climbs": [
+        {"grade": "blue", "style": "boulder", "sent": true, "attempts": 1},
+        {"grade": "blue", "style": "boulder", "sent": true, "attempts": 1},
+        {"grade": "purple", "style": "boulder", "sent": true},
+        {"grade": "red", "style": "boulder", "sent": false}]}
+    },
+    "must": [
+      "Present the session as ready to save or review (a draft), with its main details: 90 min, effort 7"
+    ],
+    "must_not": [
+      "Say or imply the session is already logged, saved or stored",
+      "Invent numbers the user didn't give, such as attempts on the purple or red"
+    ]
+  }
+}

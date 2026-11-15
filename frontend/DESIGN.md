@@ -28,7 +28,8 @@ text, 3:1 for large text and UI outlines).
 | `--canvas` | `bg-canvas` | `#F5F4EF` chalk | `#0E1214` night slate | page background |
 | `--surface` | `bg-surface` | `#FFFFFF` | `#161B1E` | cards, input, sheets |
 | `--sunken` | `bg-sunken` | `#ECEAE3` | `#1E2529` | user bubbles, chips, skeletons |
-| `--line` | `border-line` | `#D9D6CC` | `#2C3439` | hairlines, card borders |
+| `--line` | `border-line` | `#D9D6CC` | `#2C3439` | decorative hairlines, card borders, dividers (1.45:1, never a control's only edge) |
+| `--control` | `border-control` | `#8A857A` | `#6B767C` | edges of text fields, chips, segmented toggles and outlined buttons (≥ 3:1 on surface, canvas and sunken, WCAG 1.4.11) |
 | `--ink` | `text-ink` | `#15191B` | `#ECEEEC` | primary text (16:1 / 16:1) |
 | `--ink-muted` | `text-ink-muted` | `#5A6166` | `#9AA3A7` | secondary text (5.7:1 / 7.3:1) |
 | `--accent` | `bg-accent`, `text-accent` | `#0F6B5C` spruce | `#4FD1B5` | primary actions, focus, running |

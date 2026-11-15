@@ -5,7 +5,17 @@ import { ChatIcon, PlusIcon, SendIcon } from "@/components/icons";
 import { LoggedSessionCard } from "@/components/session-card";
 import { Button, OfflineHint } from "@/components/states";
 import { WeekGlance } from "@/components/week-glance";
-import { ApiError, sendChat, type Session } from "@/lib/api";
+import { asSession, DraftCard } from "@/components/draft-card";
+import { ApiError, createSession, draftInput, sendChat, type Draft, type Session } from "@/lib/api";
+import {
+  clearDraftForForm,
+  handDraftToForm,
+  parseHandedDraft,
+  peekDraftForForm,
+  readAutoSave,
+  takeSavedDraft,
+  type DraftRef,
+} from "@/lib/chat-drafts";
 import { dropLegacyChats, loadChat, saveChat } from "@/lib/chat-storage";
 import { SENSITIVE } from "@/lib/discreet";
 import { currentUserId } from "@/lib/supabase/client";
@@ -16,9 +26,13 @@ import { SessionSheet } from "./sessions/session-sheet";
 /** A session the agent logged, as its card shows it now: changed or undone from the card. */
 type Logged = Session & { edited?: boolean; undone?: boolean };
 
+/** A draft the agent made (N4) and what the user did with it. Saved drafts move
+ *  into `logged`, so their card gets Edit and Undo like any logged session. */
+type DraftItem = { key: string; draft: Draft; status: "open" | "saved" | "dismissed" };
+
 type Item =
   | { id: string; role: "user"; text: string }
-  | { id: string; role: "agent"; text: string; logged: Logged[] }
+  | { id: string; role: "agent"; text: string; logged: Logged[]; drafts?: DraftItem[] }
   | { id: string; role: "error"; text: string; offline: boolean; retry: string };
 
 type Conversation = { items: Item[]; history: unknown[]; conversationId: string | null };
@@ -40,6 +54,14 @@ const describe = (s: Session) => `${sessionSummary(s)} on ${s.date} (id ${s.id})
 export const removedNote = (s: Session) =>
   `[User removed the session: ${describe(s)}. It is no longer in their log.]`;
 export const editedNote = (s: Session) => `[User edited the session to: ${describe(s)}.]`;
+export const savedDraftNote = (s: Session) => `[User saved the draft as: ${describe(s)}.]`;
+export const dismissedDraftNote = (d: Draft) =>
+  `[User dismissed the draft: ${sessionSummary(asSession(d))} on ${d.date}. Nothing was stored.]`;
+
+/** Append a note for the coach to the stored history (the API merges it with the
+ *  next user message into one turn). Not before the first reply: nothing to note. */
+const withNote = (history: unknown[], note: string) =>
+  history.length ? [...history, { role: "user", content: note }] : history;
 
 function loadConversation(userId: string): Conversation {
   const saved = loadChat(userId);
@@ -70,6 +92,9 @@ export function Chat() {
         dropLegacyChats();
         setUserId(id);
         if (id) setConvo(loadConversation(id));
+        // A draft reviewed and saved in the Log form: mark its card here.
+        const saved = takeSavedDraft();
+        if (id && saved) settleDraft(saved.ref, { saved: saved.session });
         setRestored(true);
       });
     return () => {
@@ -96,13 +121,14 @@ export function Chat() {
       items: [...c.items.filter((i) => i.role !== "error"), { id: newId(), role: "user", text: message }],
     }));
     try {
-      const res = await sendChat(message, convo.history, convo.conversationId);
+      const res = await sendChat(message, convo.history, convo.conversationId, undefined, readAutoSave());
+      const drafts = (res.drafts ?? []).map((draft) => ({ key: newId(), draft, status: "open" as const }));
       setConvo((c) => ({
         history: res.history,
         conversationId: res.conversation_id,
         items: [
           ...c.items,
-          { id: newId(), role: "agent", text: res.reply, logged: res.logged_sessions ?? [] },
+          { id: newId(), role: "agent", text: res.reply, logged: res.logged_sessions ?? [], drafts },
         ],
       }));
     } catch (e) {
@@ -153,11 +179,43 @@ export function Chat() {
   function updateLogged(id: number, change: (s: Logged) => Logged, note: string) {
     setConvo((c) => ({
       ...c,
-      history: c.history.length ? [...c.history, { role: "user", content: note }] : c.history,
+      history: withNote(c.history, note),
       items: c.items.map((i) =>
         i.role === "agent" ? { ...i, logged: i.logged.map((s) => (s.id === id ? change(s) : s)) } : i,
       ),
     }));
+  }
+
+  /** A draft was saved (here or in the Log form) or dismissed: update its card
+   *  and tell the coach. A saved draft joins the message's logged sessions. */
+  function settleDraft(ref: DraftRef, outcome: { saved: Session } | { dismissed: Draft }) {
+    setConvo((c) => {
+      const found = c.items.some(
+        (i) => i.id === ref.itemId && i.role === "agent" && i.drafts?.some((d) => d.key === ref.key && d.status === "open"),
+      );
+      if (!found) return c; // already settled, or a cleared chat
+      const note = "saved" in outcome ? savedDraftNote(outcome.saved) : dismissedDraftNote(outcome.dismissed);
+      return {
+        ...c,
+        history: withNote(c.history, note),
+        items: c.items.map((i) =>
+          i.id !== ref.itemId || i.role !== "agent"
+            ? i
+            : {
+                ...i,
+                logged: "saved" in outcome ? [...i.logged, outcome.saved] : i.logged,
+                drafts: i.drafts?.map((d) =>
+                  d.key === ref.key ? { ...d, status: "saved" in outcome ? "saved" : "dismissed" } : d,
+                ),
+              },
+        ),
+      };
+    });
+  }
+
+  async function saveDraft(ref: DraftRef, draft: Draft) {
+    const saved = await createSession(draftInput(draft));
+    settleDraft(ref, { saved });
   }
 
   const empty = restored && convo.items.length === 0;
@@ -188,6 +246,13 @@ export function Chat() {
                 onUndone={(s) =>
                   updateLogged(s.id, (old) => ({ ...old, undone: true }), removedNote(s))
                 }
+                onSaveDraft={saveDraft}
+                onReviewDraft={handDraftToForm}
+                onDismissDraft={(ref, draft) => {
+                  // A dismissed draft must not reappear in the Log form.
+                  if (parseHandedDraft(peekDraftForForm())?.ref.key === ref.key) clearDraftForForm();
+                  settleDraft(ref, { dismissed: draft });
+                }}
               />
             </li>
           ))}
@@ -229,7 +294,7 @@ export function Chat() {
                 type="button"
                 onClick={() => quickReply(q)}
                 disabled={sending}
-                className="min-h-11 shrink-0 rounded-full border border-line bg-surface px-3.5 text-sm font-medium whitespace-nowrap text-ink transition hover:border-accent hover:text-accent disabled:opacity-40"
+                className="min-h-11 shrink-0 rounded-full border border-control bg-surface px-3.5 text-sm font-medium whitespace-nowrap text-ink transition hover:border-accent hover:text-accent disabled:opacity-40"
               >
                 {q.label}
               </button>
@@ -247,7 +312,7 @@ export function Chat() {
               onKeyDown={onKeyDown}
               rows={1}
               placeholder="Ran 10 km in 50 min, effort 6…"
-              className="field-sizing-content max-h-36 min-h-12 flex-1 resize-none rounded-lg border border-line bg-surface px-4 py-3 text-base placeholder:text-ink-muted focus:border-accent focus:outline-none focus-visible:outline-none"
+              className="field-sizing-content max-h-36 min-h-12 flex-1 resize-none rounded-lg border border-control bg-surface px-4 py-3 text-base placeholder:text-ink-muted focus:border-accent focus:outline-none focus-visible:outline-none"
             />
             <button
               type="submit"
@@ -293,12 +358,18 @@ function Message({
   disabled,
   onEdit,
   onUndone,
+  onSaveDraft,
+  onReviewDraft,
+  onDismissDraft,
 }: {
   item: Item;
   onRetry: (text: string) => void;
   disabled: boolean;
   onEdit: (s: Session) => void;
   onUndone: (s: Session) => void;
+  onSaveDraft: (ref: DraftRef, d: Draft) => Promise<void>;
+  onReviewDraft: (ref: DraftRef, d: Draft) => void;
+  onDismissDraft: (ref: DraftRef, d: Draft) => void;
 }) {
   if (item.role === "user") {
     return (
@@ -338,6 +409,20 @@ function Message({
           onUndone={() => onUndone(s)}
         />
       ))}
+      {item.drafts
+        ?.filter((d) => d.status === "open")
+        .map(({ key, draft }) => {
+          const ref = { itemId: item.id, key };
+          return (
+            <DraftCard
+              key={key}
+              draft={draft}
+              onSave={() => onSaveDraft(ref, draft)}
+              onReview={() => onReviewDraft(ref, draft)}
+              onDismiss={() => onDismissDraft(ref, draft)}
+            />
+          );
+        })}
       <div {...SENSITIVE} className="max-w-[92%] leading-relaxed">
         <span className="sr-only">Coach: </span>
         <Markdown text={item.text} />

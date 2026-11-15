@@ -88,9 +88,23 @@ def test_chat_returns_the_sessions_logged_this_turn(make_app, store):
         make_message("end_turn", [{"type": "text", "text": "Logged."}]),
     )
 
-    body = http.post("/chat", json={"message": "Ran 10 km in 50 min, effort 6"}).json()
+    body = http.post("/chat", json={"message": "Ran 10 km in 50 min, effort 6",
+                                     "auto_save": True}).json()
 
     assert body["logged_sessions"] == [{"id": 1, **RUN, "notes": None}]
+
+
+def test_chat_returns_drafts_and_logs_nothing_by_default(make_app, store):
+    http, _ = make_app(
+        make_message("tool_use", [tool_use("t1", "draft_session", RUN)]),
+        make_message("end_turn", [{"type": "text", "text": "Ready to save."}]),
+    )
+
+    body = http.post("/chat", json={"message": "Ran 10 km in 50 min, effort 6"}).json()
+
+    assert body["drafts"] == [{"draft": True, **RUN, "notes": None}]
+    assert body["logged_sessions"] == []
+    assert tools.get_history(store, 3650) == []
 
 
 def test_failed_log_and_earlier_turns_are_not_reported(make_app):

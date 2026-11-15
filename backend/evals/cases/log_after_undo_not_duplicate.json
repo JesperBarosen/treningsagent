@@ -1,6 +1,6 @@
 {
   "id": "log_after_undo_not_duplicate",
-  "note": "Reported on 2026-11-14 (#63). The user logged a run in the chat, removed it with Undo on the Logged card, then sent the same run again. The coach refused, calling it a duplicate, because the conversation still showed the first log_session call. Fixed by appending a '[User removed the session: ...]' note to the history on Undo or Edit, and by telling the agent to call get_history before calling anything a duplicate. The history below is that conversation; the seed holds two older runs and not the removed one, as in the database after Undo.",
+  "note": "Reported on 2026-11-14 (#63). The user logged a run in the chat, removed it with Undo on the Logged card, then sent the same run again. The coach refused, calling it a duplicate, because the conversation still showed the first log_session call. Fixed by appending a '[User removed the session: ...]' note to the history on Undo or Edit, and by telling the agent to call get_history before calling anything a duplicate. Since N4 (#32) the agent drafts instead of logging by default, so the expected call is draft_session. The history below is that conversation; the seed holds two older runs and not the removed one, as in the database after Undo.",
   "seed": {
     "dates": "days_ago is relative to the day the case runs (0 = today)",
     "running": [
@@ -28,12 +28,12 @@
   },
   "question": "Ran 10 km in 50 min today, effort 6",
   "expect": {
-    "tools_called": ["log_session"],
+    "tools_called": ["draft_session"],
     "tool_inputs": {
-      "log_session": {"sport": "running", "date": "{today}", "duration_min": 50, "effort": 6, "distance_km": 10}
+      "draft_session": {"sport": "running", "date": "{today}", "duration_min": 50, "effort": 6, "distance_km": 10}
     },
     "must": [
-      "Confirm the run (10 km, 50 min, effort 6) was logged. Context: the user removed an earlier copy of this run, so it is no longer stored."
+      "Offer the run (10 km, 50 min, effort 6) as ready to save or review. Context: the user removed an earlier copy of this run, so it is no longer stored."
     ],
     "must_not": [
       "Call the run a duplicate, say it is already logged, or refuse to log it",

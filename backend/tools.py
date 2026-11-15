@@ -60,6 +60,27 @@ def log_session(
     return result
 
 
+def draft_session(
+    store: Store,
+    sport: str,
+    date: str,
+    duration_min: int,
+    effort: int,
+    notes: str | None = None,
+    climbs: list[dict] | None = None,
+    **sport_fields,
+) -> dict:
+    """Check a session the user described, with log_session's rules, without
+    storing it. The app shows the draft with Save and Review, so the user
+    confirms what the agent understood before anything is written (N4)."""
+    row, climb_rows = validate_session(sport, date, duration_min, effort, notes, climbs,
+                                       **sport_fields)
+    result = {"draft": True, **row}
+    if climb_rows:
+        result["climbs"] = climb_rows
+    return result
+
+
 def update_session(store: Store, session_id: int, changes: dict) -> dict:
     """Apply `changes` to a stored session and validate the result with the
     same rules as log_session. `climbs`, if given, replaces all the session's
@@ -392,10 +413,45 @@ TOOLS = [
 ]
 
 
+DRAFT_SESSION = {
+    "name": "draft_session",
+    "description": (
+        "Prepare one completed training session the user described, for them to confirm. "
+        "Nothing is stored: the app shows it as a draft with Save and Review buttons. "
+        "Call this when the user describes a workout they did. Only include fields the user "
+        "actually stated; never guess numbers. Use running fields only for running. For "
+        "climbing, list each climb the user mentions in `climbs`, all in this one call. "
+        "Afterwards say the session is ready to save or review; never say it is logged."
+    ),
+    "input_schema": TOOLS[0]["input_schema"],  # exactly log_session's fields and rules
+}
+
+LOG_SESSION_DISABLED = {
+    **TOOLS[0],
+    "description": (
+        "Not available: in this app the user saves sessions themselves. Use draft_session "
+        "for a session the user describes."
+    ),
+}
+
+
+def tools_for(auto_save: bool) -> list[dict]:
+    """The tools offered for one chat turn. With auto_save (the user's setting
+    "Save chat sessions without asking") the agent stores sessions itself, as
+    before N4. Otherwise it drafts them; log_session stays defined, because
+    earlier turns in a saved history may call it, but it is marked unavailable
+    and run_turn refuses it."""
+    if auto_save:
+        return TOOLS
+    return [LOG_SESSION_DISABLED, DRAFT_SESSION, *TOOLS[1:]]
+
+
 def run_tool(store: Store, name: str, tool_input: dict) -> str:
     """Dispatch a tool call from Claude and return the result as JSON text."""
     if name == "log_session":
         result = log_session(store, **tool_input)
+    elif name == "draft_session":
+        result = draft_session(store, **tool_input)
     elif name == "get_history":
         result = get_history(store, **tool_input)
     elif name == "get_training_load":

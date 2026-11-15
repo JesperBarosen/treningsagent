@@ -167,7 +167,7 @@ function Review({
           maxLength={NOTE_MAX}
           rows={2}
           placeholder="e.g. one easy run, rest fingers Wednesday"
-          className="w-full resize-none rounded-lg border border-line bg-surface px-4 py-3 text-base placeholder:text-ink-muted focus:border-accent focus:outline-none"
+          className="w-full resize-none rounded-lg border border-control bg-surface px-4 py-3 text-base placeholder:text-ink-muted focus:border-accent focus:outline-none"
         />
       </div>
 
@@ -182,7 +182,7 @@ function Review({
           {stored?.status === "done" ? "Save" : "Done"}
         </Button>
         {stored?.status !== "done" && (
-          <Button variant="ghost" onClick={() => finish("skipped")} disabled={busy} className="border border-line">
+          <Button variant="ghost" onClick={() => finish("skipped")} disabled={busy} className="border border-control">
             Skip
           </Button>
         )}

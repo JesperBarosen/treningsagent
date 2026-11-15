@@ -40,12 +40,40 @@ export type Session = {
   hardest_sent_grade?: Grade;
 };
 
+/** A session the agent understood but didn't store (draft_session, N4): the
+ *  user saves it with one tap or reviews it in the Log form. No id yet. */
+export type Draft = Omit<Session, "id" | "load" | "pace_min_per_km" | "climbs_sent" | "hardest_sent_grade"> & {
+  draft: true;
+};
+
 export type ChatResponse = {
   reply: string;
   history: unknown[];
   conversation_id: string;
   logged_sessions: Session[];
+  drafts?: Draft[];
 };
+
+/** What the Log form or the Save button sends for a draft. */
+export function draftInput(d: Draft): SessionInput {
+  const input: SessionInput = {
+    sport: d.sport,
+    date: d.date,
+    duration_min: d.duration_min,
+    effort: d.effort,
+    notes: d.notes ?? null,
+  };
+  if (d.sport === "running" && d.distance_km) input.distance_km = d.distance_km;
+  if (d.sport === "climbing" && d.climbs?.length) {
+    input.climbs = d.climbs.map(({ grade, style, sent, attempts }) => ({
+      grade,
+      style,
+      sent,
+      attempts: attempts ?? null,
+    }));
+  }
+  return input;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -123,10 +151,11 @@ export function sendChat(
   history: unknown[],
   conversationId: string | null,
   signal?: AbortSignal,
+  autoSave = false,
 ): Promise<ChatResponse> {
   return request("/chat", {
     method: "POST",
-    body: JSON.stringify({ message, history, conversation_id: conversationId }),
+    body: JSON.stringify({ message, history, conversation_id: conversationId, auto_save: autoSave }),
     signal,
   });
 }

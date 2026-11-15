@@ -53,7 +53,7 @@ export function nextOutcome(c: FormClimb): FormClimb {
 }
 
 const field =
-  "min-h-11 w-full rounded-md border border-line bg-surface px-3 text-base text-ink tabular-nums";
+  "min-h-11 w-full rounded-md border border-control bg-surface px-3 text-base text-ink tabular-nums";
 const label = "mb-1 block text-sm font-medium";
 
 /** The Log form. Without `session` it logs a new one; with `session` and
@@ -62,18 +62,22 @@ const label = "mb-1 block text-sm font-medium";
 export function SessionForm({
   session,
   editing = false,
+  keepDate = false,
   onSubmit,
   onCancel,
 }: {
   session?: Session;
   editing?: boolean;
+  /** Prefill the date from `session` too (a chat draft), instead of today. */
+  keepDate?: boolean;
   onSubmit: (input: SessionInput) => Promise<void>;
   onCancel?: () => void;
 }) {
   const [sport, setSport] = useState<Sport | null>(session?.sport ?? null);
   const todayIso = useToday();
-  // null means "today", resolved after mount; editing keeps the session's own date.
-  const [pickedDate, setDate] = useState<string | null>(editing && session ? session.date : null);
+  // null means "today", resolved after mount; editing (and a reviewed chat draft,
+  // `keepDate`) keeps the session's own date.
+  const [pickedDate, setDate] = useState<string | null>((editing || keepDate) && session ? session.date : null);
   const date = pickedDate ?? todayIso;
   const [duration, setDuration] = useState(session ? String(session.duration_min) : "");
   const [distance, setDistance] = useState(session?.distance_km ? String(session.distance_km) : "");
@@ -135,7 +139,7 @@ export function SessionForm({
               role="radio"
               aria-checked={sport === s.value}
               onClick={() => setSport(s.value)}
-              className="flex min-h-14 items-center gap-3 rounded-md border border-line bg-surface px-3 font-medium aria-checked:border-accent aria-checked:bg-accent-soft"
+              className="flex min-h-14 items-center gap-3 rounded-md border border-control bg-surface px-3 font-medium aria-checked:border-accent aria-checked:bg-accent-soft"
             >
               <SportBadge sport={s.value} size="sm" />
               {s.label}
@@ -299,7 +303,7 @@ function ClimbsField({
   return (
     <fieldset className="flex flex-col gap-3">
       <legend className={label}>Climbs</legend>
-      <div role="radiogroup" aria-label="Default style" className="inline-flex self-start rounded-full border border-line bg-surface p-1">
+      <div role="radiogroup" aria-label="Default style" className="inline-flex self-start rounded-full border border-control bg-surface p-1">
         {STYLES.map((s) => (
           <button
             key={s.value}
@@ -321,7 +325,7 @@ function ClimbsField({
             type="button"
             onClick={() => onAdd(g)}
             aria-label={`Add ${g}`}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-sunken px-3 text-sm font-medium capitalize"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-control bg-sunken px-3 text-sm font-medium capitalize"
           >
             <GradeDot grade={g} size={12} />
             {g}

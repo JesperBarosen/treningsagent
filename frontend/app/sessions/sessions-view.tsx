@@ -62,7 +62,7 @@ export function SessionsView() {
         <div
           role="radiogroup"
           aria-label="Show"
-          className="mt-4 inline-flex rounded-full border border-line bg-surface p-1"
+          className="mt-4 inline-flex rounded-full border border-control bg-surface p-1"
         >
           {FILTERS.map((f) => (
             <button

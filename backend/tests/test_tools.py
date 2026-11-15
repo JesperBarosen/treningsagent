@@ -25,6 +25,30 @@ def test_log_climbing_session_with_climbs(store):
     assert store.climbs[1]["attempts"] is None  # not stated, not guessed
 
 
+def test_draft_session_checks_like_log_session_but_stores_nothing(store):
+    d = tools.draft_session(store, "climbing", "2026-11-10", 90, 8,
+                            climbs=[BLUE_FLASH, RED_PROJECT])
+    assert d["draft"] is True and "id" not in d
+    assert [(c["grade"], c["grade_ordinal"]) for c in d["climbs"]] == [("blue", 3), ("red", 5)]
+    assert store.rows == [] and store.climbs == []
+    with pytest.raises(ValueError):
+        tools.draft_session(store, "running", "2026-11-10", 30, 11)
+    with pytest.raises(ValueError):
+        tools.draft_session(store, "running", "2026-11-10", 30, 5, climbs=[BLUE_FLASH])
+
+
+def test_tools_for_drafts_by_default_and_logs_with_auto_save():
+    by_name = lambda ts: {t["name"]: t for t in ts}  # noqa: E731
+    drafting = by_name(tools.tools_for(auto_save=False))
+    assert "draft_session" in drafting
+    assert drafting["log_session"]["description"].startswith("Not available")
+    assert drafting["draft_session"]["input_schema"] == drafting["log_session"]["input_schema"]
+    assert "draft_session" not in by_name(tools.tools_for(auto_save=True))
+    assert json.dumps(tools.run_tool(None, "draft_session",
+                                     {"sport": "running", "date": "2026-11-10",
+                                      "duration_min": 30, "effort": 5}))
+
+
 def test_log_climbing_session_without_climbs(store):
     s = tools.log_session(store, "climbing", "2026-11-10", 60, 5)
     assert "climbs" not in s and store.climbs == []

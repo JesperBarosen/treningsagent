@@ -103,12 +103,21 @@ def test_undo_case_ends_with_the_removal_note_the_app_sends():
     assert note["content"].startswith("[User removed the session: ")
 
 
-def test_judge_check_inputs_run_offline():
-    """--judge-check runs each expected tool on an in-memory store; log_session
-    needs the case's tool_inputs to do that."""
-    case = run.load_case(UNDO_CASE)
+@pytest.mark.parametrize("path", sorted(run.CASES_DIR.glob("*.json")), ids=lambda p: p.stem)
+def test_judge_check_runs_every_expected_tool_offline(path):
+    """--judge-check runs each expected tool on an in-memory store with the
+    case's tool_inputs (or none); every case must be able to do that."""
+    case = run.load_case(path)
     store = run.MemoryStore()
     run.seed(store, case["seed"], date.today())
-    inputs = case["expect"]["tool_inputs"]
-    result = json.loads(tools.run_tool(store, "log_session", inputs["log_session"]))
-    assert result["distance_km"] == 10 and result["date"] == date.today().isoformat()
+    inputs = case["expect"].get("tool_inputs", {})
+    for name in case["expect"]["tools_called"]:
+        json.loads(tools.run_tool(store, name, inputs.get(name, {})))
+
+
+def test_draft_cases_expect_a_draft_dated_today():
+    for path in (UNDO_CASE, run.CASES_DIR / "chat_drafts_instead_of_logging.json"):
+        case = run.load_case(path)
+        draft = json.loads(tools.run_tool(None, "draft_session",
+                                          case["expect"]["tool_inputs"]["draft_session"]))
+        assert draft["draft"] is True and draft["date"] == date.today().isoformat()
