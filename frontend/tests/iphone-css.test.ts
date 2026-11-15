@@ -65,6 +65,8 @@ describe("date field on iOS", () => {
     const body = rule('input[type="date"]::-webkit-date-and-time-value').body;
     expect(body).toMatch(/text-align:\s*left/);
     expect(body).toMatch(/margin:\s*0/);
+    // A cleared (empty) value keeps a line's height, so the empty box shows.
+    expect(body).toMatch(/min-height:\s*1\.5em/);
   });
 
   it("centres the value with a line-height utility that overrides text-base", () => {

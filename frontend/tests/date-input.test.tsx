@@ -4,6 +4,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GradeGoal } from "@/lib/api";
 
@@ -110,16 +111,54 @@ describe("an optional date", () => {
     expect(onChange).toHaveBeenCalledWith("");
   });
 
+  it("Clear empties the field without focusing it, on a fresh input", async () => {
+    // iOS: focusing the input opens the picker, which writes a date back, and a
+    // controlled date input set to "" isn't repainted, so Clear remounts it.
+    function Harness() {
+      const [value, setValue] = useState("2027-03-01");
+      return (
+        <>
+          <label htmlFor="d">By</label>
+          <DateInput id="d" value={value} onChange={setValue} optional />
+        </>
+      );
+    }
+    const user = userEvent.setup();
+    render(<Harness />);
+    const before = screen.getByLabelText("By") as HTMLInputElement;
+    const focus = vi.spyOn(HTMLInputElement.prototype, "focus");
+
+    await user.click(screen.getByRole("button", { name: "Clear date" }));
+
+    const after = screen.getByLabelText("By") as HTMLInputElement;
+    expect(after).not.toBe(before); // remounted
+    expect(after.value).toBe("");
+    expect(after).not.toHaveFocus();
+    expect(focus).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Clear date" })).toBeNull();
+    // Focus stays in the field's group (not lost to <body>) and the change is announced.
+    expect(document.activeElement).toBe(after.parentElement);
+    expect(screen.getByRole("status")).toHaveTextContent("Date cleared");
+    // Still the same 44 px empty box.
+    expect(after).toHaveClass(...CENTRING, "min-h-11");
+    focus.mockRestore();
+
+    // Picking a date again works and clears the announcement.
+    fireEvent.change(after, { target: { value: "2027-04-01" } });
+    expect(after.value).toBe("2027-04-01");
+    expect(screen.getByRole("status")).toHaveTextContent("");
+  });
+
   it("adds a goal with target_date null after Clear", async () => {
     const user = userEvent.setup();
     api.getGoals.mockResolvedValue([]);
     render(<GoalsSection />);
     await user.click(await screen.findByRole("button", { name: /Add a goal/ }));
-    const by = screen.getByLabelText(/^By/) as HTMLInputElement;
-    fireEvent.change(by, { target: { value: "2027-06-01" } });
+    fireEvent.change(screen.getByLabelText(/^By/), { target: { value: "2027-06-01" } });
     await user.click(screen.getByRole("button", { name: "Clear date" }));
+    const by = screen.getByLabelText(/^By/) as HTMLInputElement;
     expect(by.value).toBe("");
-    expect(by).toHaveFocus();
+    expect(by).not.toHaveFocus();
     await user.click(screen.getByRole("button", { name: "Add goal" }));
     expect(api.addGoal).toHaveBeenCalledWith({ kind: "climb_grade", grade: "red", climb_mode: "send", target_date: null });
   });
@@ -131,6 +170,8 @@ describe("an optional date", () => {
     await user.click(within(card).getByRole("button", { name: "Move date" }));
     expect(within(card).getByLabelText("New date")).toHaveValue("2027-03-01");
     await user.click(within(card).getByRole("button", { name: "Clear date" }));
+    expect(within(card).getByLabelText("New date")).toHaveValue("");
+    expect(within(card).getByLabelText("New date")).not.toHaveFocus();
     await user.click(within(card).getByRole("button", { name: "Save date" }));
     expect(api.changeGoal).toHaveBeenCalledWith(1, { target_date: null });
   });
@@ -142,6 +183,8 @@ describe("an optional date", () => {
     await user.click(screen.getByRole("radio", { name: "Travel" }));
     fireEvent.change(screen.getByLabelText(/^Back by/), { target: { value: "2026-11-30" } });
     await user.click(screen.getByRole("button", { name: "Clear date" }));
+    expect(screen.getByLabelText(/^Back by/)).toHaveValue("");
+    expect(screen.getByLabelText(/^Back by/)).not.toHaveFocus();
     await user.click(screen.getByRole("button", { name: "Start break" }));
     expect(api.startPause).toHaveBeenCalledWith(expect.objectContaining({ reason: "travel", planned_end: null }));
   });

@@ -288,8 +288,9 @@
    allow (it overflowed into Duration) and shorter than other fields, with its
    value centred. Plain appearance lets min-height and padding apply; the value
    aligns left like the other fields. Height and line-height live on the input
-   as utilities (DATE_FIELD in components/session-form.tsx): here they would
-   lose to text-base's line-height. tests/iphone-css.test.ts checks it. */
+   as utilities (DATE_FIELD in components/date-input.tsx): here they would
+   lose to text-base's line-height. The empty value keeps a line's height so
+   a cleared field still shows an empty box. tests/iphone-css.test.ts checks it. */
 @layer base {
   input[type="date"] {
     -webkit-appearance: none;
@@ -298,6 +299,7 @@
   input[type="date"]::-webkit-date-and-time-value {
     text-align: left;
     margin: 0;
+    min-height: 1.5em;
   }
 }
 
