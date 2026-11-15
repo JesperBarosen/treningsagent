@@ -23,6 +23,12 @@ a dark OS; a test keeps the two in step. Contrast is
 checked against the background each token sits on (WCAG AA: 4.5:1 for body
 text, 3:1 for large text and UI outlines).
 
+With the system's Increase Contrast setting (`prefers-contrast: more`),
+`--line` and `--control` become `#5A6166` light / `#9AA3A7` dark (5.2:1 or more on
+every background; Apple HIG asks for a higher-contrast scheme, WCAG 1.4.11),
+and `--ink-muted` takes the ink colour. The block comes after the dark tokens;
+`tests/contrast-more.test.ts` measures it.
+
 | Token | Tailwind | Light | Dark | Use |
 | --- | --- | --- | --- | --- |
 | `--canvas` | `bg-canvas` | `#F5F4EF` chalk | `#121618` night slate | page background |
