@@ -42,7 +42,7 @@ describe("the tab bar (N3)", () => {
     const tabs = within(screen.getByRole("navigation", { name: "Main" })).getAllByRole("link");
     expect(tabs.map((t) => t.textContent)).toEqual(["Coach", "Sessions", "Log", "Dashboard", "You"]);
     expect(tabs.map((t) => t.getAttribute("href"))).toEqual(["/", "/sessions", "/log", "/dashboard", "/you"]);
-    for (const t of tabs) expect(t).toHaveClass("h-14"); // 56 px tall, above 44
+    for (const t of tabs) expect(t).toHaveClass("h-(--tab-bar-h)"); // 3.5rem = 56 px tall, above 44 (tests/iphone-css.test.ts)
     expect(tabs[2].querySelector(".bg-accent.size-12")).not.toBeNull(); // the raised Log
     expect(tabs[0]).toHaveAttribute("aria-current", "page");
   });

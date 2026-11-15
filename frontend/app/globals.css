@@ -26,6 +26,8 @@
   --chart-climb: #a85f12;
   --chart-strength: #4a5bb5; /* reserved for a third sport (#58) */
   --sheet-shadow: 0 -8px 32px rgb(21 25 27 / 0.12);
+  /* Height of the phone tab bar's row (components/nav.tsx), without the safe area. */
+  --tab-bar-h: 3.5rem;
   color-scheme: light;
 }
 
@@ -280,6 +282,31 @@
   :root[data-discreet] [data-discreet-hide] {
     visibility: hidden;
   }
+}
+
+/* iOS Safari draws a native date field narrower than its grid cell would
+   allow (it overflowed into Duration) and shorter than other fields, with its
+   value centred. Plain appearance lets min-height and padding apply; the value
+   aligns left like the other fields. tests/iphone-layout.test.ts checks it. */
+@layer base {
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+    min-height: 1.5em;
+  }
+}
+
+/* Room for the fixed phone tab bar plus the home-indicator area, so the last
+   thing on a page (or the Coach composer) is never under it. The layout's
+   <main> uses pb-tab-bar below md; the composer sits at bottom-tab-bar. */
+@utility pb-tab-bar {
+  padding-bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
+}
+@utility bottom-tab-bar {
+  bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
 }
 
 @utility scrollbar-none {

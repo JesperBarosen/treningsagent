@@ -136,7 +136,7 @@ export function TabBar() {
             <Link
               href={href}
               aria-current={pathname === href ? "page" : undefined}
-              className="group flex h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium text-ink-muted aria-[current=page]:text-accent"
+              className="group flex h-(--tab-bar-h) flex-col items-center justify-center gap-0.5 text-xs font-medium text-ink-muted aria-[current=page]:text-accent"
             >
               {raised ? (
                 // Raised: a filled accent circle lifted half above the bar.

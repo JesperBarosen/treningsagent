@@ -72,7 +72,7 @@ export function DashboardView() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl pt-4 pb-24 md:pb-12">
+    <div className="mx-auto max-w-5xl pt-4 pb-12">
       <h1 className="font-display text-xl font-semibold">Dashboard</h1>
       <p className="text-sm text-ink-muted">The last {WEEKS} weeks · the current week is partial</p>
 

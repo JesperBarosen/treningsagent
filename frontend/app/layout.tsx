@@ -57,7 +57,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to content
         </a>
         <TopBar />
-        <main id="main" className="mx-auto w-full px-4 sm:px-6">
+        {/* Below md the fixed tab bar covers the bottom of the screen; pb-tab-bar
+            keeps every page's last row clear of it (and of the home indicator). */}
+        <main id="main" className="mx-auto w-full px-4 pb-tab-bar sm:px-6 md:pb-0">
           {children}
         </main>
         <TabBar />
