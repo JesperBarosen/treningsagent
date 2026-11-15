@@ -8,6 +8,7 @@ import { dayLabel, sessionSummary } from "@/lib/format";
 import { ClimbChips } from "./grade";
 import { CloseIcon, SportBadge } from "./icons";
 import { Button } from "./states";
+import { TagList } from "./tag-list";
 
 /** For display helpers that take a Session: a draft has no id yet. */
 export const asSession = (d: Draft): Session => ({ ...d, id: 0 });
@@ -66,6 +67,7 @@ export function DraftCard({
           <CloseIcon size={18} />
         </button>
       </div>
+      <TagList tags={draft.tags} className="mt-2 pl-11" />
       {draft.climbs && draft.climbs.length > 0 && (
         <div className="mt-2.5 pl-11">
           <ClimbChips climbs={draft.climbs} max={6} />

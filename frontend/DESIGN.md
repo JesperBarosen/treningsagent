@@ -31,7 +31,7 @@ text, 3:1 for large text and UI outlines).
 | `--line` | `border-line` | `#D9D6CC` | `#2C3439` | decorative hairlines, card borders, dividers (1.45:1, never a control's only edge) |
 | `--control` | `border-control` | `#8A857A` | `#6B767C` | edges of text fields, chips, segmented toggles and outlined buttons (≥ 3:1 on surface, canvas and sunken, WCAG 1.4.11) |
 | `--ink` | `text-ink` | `#15191B` | `#ECEEEC` | primary text (16:1 / 16:1) |
-| `--ink-muted` | `text-ink-muted` | `#5A6166` | `#9AA3A7` | secondary text (5.7:1 / 7.3:1) |
+| `--ink-muted` | `text-ink-muted` | `#474E53` | `#B0B8BC` | secondary text, at least 7:1 on canvas, surface and sunken in both themes (Apple's aim for small text; `tests/token-contrast.test.ts`) |
 | `--accent` | `bg-accent`, `text-accent` | `#0F6B5C` spruce | `#4FD1B5` | primary actions, focus, running |
 | `--on-accent` | `text-on-accent` | `#FFFFFF` | `#062621` | text on accent (6.4:1 / 8.5:1) |
 | `--accent-soft` | `bg-accent-soft` | `#DCEFEA` | `#13312C` | selected states, logged-session card |
@@ -76,12 +76,18 @@ always next to the grade's name, so colour is never the only signal.
 | Grade | Token | Hex | Dot ring |
 | --- | --- | --- | --- |
 | yellow | `--grade-yellow` | `#F2C230` | `--grade-ring` |
-| green | `--grade-green` | `#2E9E5B` | none |
+| green | `--grade-green` | `#3FAE5F` | none |
 | blue | `--grade-blue` | `#2F6FD6` | none |
-| purple | `--grade-purple` | `#7C4DC4` | none |
-| red | `--grade-red` | `#D63A3A` | none |
+| purple | `--grade-purple` | `#9440B8` | none |
+| red | `--grade-red` | `#C0302F` | none |
 | black | `--grade-black` | `#1A1A1A` | `--grade-ring` (visible in dark) |
 | white | `--grade-white` | `#FFFFFF` | `--grade-ring` (visible in light) |
+
+Green, purple and red are re-stepped from the gym's paint for the screen
+(`docs/design-visual.md` V-S3): green↔red is ΔE 12.3 under simulated
+deuteranopia (was 4.7) and blue↔purple ΔE 16.8 for normal vision (was 11.9,
+OKLab ×100). Blue↔purple is still close for deutans, so the name stays the
+signal. `tests/grade-colours.test.ts` checks these.
 
 `--grade-ring` is `#857F72` in light (3.9:1 on white) and `#6B767C` in dark (3.7:1 on black): every dot gets a
 1px ring in that colour, which keeps white visible on white and black on

@@ -10,8 +10,11 @@ import {
   type Climb,
   type Grade,
   type Session,
+  TAG_LABELS,
+  TAGS,
   type SessionInput,
   type Sport,
+  type Tag,
 } from "@/lib/api";
 import { climbOutcome, formatPace } from "@/lib/format";
 
@@ -83,6 +86,7 @@ export function SessionForm({
   const [distance, setDistance] = useState(session?.distance_km ? String(session.distance_km) : "");
   const [effort, setEffort] = useState(session?.effort ?? 5);
   const [notes, setNotes] = useState(session?.notes ?? "");
+  const [tags, setTags] = useState<Tag[]>(session?.tags ?? []);
   const [style, setStyle] = useState<Style>(session?.climbs?.[0]?.style ?? "boulder");
   const [climbs, setClimbs] = useState<FormClimb[]>(
     (session?.climbs ?? []).map(({ grade, style, sent, attempts }) => ({
@@ -117,6 +121,8 @@ export function SessionForm({
     };
     if (sport === "running" && distance !== "") input.distance_km = km;
     if (sport === "climbing") input.climbs = climbs;
+    // Only when used: [] is sent to clear tags a session already had.
+    if (tags.length || session?.tags?.length) input.tags = tags;
     setBusy(true);
     setError(null);
     try {
@@ -248,6 +254,11 @@ export function SessionForm({
             />
           )}
 
+          <TagsField
+            tags={tags}
+            onToggle={(t) => setTags((ts) => (ts.includes(t) ? ts.filter((x) => x !== t) : TAGS.filter((x) => x === t || ts.includes(x))))}
+          />
+
           <div>
             <label htmlFor="notes" className={label}>
               Notes
@@ -280,6 +291,30 @@ export function SessionForm({
         </>
       )}
     </form>
+  );
+}
+
+/** "How did it feel?": optional context tags (N6), off by default, one tap each. */
+function TagsField({ tags, onToggle }: { tags: Tag[]; onToggle: (t: Tag) => void }) {
+  return (
+    <fieldset>
+      <legend className="mb-1.5 text-sm font-medium">
+        How did it feel? <span className="font-normal text-ink-muted">(optional)</span>
+      </legend>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="How did it feel?">
+        {TAGS.map((t) => (
+          <button
+            key={t}
+            type="button"
+            aria-pressed={tags.includes(t)}
+            onClick={() => onToggle(t)}
+            className="inline-flex min-h-11 items-center rounded-full border border-control bg-surface px-3.5 text-sm font-medium text-ink transition aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent"
+          >
+            {TAG_LABELS[t]}
+          </button>
+        ))}
+      </div>
+    </fieldset>
   );
 }
 

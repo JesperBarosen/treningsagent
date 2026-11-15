@@ -40,6 +40,23 @@ class Store(Protocol):
 
 SESSION_FIELDS = ("sport", "date", "duration_min", "effort", "notes")
 
+# Context tags (N6, docs/design-proposals-2.md): optional, one tap each, never
+# required. They let the coach notice what often goes together (Li et al. 2010:
+# relate facets of life), never a cause.
+TAGS = ("slept_badly", "sore", "tired", "felt_strong", "hot", "stressed")
+
+
+def _tags(value) -> list[str] | None:
+    """Tags in TAGS order without repeats; None if not given. ValueError if unknown."""
+    if value is None:
+        return None
+    if not isinstance(value, list) or not all(isinstance(t, str) for t in value):
+        raise ValueError("tags must be a list of strings")
+    unknown = sorted(set(value) - set(TAGS))
+    if unknown:
+        raise ValueError(f"unknown tags {unknown}; allowed: {list(TAGS)}")
+    return [t for t in TAGS if t in value]
+
 
 def log_session(
     store: Store,
@@ -92,6 +109,8 @@ def update_session(store: Store, session_id: int, changes: dict) -> dict:
     if current is None:
         raise LookupError(f"session {session_id} not found")
     merged = {k: current[k] for k in SESSION_FIELDS}
+    if current.get("tags"):  # an edit keeps the tags unless it changes them
+        merged["tags"] = current["tags"]
     if changes.get("sport", current["sport"]) == current["sport"] == "running":
         merged.update({f: current[f] for f in RUNNING_FIELDS if current.get(f) is not None})
     merged.update(changes)
@@ -134,6 +153,7 @@ def validate_session(
     if not 1 <= effort <= 10:
         raise ValueError("effort must be between 1 and 10")
 
+    tags = _tags(sport_fields.pop("tags", None))
     allowed = RUNNING_FIELDS if sport == "running" else ()
     unexpected = set(sport_fields) - set(allowed)
     if unexpected:
@@ -144,6 +164,8 @@ def validate_session(
 
     row = {"sport": sport, "date": date, "duration_min": duration_min,
            "effort": effort, "notes": notes, **sport_fields}
+    if tags is not None:  # only when given, so rows without tags stay as before
+        row["tags"] = tags
     return row, climb_rows
 
 
@@ -254,6 +276,56 @@ def get_training_load(store: Store, weeks: int = 4, today: date | None = None) -
         "paused_days": sum(1 for d in days_from(chronic_start) if d in excluded),
         "pause": active,
     }
+
+
+TAG_MIN_SESSIONS = 8  # sessions of a sport before any pattern is reported
+TAG_MIN_TAGGED = 3    # sessions with a tag before it can be part of a pattern
+
+
+def tag_patterns(store: Store, days: int = 56, today: date | None = None) -> dict:
+    """Which context tags (N6) often go with a sport's weakest sessions: the
+    slowest third of runs (min/km) and the climbing sessions with the lowest
+    hardest send. Co-occurrence only, and only with enough sessions: never a
+    cause. Per sport: session and tag counts, and `patterns`, each with how many
+    of the weakest sessions had the tag against how many of the others."""
+    if not 7 <= days <= 365:
+        raise ValueError("days must be between 7 and 365")
+    today = today or date.today()
+    since = (today - timedelta(days=days - 1)).isoformat()
+    sessions = [s for s in store.sessions_since(since) if _parse_date(s["date"]) <= today]
+    hardest: dict[int, int] = {}
+    for c in store.climbs_since(since):
+        if c["sent"]:
+            hardest[c["session_id"]] = max(hardest.get(c["session_id"], 0), c["grade_ordinal"])
+
+    def weakness(s: dict) -> float | None:  # higher = weaker
+        if s["sport"] == "running":
+            return s["duration_min"] / s["distance_km"] if s.get("distance_km") else None
+        return -hardest.get(s["id"], 0)
+
+    out = {}
+    for sport in SPORTS:
+        rated = [s for s in sessions if s["sport"] == sport and weakness(s) is not None]
+        rated.sort(key=weakness, reverse=True)  # weakest first
+        counts = {t: sum(t in (s.get("tags") or []) for s in rated) for t in TAGS}
+        patterns = []
+        if len(rated) >= TAG_MIN_SESSIONS:
+            cut = max(len(rated) // 3, 1)
+            weak, rest = rated[:cut], rated[cut:]
+            for t in TAGS:
+                if counts[t] < TAG_MIN_TAGGED:
+                    continue
+                in_weak = sum(t in (s.get("tags") or []) for s in weak)
+                in_rest = sum(t in (s.get("tags") or []) for s in rest)
+                if in_weak >= 2 and in_weak / len(weak) >= 2 * (in_rest / len(rest)):
+                    patterns.append({"tag": t, "in_weakest": in_weak, "weakest": len(weak),
+                                     "elsewhere": in_rest, "others": len(rest)})
+        out[sport] = {"sessions": len(rated), "tag_counts": {t: n for t, n in counts.items() if n},
+                      "patterns": patterns,
+                      "enough_data": len(rated) >= TAG_MIN_SESSIONS}
+    return {"days": days, **out,
+            "weakest_means": {"running": "slowest third of runs by pace",
+                              "climbing": "the third of sessions with the lowest hardest send"}}
 
 
 def list_goals(store: Store, today: date | None = None) -> list[dict]:
@@ -379,6 +451,14 @@ TOOLS = [
                 "notes": {"type": "string"},
                 "distance_km": {"type": "number", "description": "Running only"},
                 "elevation_m": {"type": "integer", "description": "Running only: elevation gain"},
+                "tags": {
+                    "type": "array",
+                    "items": {"type": "string", "enum": list(TAGS)},
+                    "description": "Optional context, only what the user said: 'slept badly' "
+                                   "-> slept_badly, 'legs were sore' -> sore, 'felt strong' -> "
+                                   "felt_strong, 'it was hot' -> hot, also tired and stressed. "
+                                   "Leave out if not mentioned; never infer.",
+                },
                 "climbs": {
                     "type": "array",
                     "description": "Climbing only: one item per climb the user mentions. "
@@ -513,7 +593,26 @@ GET_GOALS = {
     "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
 }
 
-TOOLS += [SET_GOAL, GET_GOALS]
+GET_TAG_PATTERNS = {
+    "name": "get_tag_patterns",
+    "description": (
+        "See which context tags the user added to sessions (slept_badly, sore, tired, "
+        "felt_strong, hot, stressed) often go with their weakest sessions: the slowest third "
+        "of runs, and the climbing sessions with the lowest hardest send. Use this when the "
+        "user asks why some sessions went worse, or what affects their training. Report only "
+        "`patterns`, as counts, e.g. 'three of your four slowest runs had Slept badly'. Say "
+        "the two often go together; never say one causes the other. If `enough_data` is "
+        "false or there are no patterns, say there isn't enough to see a pattern yet."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {"days": {"type": "integer", "minimum": 7, "maximum": 365,
+                                "description": "How far back to look, default 56"}},
+        "additionalProperties": False,
+    },
+}
+
+TOOLS += [SET_GOAL, GET_GOALS, GET_TAG_PATTERNS]
 
 DRAFT_SESSION = {
     "name": "draft_session",
@@ -564,6 +663,8 @@ def run_tool(store: Store, name: str, tool_input: dict) -> str:
         result = set_goal(store, **tool_input)
     elif name == "get_goals":
         result = list_goals(store, **tool_input)
+    elif name == "get_tag_patterns":
+        result = tag_patterns(store, **tool_input)
     else:
         raise ValueError(f"unknown tool {name!r}")
     return json.dumps(result)

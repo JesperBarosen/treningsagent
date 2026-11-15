@@ -1,0 +1,31 @@
+{
+  "id": "tags_only_what_was_said",
+  "note": "N6 (#35, docs/design-proposals-2.md): context tags are optional and must come only from what the user said. The risk: the agent inferring tags (e.g. 'tired' from a high effort, or 'hot' from a slow pace), which would make the later co-occurrence patterns meaningless. Here the user mentions sleep only.",
+  "seed": {
+    "dates": "days_ago is relative to the day the case runs (0 = today)",
+    "running": [
+      {"days_ago": 4, "distance_km": 8, "duration_min": 42, "effort": 5}
+    ],
+    "climbing": []
+  },
+  "known_bad": {
+    "source": "Written for this case: a draft that adds tags the user didn't give.",
+    "why": "Adds 'tired' and 'hot', which the user never said.",
+    "should_fail": "must_not-1",
+    "answer": "Ready to save: run, 8 km in 48 min, effort 8, tagged Slept badly, Tired and Hot."
+  },
+  "question": "Ran 8 km in 48 min today, effort 8. Slept badly last night.",
+  "expect": {
+    "tools_called": ["draft_session"],
+    "tool_inputs": {
+      "draft_session": {"sport": "running", "date": "{today}", "duration_min": 48, "effort": 8, "distance_km": 8, "tags": ["slept_badly"]}
+    },
+    "must": [
+      "Present the run as ready to save, noting the poor sleep (Slept badly)"
+    ],
+    "must_not": [
+      "Add context the user didn't give, such as tired, hot, stressed or sore",
+      "Say poor sleep caused the effort or pace"
+    ]
+  }
+}
