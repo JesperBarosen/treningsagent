@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { climbLabel, ClimbLegend, GradeDot } from "@/components/grade";
 import { BoltIcon, CheckIcon, CloseIcon, SportBadge } from "@/components/icons";
 import { SessionForm } from "@/components/session-form";
+import { TagList } from "@/components/tag-list";
 import { SENSITIVE } from "@/lib/discreet";
 import { Button } from "@/components/states";
 import {
@@ -230,6 +231,7 @@ function Details({
       </dl>
       <p className="mt-2 text-xs text-ink-muted">Load = minutes × effort (session-RPE).</p>
 
+      <TagList tags={s.tags} className="mt-4" />
       {s.notes && (
         <p {...SENSITIVE} className="mt-4 rounded-md bg-sunken px-4 py-3 text-sm">
           {s.notes}

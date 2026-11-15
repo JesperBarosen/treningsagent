@@ -22,6 +22,18 @@ export type Climb = {
   notes?: string | null;
 };
 
+/** Context tags (N6), in the backend's order (tools.TAGS). Optional, one tap each. */
+export const TAGS = ["slept_badly", "sore", "tired", "felt_strong", "hot", "stressed"] as const;
+export type Tag = (typeof TAGS)[number];
+export const TAG_LABELS: Record<Tag, string> = {
+  slept_badly: "Slept badly",
+  sore: "Sore",
+  tired: "Tired",
+  felt_strong: "Felt strong",
+  hot: "Hot",
+  stressed: "Stressed",
+};
+
 /** A session as GET /sessions (get_history) or log_session returns it. */
 export type Session = {
   id: number;
@@ -33,6 +45,8 @@ export type Session = {
   distance_km?: number | null;
   elevation_m?: number | null;
   climbs?: Climb[];
+  /** Context tags (N6); absent before the tags migration. */
+  tags?: Tag[];
   // Derived by the backend (get_history only).
   load?: number;
   pace_min_per_km?: number;
@@ -72,6 +86,7 @@ export function draftInput(d: Draft): SessionInput {
       attempts: attempts ?? null,
     }));
   }
+  if (d.tags?.length) input.tags = d.tags;
   return input;
 }
 
@@ -131,6 +146,8 @@ export type SessionInput = {
   notes: string | null;
   distance_km?: number;
   climbs?: Pick<Climb, "grade" | "style" | "sent" | "attempts">[];
+  /** Context tags (N6); [] clears a session's tags on edit. */
+  tags?: Tag[];
 };
 
 export function createSession(input: SessionInput): Promise<Session> {

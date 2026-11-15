@@ -240,3 +240,15 @@ def test_a_goal_has_only_its_kinds_fields(conn):
         make_store(conn).insert_goal({**GOAL, "band": "7_to_15km"})
     with pytest.raises(ValueError):
         make_store(conn).insert_goal({**GOAL, "kind": "run_pace"})
+
+
+# --- Context tags (N6; needs migration 20261115140000_add_session_tags.sql) -------------
+
+def test_tags_round_trip_and_only_known_tags(conn):
+    store = make_store(conn)
+    session_id = store.insert_session({**ROW, "tags": ["slept_badly", "hot"]})
+    assert store.get_session(session_id)["tags"] == ["slept_badly", "hot"]
+    store.update_session(session_id, {**ROW, "tags": []}, None)
+    assert store.get_session(session_id)["tags"] == []
+    with pytest.raises(ValueError):
+        store.insert_session({**ROW, "tags": ["windy"]})

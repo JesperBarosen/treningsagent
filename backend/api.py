@@ -159,6 +159,8 @@ class SessionChanges(BaseModel, extra="forbid"):
     notes: str | None = None
     distance_km: float | None = None
     elevation_m: int | None = None
+    # Context tags (N6); [] clears them. Checked against tools.TAGS.
+    tags: list[str] | None = None
     climbs: list[ClimbIn] | None = None
 
 

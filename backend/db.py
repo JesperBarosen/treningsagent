@@ -7,6 +7,7 @@ Security policies apply: the connection's own role (postgres) would bypass them.
 
 import json
 import os
+import time
 from contextlib import contextmanager
 
 import psycopg
@@ -70,6 +71,29 @@ class PostgresStore:
             self.conn.execute("select set_config('request.jwt.claims', %s, true)", (claims,))
             yield self.conn
 
+    # Context tags (N6) need migration 20261115140000_add_session_tags.sql. Until it
+    # runs, reads leave tags out and writes drop them, so nothing breaks. "Present"
+    # is cached for good; "missing" is checked again after a minute, so a running
+    # server sees the column soon after the migration.
+    _tags_present = False
+    _tags_checked_at = float("-inf")
+
+    def _has_tags(self) -> bool:
+        cls = PostgresStore
+        if not cls._tags_present and time.monotonic() - cls._tags_checked_at > 60:
+            cls._tags_present = bool(self.conn.execute(
+                "select exists (select 1 from information_schema.columns where table_schema ="
+                " 'public' and table_name = 'sessions' and column_name = 'tags') as present"
+            ).fetchone()["present"])
+            cls._tags_checked_at = time.monotonic()
+        return cls._tags_present
+
+    def _session_columns(self) -> tuple[str, ...]:
+        return SESSION_COLUMNS + (("tags",) if self._has_tags() else ())
+
+    def _without_missing_columns(self, row: dict) -> dict:
+        return row if self._has_tags() else {k: v for k, v in row.items() if k != "tags"}
+
     @staticmethod
     def _insert(conn: psycopg.Connection, table: str, row: dict) -> int:
         query = sql.SQL("insert into public.{} ({}) values ({}) returning id").format(
@@ -81,6 +105,7 @@ class PostgresStore:
 
     def insert_session(self, row: dict, climbs: list[dict] = ()) -> int:
         """Insert a session and its climbs in one transaction: all or nothing."""
+        row = self._without_missing_columns(row)
         try:
             with self._as_user() as conn:
                 session_id = self._insert(conn, "sessions", row)
@@ -94,7 +119,7 @@ class PostgresStore:
     def sessions_since(self, since: str) -> list[dict]:
         query = sql.SQL(
             "select {} from public.sessions where date >= %s order by date, id"
-        ).format(sql.SQL(", ").join(map(sql.Identifier, SESSION_COLUMNS)))
+        ).format(sql.SQL(", ").join(map(sql.Identifier, self._session_columns())))
         with self._as_user() as conn:
             rows = conn.execute(query, (since,)).fetchall()
         return [{**r, "date": r["date"].isoformat()} for r in rows]
@@ -115,7 +140,7 @@ class PostgresStore:
 
     def get_session(self, session_id: int) -> dict | None:
         query = sql.SQL("select {} from public.sessions where id = %s").format(
-            sql.SQL(", ").join(map(sql.Identifier, SESSION_COLUMNS)))
+            sql.SQL(", ").join(map(sql.Identifier, self._session_columns())))
         with self._as_user() as conn:
             row = conn.execute(query, (session_id,)).fetchone()
         return {**row, "date": row["date"].isoformat()} if row else None
@@ -123,6 +148,7 @@ class PostgresStore:
     def update_session(self, session_id: int, row: dict, climbs: list[dict] | None) -> bool:
         """Overwrite a session's columns and, unless `climbs` is None, replace its
         climbs, in one transaction. False if RLS hides the session or it's gone."""
+        row = self._without_missing_columns(row)
         query = sql.SQL("update public.sessions set {} where id = %s returning id").format(
             sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(c)) for c in row))
         try:
