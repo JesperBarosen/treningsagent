@@ -42,8 +42,23 @@ DISTANCE_BANDS = ("under_7km", "7_to_15km", "over_15km")
 
 @dataclass(frozen=True)
 class Windows:
-    """The recent and baseline windows that trends compare."""
+    """The recent and baseline windows that trends compare. `paused` days (N5,
+    pauses.excluded_days) don't count towards a window's length, so a break
+    doesn't read as a drop in weekly volume."""
     today: date
+    paused: frozenset = frozenset()
+
+    def _weeks(self, first: date, last: date) -> float:
+        days = (last - first).days + 1
+        return (days - sum(1 for d in self.paused if first <= d <= last)) / 7
+
+    @property
+    def recent_weeks(self) -> float:
+        return self._weeks(self.recent_start, self.today)
+
+    @property
+    def baseline_weeks(self) -> float:
+        return self._weeks(self.baseline_start, self.recent_start - timedelta(days=1))
 
     @property
     def recent_start(self) -> date:
@@ -123,8 +138,8 @@ def running(sessions: list[dict], climbs_by_session: dict[int, list[dict]],
     recent, baseline = windows.recent(runs), windows.baseline(runs)
 
     def per_week(total: Callable[[list[dict]], float], flat: float, digits: int) -> dict:
-        return trend(total(recent) / (RECENT_DAYS / 7), len(recent),
-                     total(baseline) / (BASELINE_DAYS / 7), len(baseline),
+        return trend(_rate(total(recent), windows.recent_weeks), len(recent),
+                     _rate(total(baseline), windows.baseline_weeks), len(baseline),
                      flat=flat, relative=True, digits=digits)
 
     def pace_trend(band: str | None) -> dict:
@@ -224,8 +239,8 @@ def climbing(sessions: list[dict], climbs_by_session: dict[int, list[dict]],
         "weekly": weekly,
         "trends": {
             "climbs_per_week": trend(
-                len(climbs_of(recent)) / (RECENT_DAYS / 7), with_climbs(recent),
-                len(climbs_of(baseline)) / (BASELINE_DAYS / 7), with_climbs(baseline),
+                _rate(len(climbs_of(recent)), windows.recent_weeks), with_climbs(recent),
+                _rate(len(climbs_of(baseline)), windows.baseline_weeks), with_climbs(baseline),
                 flat=VOLUME_FLAT, relative=True, digits=1),
             "avg_session_hardest_sent": grade_trend(_sends),
             "avg_session_flash_grade": grade_trend(_flashes),
@@ -241,13 +256,18 @@ SPORT_MODULES: dict[str, Callable[..., dict]] = {
 }
 
 
+def _rate(total: float, weeks: float) -> float | None:
+    """Per week over a window's unpaused length; None if it was all paused."""
+    return total / weeks if weeks > 0 else None
+
+
 def calculate(sessions: list[dict], climbs: list[dict], weeks: list[date],
-              today: date) -> dict:
+              today: date, paused: frozenset = frozenset()) -> dict:
     """Weekly rows for `weeks` and trends per metric, for every sport module,
     plus each sport's last session date (sessions whose `sport` matches the
     module's key). `sessions` and `climbs` must cover the shown weeks and the
     trend windows; a sport with no session in that range has last_session None."""
-    windows = Windows(today)
+    windows = Windows(today, paused)
     climbs_by_session: dict[int, list[dict]] = {}
     for c in climbs:
         climbs_by_session.setdefault(c["session_id"], []).append(c)

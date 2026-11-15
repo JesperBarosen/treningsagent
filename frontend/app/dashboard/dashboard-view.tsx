@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { GradeDot } from "@/components/grade";
 import { ChartIcon } from "@/components/icons";
+import { PauseBanner } from "@/components/pause-panel";
 import { EmptyState, ErrorState, Skeleton } from "@/components/states";
 import {
   ApiError,
@@ -75,13 +76,24 @@ export function DashboardView() {
         {state.status === "error" && (
           <ErrorState offline={state.error.status === null} message={state.error.message} onRetry={retry} />
         )}
-        {state.status === "ready" && <Dashboard load={state.load} progression={state.progression} />}
+        {state.status === "ready" && (
+          <Dashboard load={state.load} progression={state.progression} onPauseEnded={retry} />
+        )}
       </div>
     </div>
   );
 }
 
-export function Dashboard({ load, progression }: { load: TrainingLoad; progression: Progression }) {
+export function Dashboard({
+  load,
+  progression,
+  onPauseEnded,
+}: {
+  load: TrainingLoad;
+  progression: Progression;
+  /** After End break: reload, since trends change. */
+  onPauseEnded?: () => void;
+}) {
   const { running, climbing } = progression;
   const nothing =
     running.sessions === 0 && climbing.sessions === 0 && load.weekly.every((w) => w.sessions === 0);
@@ -104,6 +116,25 @@ export function Dashboard({ load, progression }: { load: TrainingLoad; progressi
     );
   }
 
+  const pausedDays = progression.paused_days ?? 0;
+  return (
+    <>
+      {load.pause ? (
+        <PauseBanner pause={load.pause} onEnded={() => onPauseEnded?.()} />
+      ) : (
+        pausedDays > 0 && (
+          <p className="mb-4 rounded-md bg-sunken px-4 py-3 text-sm text-ink-muted">
+            Trends leave out {pausedDays} {pausedDays === 1 ? "day" : "days"} from a break.
+          </p>
+        )
+      )}
+      <DashboardGrid load={load} progression={progression} />
+    </>
+  );
+}
+
+function DashboardGrid({ load, progression }: { load: TrainingLoad; progression: Progression }) {
+  const { running, climbing } = progression;
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <LoadCard load={load} className="md:col-span-2" />
@@ -293,7 +324,12 @@ function RatioCard({ load }: { load: TrainingLoad }) {
         </span>
       }
     >
-      {view.kind === "not enough data" ? (
+      {view.kind === "paused" ? (
+        <div>
+          <p className="font-display text-2xl font-semibold text-ink-muted">Paused</p>
+          <p className="mt-1 text-sm text-ink-muted">Not counted while you&apos;re on a break.</p>
+        </div>
+      ) : view.kind === "not enough data" ? (
         <div>
           <p className="font-display text-2xl font-semibold text-ink-muted">Not enough data</p>
           <p className="mt-1 text-sm text-ink-muted">

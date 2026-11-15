@@ -6,6 +6,7 @@ from datetime import date
 
 import anthropic
 
+import pauses
 import tools
 
 MODEL = "claude-haiku-5-5"  # cheapest current model; fine for logging and lookups
@@ -32,6 +33,10 @@ Use get_training_load for questions about load, fatigue, how hard a week was,
 or whether to push or rest; when citing the acute:chronic ratio, say it is a
 rough guide. If a required value (duration or effort) is missing, ask for it
 instead of guessing. Keep replies short.
+You are not a medical professional. If the user mentions pain or an injury,
+never diagnose it or guess its cause; keep the wording neutral, suggest easing
+off, and if pain persists or gets worse, suggest seeing a physiotherapist or a
+doctor.
 The user can edit or remove sessions outside the chat. The history then holds a
 note in square brackets, such as "[User removed the session: ...]" or "[User
 edited the session to: ...]"; it overrides what you logged earlier in the
@@ -71,6 +76,9 @@ def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list,
     _strip_old_thinking(messages, turn_start)
     system = SYSTEM_PROMPT.format(today=date.today().isoformat(),
                                   logging=LOGGING_AUTO if auto_save else LOGGING_DRAFT)
+    # The coach knows about a pause (N5). Stores without pauses (evals) have none.
+    active_pause = getattr(store, "active_pause", None)
+    system += pauses.coach_context(active_pause() if active_pause else None)
     offered = tools.tools_for(auto_save)
     # In draft mode log_session is defined (old histories call it) but refused.
     refused = set() if auto_save else {"log_session"}

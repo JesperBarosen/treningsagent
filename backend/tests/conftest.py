@@ -14,6 +14,7 @@ class FakeStore:
         self.climbs: list[dict] = []
         self.model_calls: list[dict] = []
         self.chat_requests = 0
+        self.pauses: list[dict] = []
 
     def insert_session(self, row: dict, climbs: list[dict] = ()) -> int:
         session_id = len(self.rows) + 1
@@ -53,6 +54,26 @@ class FakeStore:
         self.rows = [r for r in self.rows if r["id"] != session_id]
         self.climbs = [c for c in self.climbs if c["session_id"] != session_id]
         return len(self.rows) < before
+
+    def pauses_since(self, since: str) -> list[dict]:
+        return [dict(p) for p in self.pauses if not p["ended_on"] or p["ended_on"] >= since]
+
+    def active_pause(self) -> dict | None:
+        return next((dict(p) for p in self.pauses if not p["ended_on"]), None)
+
+    def start_pause(self, row: dict) -> dict:
+        if self.active_pause():
+            raise ValueError("a pause is already on")
+        pause = {"id": len(self.pauses) + 1, **row, "ended_on": None, "resume_choice": None}
+        self.pauses.append(pause)
+        return dict(pause)
+
+    def end_pause(self, ended_on: str, resume_choice: str) -> dict | None:
+        for p in self.pauses:
+            if not p["ended_on"]:
+                p.update(ended_on=ended_on, resume_choice=resume_choice)
+                return dict(p)
+        return None
 
     def claim_chat_request(self, daily_limit: int) -> bool:
         if self.chat_requests >= daily_limit:
