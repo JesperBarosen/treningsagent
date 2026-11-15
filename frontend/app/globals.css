@@ -313,6 +313,17 @@
   bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
 }
 
+/* While the Coach composer has focus on a phone (lib/keyboard.ts sets the
+   attribute), the tab bar steps aside so the composer can sit on the keyboard.
+   tests/composer-keyboard.test.tsx checks it. */
+@layer base {
+  @media (max-width: 47.99rem) {
+    :root[data-composer-focus] [data-tab-bar] {
+      display: none;
+    }
+  }
+}
+
 @utility scrollbar-none {
   scrollbar-width: none;
   &::-webkit-scrollbar {
