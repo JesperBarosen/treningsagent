@@ -33,6 +33,9 @@ def snapshot(store) -> dict:
         climbing = tools.calculate_progression(store, weeks, TODAY)["climbing"]
         # New in #98, not in the recording: which scale and gym the numbers are on.
         climbing.pop("grade_scale_detail"), climbing.pop("grade_scale_gym")
+        for week in climbing["weekly"]:  # new in #99: where to plot the week's grades
+            for key in ("hardest_sent_level", "flash_level", "hardest_sent_colour", "flash_colour"):
+                week.pop(key)
         out[f"progression_{weeks}"] = climbing
     out["goals"] = [{k: g[k] for k in ("grade", "climb_mode", "status", "achieved_on", "progress")}
                     for g in tools.list_goals(store, TODAY)]

@@ -225,6 +225,12 @@ def climbing(sessions: list[dict], climbs_by_session: dict[int, list[dict]],
             "climbs": len(climbs),
             "hardest_sent": hardest and _label(hardest),
             "flash_grade": flash and _label(flash),
+            # Places on the display scale (#99), so a chart can plot a grade
+            # from another gym or in V/Font between the scale's own grades.
+            "hardest_sent_level": hardest and _round(_level(hardest), 2),
+            "flash_level": flash and _round(_level(flash), 2),
+            "hardest_sent_colour": hardest and hardest.get("colour"),
+            "flash_colour": flash and flash.get("colour"),
             "send_rate_by_grade": _send_rate_by_grade(climbs),
         })
 
