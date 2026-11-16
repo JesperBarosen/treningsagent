@@ -216,7 +216,7 @@ export function PauseForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4 rounded-lg border border-line bg-surface p-4" noValidate>
-      <fieldset>
+      <fieldset className="min-w-0">
         <legend className="mb-2 text-sm font-medium">Why are you taking a break?</legend>
         <div role="radiogroup" aria-label="Reason" className="grid grid-cols-2 gap-2">
           {PAUSE_REASONS.map((r) => (
@@ -246,7 +246,7 @@ export function PauseForm({
               className={`${field} mt-1.5`}
             />
           </label>
-          <fieldset>
+          <fieldset className="min-w-0">
             <legend className="text-sm font-medium">
               Pain right now, 0–10 <span className="font-normal text-ink-muted">(optional)</span>
             </legend>

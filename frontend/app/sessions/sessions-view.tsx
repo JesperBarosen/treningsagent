@@ -8,7 +8,7 @@ import { SessionRow } from "@/components/session-card";
 import { ErrorState, EmptyState, HIT_AREA_Y, Skeleton } from "@/components/states";
 import { ApiError, getSessions, type Session, type Sport } from "@/lib/api";
 import { SENSITIVE } from "@/lib/discreet";
-import { groupByWeek, nf, weekLabel } from "@/lib/format";
+import { groupByWeek, nf, noneYetTitle, sportNoun, weekLabel } from "@/lib/format";
 import { SessionSheet } from "./session-sheet";
 
 const DAYS = 56; // 8 weeks
@@ -64,7 +64,9 @@ export function SessionsView() {
         <div
           role="radiogroup"
           aria-label="Show"
-          className="mt-4 inline-flex rounded-full border border-control bg-surface p-1"
+          // Five sports since #100: on a phone the row scrolls inside its own pill
+          // instead of widening the page (#110). p-1 keeps the 44 px hit areas inside it.
+          className="scrollbar-none mt-4 inline-flex max-w-full overflow-x-auto rounded-full border border-control bg-surface p-1"
         >
           {FILTERS.map((f) => (
             <button
@@ -73,7 +75,7 @@ export function SessionsView() {
               role="radio"
               aria-checked={filter === f.value}
               onClick={() => setFilter(f.value)}
-              className={`min-h-9 rounded-full px-4 text-sm font-medium text-ink-muted transition aria-checked:bg-accent-soft aria-checked:text-accent ${HIT_AREA_Y}`}
+              className={`min-h-9 shrink-0 rounded-full px-4 text-sm font-medium whitespace-nowrap text-ink-muted transition aria-checked:bg-accent-soft aria-checked:text-accent ${HIT_AREA_Y}`}
             >
               {f.label}
             </button>
@@ -94,6 +96,7 @@ export function SessionsView() {
           <WeekList
             sessions={state.sessions.filter((s) => filter === "all" || s.sport === filter)}
             anyAtAll={state.sessions.length > 0}
+            filter={filter}
             onOpen={setOpen}
           />
         )}
@@ -114,10 +117,12 @@ export function SessionsView() {
 function WeekList({
   sessions,
   anyAtAll,
+  filter,
   onOpen,
 }: {
   sessions: Session[];
   anyAtAll: boolean;
+  filter: Sport | "all";
   onOpen: (s: Session) => void;
 }) {
   if (!anyAtAll) {
@@ -140,8 +145,8 @@ function WeekList({
   }
   if (sessions.length === 0) {
     return (
-      <EmptyState icon={<ListIcon size={26} />} title="Nothing of this sport">
-        No sessions of this kind in the last 8 weeks.
+      <EmptyState icon={<ListIcon size={26} />} title={filter === "all" ? "No sessions yet" : noneYetTitle(filter)}>
+        {filter === "all" ? "No sessions" : `No ${sportNoun(filter)}`} in the last 8 weeks.
       </EmptyState>
     );
   }

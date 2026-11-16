@@ -63,7 +63,7 @@ function SelectField({ f, value, onChange }: { f: TemplateField; value: Template
   const picked = Array.isArray(value) ? (value as string[]) : value ? [value as string] : [];
   const options = (f.options ?? []).filter((o) => !o.archived || picked.includes(o.value));
   return (
-    <fieldset>
+    <fieldset className="min-w-0">
       <legend className={label}>
         {f.label} {f.multiple && <span className="font-normal text-ink-muted">(one or more)</span>} <Optional f={f} />
       </legend>
@@ -105,7 +105,7 @@ function SelectField({ f, value, onChange }: { f: TemplateField; value: Template
 
 function BooleanField({ f, value, onChange }: { f: TemplateField; value: TemplateValue | null; onChange: (v: TemplateValue | null) => void }) {
   return (
-    <fieldset className="flex min-h-11 flex-wrap items-center justify-between gap-2">
+    <fieldset className="flex min-h-11 min-w-0 flex-wrap items-center justify-between gap-2">
       <legend className="float-left text-sm font-medium">
         {f.label} <Optional f={f} />
       </legend>
@@ -203,7 +203,7 @@ function SetsField({ f, value, onChange }: { f: TemplateField; value: TemplateVa
     onChange(rows.map((r, j) => (j === i ? (Object.fromEntries(Object.entries({ ...r, ...patch }).filter(([, v]) => v !== undefined)) as SetRow) : r)));
   const repsLabel = f.reps_unit === "s" ? "Seconds each" : "Reps";
   return (
-    <fieldset className="flex flex-col gap-2">
+    <fieldset className="flex min-w-0 flex-col gap-2">
       <legend className={label}>
         {f.label} <Optional f={f} />
       </legend>
