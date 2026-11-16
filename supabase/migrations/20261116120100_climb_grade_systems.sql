@@ -55,7 +55,7 @@ where o.kind = 'climb_grade' and g.user_id = o.user_id and gg.name = o.grade;
 -- 4. Loosen the fixed seven-colour checks; the backend checks grades against
 -- the gym's colours or the V/Font lists (grades.py).
 alter table public.climbs drop constraint climbs_grade_check;
-alter table public.climbs drop constraint climbs_grade_ordinal_check;
+alter table public.climbs drop constraint climbs_check;
 alter table public.climbs alter column grade_ordinal drop not null;
 alter table public.goals drop constraint goals_grade_check;
 
