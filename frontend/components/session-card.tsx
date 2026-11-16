@@ -10,6 +10,7 @@ import {
   formatPace,
   sessionSummary,
   sportName,
+  valueLines,
 } from "@/lib/format";
 import { ClimbChips } from "./grade";
 import { CheckIcon, SportBadge } from "./icons";
@@ -142,6 +143,12 @@ export function SessionRow({ session, onOpen }: { session: Session; onOpen: () =
         <p {...SENSITIVE} className="mt-0.5 text-sm text-ink-muted tabular-nums">
           {stats(session).join(" · ")}
         </p>
+        {valueLines(session).slice(0, 2).map((line, i) => (
+          // A template's values (#101), e.g. "6 × 10 s · 20 mm · +10 kg".
+          <p key={i} {...SENSITIVE} className="truncate text-sm text-ink tabular-nums">
+            {line}
+          </p>
+        ))}
         {session.climbs && session.climbs.length > 0 && (
           <div className="mt-2">
             <ClimbChips climbs={session.climbs} max={5} />
