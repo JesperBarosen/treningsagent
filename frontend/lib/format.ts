@@ -2,8 +2,14 @@ import type { Climb, Session } from "./api";
 
 const SPORT_NAMES = { running: "Run", climbing: "Climbing", strength: "Strength", other: "Other" } as const;
 
-export function sportName(session: Pick<Session, "sport">): string {
-  return SPORT_NAMES[session.sport];
+/** The session's title: its template's name (#101), else the sport's. */
+export function sportName(session: Pick<Session, "sport"> & { template?: string }): string {
+  return session.template ?? SPORT_NAMES[session.sport];
+}
+
+/** One line per template value, e.g. "6 × 10 s · 20 mm · +10 kg" (#101). */
+export function valueLines(session: Pick<Session, "fields">): string[] {
+  return (session.fields ?? []).map((f) => f.text);
 }
 
 /** 5.25 min/km -> "5:15". */
