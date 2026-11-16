@@ -16,6 +16,8 @@ class FakeStore:
         self.chat_requests = 0
         self.pauses: list[dict] = []
         self.goal_rows: list[dict] = []
+        self.gym_rows: list[dict] = []
+        self.gym_grades: list[dict] = []
 
     def insert_session(self, row: dict, climbs: list[dict] = ()) -> int:
         session_id = len(self.rows) + 1
@@ -103,6 +105,66 @@ class FakeStore:
         before = len(self.goal_rows)
         self.goal_rows = [g for g in self.goal_rows if g["id"] != goal_id]
         return len(self.goal_rows) < before
+
+    # --- Gyms (#98) ---
+    def gyms(self) -> list[dict]:
+        return [{**g, "grades": [dict(x) for x in self.gym_grades if x["gym_id"] == g["id"]]}
+                for g in self.gym_rows]
+
+    def _gym(self, gym_id: int) -> dict | None:
+        return next((g for g in self.gyms() if g["id"] == gym_id), None)
+
+    def _write_colours(self, gym_id: int, colours: list[dict]) -> None:
+        keep = {c["id"] for c in colours if c.get("id")}
+        for x in [x for x in self.gym_grades if x["gym_id"] == gym_id and x["id"] not in keep]:
+            if any(c.get("gym_grade_id") == x["id"] for c in self.climbs) or any(
+                    g.get("gym_grade_id") == x["id"] for g in self.goal_rows):
+                raise ValueError("a colour that climbs or goals use can't be deleted; archive it")
+            self.gym_grades.remove(x)
+        for c in colours:
+            row = {k: c[k] for k in ("position", "name", "colour", "range_low", "range_high")}
+            existing = next((x for x in self.gym_grades if x["id"] == c.get("id")), None)
+            if c.get("id") and (existing is None or existing["gym_id"] != gym_id):
+                raise ValueError(f"colour {c['id']} is not part of this gym")
+            archived_at = (existing or {}).get("archived_at") or "2026-11-16T00:00:00Z" \
+                if c.get("archived") else None
+            if existing:
+                existing.update(row, archived_at=archived_at)
+            else:
+                self.gym_grades.append({"id": len(self.gym_grades) + 1000, "gym_id": gym_id,
+                                        **row, "archived_at": archived_at})
+
+    def insert_gym(self, row: dict, colours: list[dict]) -> dict:
+        gym_id = len(self.gym_rows) + 1
+        self.gym_rows.append({"id": gym_id, **row, "archived_at": None})
+        self._write_colours(gym_id, colours)
+        return self._gym(gym_id)
+
+    def update_gym(self, gym_id: int, row: dict, colours: list[dict] | None) -> dict | None:
+        gym = next((g for g in self.gym_rows if g["id"] == gym_id), None)
+        if gym is None:
+            return None
+        row = dict(row)
+        if "archived" in row:
+            row["archived_at"] = "2026-11-16T00:00:00Z" if row.pop("archived") else None
+        gym.update(row)
+        if colours is not None:
+            self._write_colours(gym_id, colours)
+        return self._gym(gym_id)
+
+    def delete_gym(self, gym_id: int) -> bool:
+        if any(c.get("gym_id") == gym_id for c in self.climbs) or any(
+                g.get("gym_id") == gym_id for g in self.goal_rows):
+            raise ValueError("a gym that climbs or goals use can't be deleted; archive it")
+        before = len(self.gym_rows)
+        self.gym_rows = [g for g in self.gym_rows if g["id"] != gym_id]
+        self.gym_grades = [x for x in self.gym_grades if x["gym_id"] != gym_id]
+        return len(self.gym_rows) < before
+
+    def last_gym_id(self) -> int | None:
+        dated = [(next(r["date"] for r in self.rows if r["id"] == c["session_id"]), c["id"], c["gym_id"])
+                 for c in self.climbs if c.get("gym_id") is not None]
+        return max(dated)[2] if dated else None
 
     def claim_chat_request(self, daily_limit: int) -> bool:
         if self.chat_requests >= daily_limit:

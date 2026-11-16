@@ -1,0 +1,894 @@
+{
+ "goals": [
+  {
+   "achieved_on": "2026-10-23",
+   "climb_mode": "send",
+   "grade": "red",
+   "progress": {
+    "best_count_28d": 7,
+    "best_grade": "red",
+    "of": 5,
+    "reached_on": "2026-10-23",
+    "steps": 5
+   },
+   "status": "achieved"
+  },
+  {
+   "achieved_on": null,
+   "climb_mode": "send",
+   "grade": "black",
+   "progress": {
+    "best_count_28d": 7,
+    "best_grade": "red",
+    "of": 6,
+    "reached_on": null,
+    "steps": 5
+   },
+   "status": "active"
+  },
+  {
+   "achieved_on": "2026-10-06",
+   "climb_mode": "flash",
+   "grade": "blue",
+   "progress": {
+    "best_count_28d": 4,
+    "best_grade": "purple",
+    "of": 3,
+    "reached_on": "2026-10-06",
+    "steps": 3
+   },
+   "status": "achieved"
+  },
+  {
+   "achieved_on": "2026-11-10",
+   "climb_mode": "flash",
+   "grade": "purple",
+   "progress": {
+    "best_count_28d": 4,
+    "best_grade": "purple",
+    "of": 4,
+    "reached_on": "2026-11-10",
+    "steps": 4
+   },
+   "status": "achieved"
+  },
+  {
+   "achieved_on": null,
+   "climb_mode": "send",
+   "grade": "white",
+   "progress": {
+    "best_count_28d": 7,
+    "best_grade": "red",
+    "of": 7,
+    "reached_on": null,
+    "steps": 5
+   },
+   "status": "active"
+  }
+ ],
+ "hardest": [
+  "purple",
+  "blue",
+  "blue",
+  "blue",
+  "purple",
+  "purple",
+  "blue",
+  "red",
+  "green",
+  "red",
+  "red",
+  "red",
+  "red"
+ ],
+ "progression_1": {
+  "days_since_last_session": 3,
+  "grade_scale": [
+   "yellow",
+   "green",
+   "blue",
+   "purple",
+   "red",
+   "black",
+   "white"
+  ],
+  "last_session": "2026-11-13",
+  "sessions": 0,
+  "trends": {
+   "avg_session_flash_grade": {
+    "baseline": 2.57,
+    "baseline_grade": "blue",
+    "baseline_sessions": 7,
+    "recent": 3.67,
+    "recent_grade": "purple",
+    "recent_sessions": 3,
+    "trend": "improving"
+   },
+   "avg_session_hardest_sent": {
+    "baseline": 3.43,
+    "baseline_grade": "blue",
+    "baseline_sessions": 7,
+    "recent": 5.0,
+    "recent_grade": "red",
+    "recent_sessions": 4,
+    "trend": "improving"
+   },
+   "climbs_per_week": {
+    "baseline": 13.2,
+    "baseline_sessions": 7,
+    "recent": 17.5,
+    "recent_sessions": 4,
+    "trend": "improving"
+   },
+   "send_rate_by_grade": {
+    "blue": {
+     "baseline": 0.94,
+     "baseline_sessions": 6,
+     "recent": 1.0,
+     "recent_sessions": 3,
+     "trend": "flat"
+    },
+    "green": {
+     "baseline": 0.95,
+     "baseline_sessions": 7,
+     "recent": 0.83,
+     "recent_sessions": 4,
+     "trend": "declining"
+    },
+    "purple": {
+     "baseline": 0.27,
+     "baseline_sessions": 6,
+     "recent": 0.89,
+     "recent_sessions": 4,
+     "trend": "improving"
+    },
+    "red": {
+     "baseline": 0.14,
+     "baseline_sessions": 3,
+     "recent": 0.43,
+     "recent_sessions": 4,
+     "trend": "improving"
+    }
+   }
+  },
+  "weekly": [
+   {
+    "climbs": 0,
+    "flash_grade": null,
+    "hardest_sent": null,
+    "send_rate_by_grade": {},
+    "sessions": 0,
+    "week_start": "2026-11-16"
+   }
+  ]
+ },
+ "progression_12": {
+  "days_since_last_session": 3,
+  "grade_scale": [
+   "yellow",
+   "green",
+   "blue",
+   "purple",
+   "red",
+   "black",
+   "white"
+  ],
+  "last_session": "2026-11-13",
+  "sessions": 13,
+  "trends": {
+   "avg_session_flash_grade": {
+    "baseline": 2.57,
+    "baseline_grade": "blue",
+    "baseline_sessions": 7,
+    "recent": 3.67,
+    "recent_grade": "purple",
+    "recent_sessions": 3,
+    "trend": "improving"
+   },
+   "avg_session_hardest_sent": {
+    "baseline": 3.43,
+    "baseline_grade": "blue",
+    "baseline_sessions": 7,
+    "recent": 5.0,
+    "recent_grade": "red",
+    "recent_sessions": 4,
+    "trend": "improving"
+   },
+   "climbs_per_week": {
+    "baseline": 13.2,
+    "baseline_sessions": 7,
+    "recent": 17.5,
+    "recent_sessions": 4,
+    "trend": "improving"
+   },
+   "send_rate_by_grade": {
+    "blue": {
+     "baseline": 0.94,
+     "baseline_sessions": 6,
+     "recent": 1.0,
+     "recent_sessions": 3,
+     "trend": "flat"
+    },
+    "green": {
+     "baseline": 0.95,
+     "baseline_sessions": 7,
+     "recent": 0.83,
+     "recent_sessions": 4,
+     "trend": "declining"
+    },
+    "purple": {
+     "baseline": 0.27,
+     "baseline_sessions": 6,
+     "recent": 0.89,
+     "recent_sessions": 4,
+     "trend": "improving"
+    },
+    "red": {
+     "baseline": 0.14,
+     "baseline_sessions": 3,
+     "recent": 0.43,
+     "recent_sessions": 4,
+     "trend": "improving"
+    }
+   }
+  },
+  "weekly": [
+   {
+    "climbs": 0,
+    "flash_grade": null,
+    "hardest_sent": null,
+    "send_rate_by_grade": {},
+    "sessions": 0,
+    "week_start": "2026-08-31"
+   },
+   {
+    "climbs": 0,
+    "flash_grade": null,
+    "hardest_sent": null,
+    "send_rate_by_grade": {},
+    "sessions": 0,
+    "week_start": "2026-09-07"
+   },
+   {
+    "climbs": 0,
+    "flash_grade": null,
+    "hardest_sent": null,
+    "send_rate_by_grade": {},
+    "sessions": 0,
+    "week_start": "2026-09-14"
+   },
+   {
+    "climbs": 0,
+    "flash_grade": null,
+    "hardest_sent": null,
+    "send_rate_by_grade": {},
+    "sessions": 0,
+    "week_start": "2026-09-21"
+   },
+   {
+    "climbs": 17,
+    "flash_grade": "purple",
+    "hardest_sent": "purple",
+    "send_rate_by_grade": {
+     "blue": {
+      "rate": 0.5,
+      "sent": 3,
+      "tried": 6
+     },
+     "green": {
+      "rate": 1.0,
+      "sent": 4,
+      "tried": 4
+     },
+     "purple": {
+      "rate": 0.57,
+      "sent": 4,
+      "tried": 7
+     }
+    },
+    "sessions": 2,
+    "week_start": "2026-09-28"
+   },
+   {
+    "climbs": 15,
+    "flash_grade": "blue",
+    "hardest_sent": "blue",
+    "send_rate_by_grade": {
+     "blue": {
+      "rate": 0.8,
+      "sent": 4,
+      "tried": 5
+     },
+     "green": {
+      "rate": 0.83,
+      "sent": 5,
+      "tried": 6
+     },
+     "purple": {
+      "rate": 0.0,
+      "sent": 0,
+      "tried": 4
+     }
+    },
+    "sessions": 2,
+    "week_start": "2026-10-05"
+   },
+   {
+    "climbs": 16,
+    "flash_grade": "blue",
+    "hardest_sent": "purple",
+    "send_rate_by_grade": {
+     "blue": {
+      "rate": 1.0,
+      "sent": 5,
+      "tried": 5
+     },
+     "green": {
+      "rate": 1.0,
+      "sent": 6,
+      "tried": 6
+     },
+     "purple": {
+      "rate": 0.6,
+      "sent": 3,
+      "tried": 5
+     }
+    },
+    "sessions": 2,
+    "week_start": "2026-10-12"
+   },
+   {
+    "climbs": 17,
+    "flash_grade": "blue",
+    "hardest_sent": "red",
+    "send_rate_by_grade": {
+     "blue": {
+      "rate": 1.0,
+      "sent": 6,
+      "tried": 6
+     },
+     "green": {
+      "rate": 1.0,
+      "sent": 5,
+      "tried": 5
+     },
+     "purple": {
+      "rate": 0.0,
+      "sent": 0,
+      "tried": 1
+     },
+     "red": {
+      "rate": 0.2,
+      "sent": 1,
+      "tried": 5
+     }
+    },
+    "sessions": 2,
+    "week_start": "2026-10-19"
+   },
+   {
+    "climbs": 5,
+    "flash_grade": "green",
+    "hardest_sent": "green",
+    "send_rate_by_grade": {
+     "green": {
+      "rate": 1.0,
+      "sent": 2,
+      "tried": 2
+     },
+     "purple": {
+      "rate": 0.0,
+      "sent": 0,
+      "tried": 1
+     },
+     "red": {
+      "rate": 0.0,
+      "sent": 0,
+      "tried": 2
+     }
+    },
+    "sessions": 1,
+    "week_start": "2026-10-26"
+   },
+   {
+    "climbs": 16,
+    "flash_grade": "blue",
+    "hardest_sent": "red",
+    "send_rate_by_grade": {
+     "blue": {
+      "rate": 1.0,
+      "sent": 4,
+      "tried": 4
+     },
+     "green": {
+      "rate": 0.67,
+      "sent": 2,
+      "tried": 3
+     },
+     "purple": {
+      "rate": 1.0,
+      "sent": 3,
+      "tried": 3
+     },
+     "red": {
+      "rate": 0.5,
+      "sent": 3,
+      "tried": 6
+     }
+    },
+    "sessions": 2,
+    "week_start": "2026-11-02"
+   },
+   {
+    "climbs": 19,
+    "flash_grade": "purple",
+    "hardest_sent": "red",
+    "send_rate_by_grade": {
+     "blue": {
+      "rate": 1.0,
+      "sent": 2,
+      "tried": 2
+     },
+     "green": {
+      "rate": 1.0,
+      "sent": 3,
+      "tried": 3
+     },
+     "purple": {
+      "rate": 0.83,
+      "sent": 5,
+      "tried": 6
+     },
+     "red": {
+      "rate": 0.38,
+      "sent": 3,
+      "tried": 8
+     }
+    },
+    "sessions": 2,
+    "week_start": "2026-11-09"
+   },
+   {
+    "climbs": 0,
+    "flash_grade": null,
+    "hardest_sent": null,
+    "send_rate_by_grade": {},
+    "sessions": 0,
+    "week_start": "2026-11-16"
+   }
+  ]
+ },
+ "progression_4": {
+  "days_since_last_session": 3,
+  "grade_scale": [
+   "yellow",
+   "green",
+   "blue",
+   "purple",
+   "red",
+   "black",
+   "white"
+  ],
+  "last_session": "2026-11-13",
+  "sessions": 5,
+  "trends": {
+   "avg_session_flash_grade": {
+    "baseline": 2.57,
+    "baseline_grade": "blue",
+    "baseline_sessions": 7,
+    "recent": 3.67,
+    "recent_grade": "purple",
+    "recent_sessions": 3,
+    "trend": "improving"
+   },
+   "avg_session_hardest_sent": {
+    "baseline": 3.43,
+    "baseline_grade": "blue",
+    "baseline_sessions": 7,
+    "recent": 5.0,
+    "recent_grade": "red",
+    "recent_sessions": 4,
+    "trend": "improving"
+   },
+   "climbs_per_week": {
+    "baseline": 13.2,
+    "baseline_sessions": 7,
+    "recent": 17.5,
+    "recent_sessions": 4,
+    "trend": "improving"
+   },
+   "send_rate_by_grade": {
+    "blue": {
+     "baseline": 0.94,
+     "baseline_sessions": 6,
+     "recent": 1.0,
+     "recent_sessions": 3,
+     "trend": "flat"
+    },
+    "green": {
+     "baseline": 0.95,
+     "baseline_sessions": 7,
+     "recent": 0.83,
+     "recent_sessions": 4,
+     "trend": "declining"
+    },
+    "purple": {
+     "baseline": 0.27,
+     "baseline_sessions": 6,
+     "recent": 0.89,
+     "recent_sessions": 4,
+     "trend": "improving"
+    },
+    "red": {
+     "baseline": 0.14,
+     "baseline_sessions": 3,
+     "recent": 0.43,
+     "recent_sessions": 4,
+     "trend": "improving"
+    }
+   }
+  },
+  "weekly": [
+   {
+    "climbs": 5,
+    "flash_grade": "green",
+    "hardest_sent": "green",
+    "send_rate_by_grade": {
+     "green": {
+      "rate": 1.0,
+      "sent": 2,
+      "tried": 2
+     },
+     "purple": {
+      "rate": 0.0,
+      "sent": 0,
+      "tried": 1
+     },
+     "red": {
+      "rate": 0.0,
+      "sent": 0,
+      "tried": 2
+     }
+    },
+    "sessions": 1,
+    "week_start": "2026-10-26"
+   },
+   {
+    "climbs": 16,
+    "flash_grade": "blue",
+    "hardest_sent": "red",
+    "send_rate_by_grade": {
+     "blue": {
+      "rate": 1.0,
+      "sent": 4,
+      "tried": 4
+     },
+     "green": {
+      "rate": 0.67,
+      "sent": 2,
+      "tried": 3
+     },
+     "purple": {
+      "rate": 1.0,
+      "sent": 3,
+      "tried": 3
+     },
+     "red": {
+      "rate": 0.5,
+      "sent": 3,
+      "tried": 6
+     }
+    },
+    "sessions": 2,
+    "week_start": "2026-11-02"
+   },
+   {
+    "climbs": 19,
+    "flash_grade": "purple",
+    "hardest_sent": "red",
+    "send_rate_by_grade": {
+     "blue": {
+      "rate": 1.0,
+      "sent": 2,
+      "tried": 2
+     },
+     "green": {
+      "rate": 1.0,
+      "sent": 3,
+      "tried": 3
+     },
+     "purple": {
+      "rate": 0.83,
+      "sent": 5,
+      "tried": 6
+     },
+     "red": {
+      "rate": 0.38,
+      "sent": 3,
+      "tried": 8
+     }
+    },
+    "sessions": 2,
+    "week_start": "2026-11-09"
+   },
+   {
+    "climbs": 0,
+    "flash_grade": null,
+    "hardest_sent": null,
+    "send_rate_by_grade": {},
+    "sessions": 0,
+    "week_start": "2026-11-16"
+   }
+  ]
+ },
+ "progression_8": {
+  "days_since_last_session": 3,
+  "grade_scale": [
+   "yellow",
+   "green",
+   "blue",
+   "purple",
+   "red",
+   "black",
+   "white"
+  ],
+  "last_session": "2026-11-13",
+  "sessions": 13,
+  "trends": {
+   "avg_session_flash_grade": {
+    "baseline": 2.57,
+    "baseline_grade": "blue",
+    "baseline_sessions": 7,
+    "recent": 3.67,
+    "recent_grade": "purple",
+    "recent_sessions": 3,
+    "trend": "improving"
+   },
+   "avg_session_hardest_sent": {
+    "baseline": 3.43,
+    "baseline_grade": "blue",
+    "baseline_sessions": 7,
+    "recent": 5.0,
+    "recent_grade": "red",
+    "recent_sessions": 4,
+    "trend": "improving"
+   },
+   "climbs_per_week": {
+    "baseline": 13.2,
+    "baseline_sessions": 7,
+    "recent": 17.5,
+    "recent_sessions": 4,
+    "trend": "improving"
+   },
+   "send_rate_by_grade": {
+    "blue": {
+     "baseline": 0.94,
+     "baseline_sessions": 6,
+     "recent": 1.0,
+     "recent_sessions": 3,
+     "trend": "flat"
+    },
+    "green": {
+     "baseline": 0.95,
+     "baseline_sessions": 7,
+     "recent": 0.83,
+     "recent_sessions": 4,
+     "trend": "declining"
+    },
+    "purple": {
+     "baseline": 0.27,
+     "baseline_sessions": 6,
+     "recent": 0.89,
+     "recent_sessions": 4,
+     "trend": "improving"
+    },
+    "red": {
+     "baseline": 0.14,
+     "baseline_sessions": 3,
+     "recent": 0.43,
+     "recent_sessions": 4,
+     "trend": "improving"
+    }
+   }
+  },
+  "weekly": [
+   {
+    "climbs": 17,
+    "flash_grade": "purple",
+    "hardest_sent": "purple",
+    "send_rate_by_grade": {
+     "blue": {
+      "rate": 0.5,
+      "sent": 3,
+      "tried": 6
+     },
+     "green": {
+      "rate": 1.0,
+      "sent": 4,
+      "tried": 4
+     },
+     "purple": {
+      "rate": 0.57,
+      "sent": 4,
+      "tried": 7
+     }
+    },
+    "sessions": 2,
+    "week_start": "2026-09-28"
+   },
+   {
+    "climbs": 15,
+    "flash_grade": "blue",
+    "hardest_sent": "blue",
+    "send_rate_by_grade": {
+     "blue": {
+      "rate": 0.8,
+      "sent": 4,
+      "tried": 5
+     },
+     "green": {
+      "rate": 0.83,
+      "sent": 5,
+      "tried": 6
+     },
+     "purple": {
+      "rate": 0.0,
+      "sent": 0,
+      "tried": 4
+     }
+    },
+    "sessions": 2,
+    "week_start": "2026-10-05"
+   },
+   {
+    "climbs": 16,
+    "flash_grade": "blue",
+    "hardest_sent": "purple",
+    "send_rate_by_grade": {
+     "blue": {
+      "rate": 1.0,
+      "sent": 5,
+      "tried": 5
+     },
+     "green": {
+      "rate": 1.0,
+      "sent": 6,
+      "tried": 6
+     },
+     "purple": {
+      "rate": 0.6,
+      "sent": 3,
+      "tried": 5
+     }
+    },
+    "sessions": 2,
+    "week_start": "2026-10-12"
+   },
+   {
+    "climbs": 17,
+    "flash_grade": "blue",
+    "hardest_sent": "red",
+    "send_rate_by_grade": {
+     "blue": {
+      "rate": 1.0,
+      "sent": 6,
+      "tried": 6
+     },
+     "green": {
+      "rate": 1.0,
+      "sent": 5,
+      "tried": 5
+     },
+     "purple": {
+      "rate": 0.0,
+      "sent": 0,
+      "tried": 1
+     },
+     "red": {
+      "rate": 0.2,
+      "sent": 1,
+      "tried": 5
+     }
+    },
+    "sessions": 2,
+    "week_start": "2026-10-19"
+   },
+   {
+    "climbs": 5,
+    "flash_grade": "green",
+    "hardest_sent": "green",
+    "send_rate_by_grade": {
+     "green": {
+      "rate": 1.0,
+      "sent": 2,
+      "tried": 2
+     },
+     "purple": {
+      "rate": 0.0,
+      "sent": 0,
+      "tried": 1
+     },
+     "red": {
+      "rate": 0.0,
+      "sent": 0,
+      "tried": 2
+     }
+    },
+    "sessions": 1,
+    "week_start": "2026-10-26"
+   },
+   {
+    "climbs": 16,
+    "flash_grade": "blue",
+    "hardest_sent": "red",
+    "send_rate_by_grade": {
+     "blue": {
+      "rate": 1.0,
+      "sent": 4,
+      "tried": 4
+     },
+     "green": {
+      "rate": 0.67,
+      "sent": 2,
+      "tried": 3
+     },
+     "purple": {
+      "rate": 1.0,
+      "sent": 3,
+      "tried": 3
+     },
+     "red": {
+      "rate": 0.5,
+      "sent": 3,
+      "tried": 6
+     }
+    },
+    "sessions": 2,
+    "week_start": "2026-11-02"
+   },
+   {
+    "climbs": 19,
+    "flash_grade": "purple",
+    "hardest_sent": "red",
+    "send_rate_by_grade": {
+     "blue": {
+      "rate": 1.0,
+      "sent": 2,
+      "tried": 2
+     },
+     "green": {
+      "rate": 1.0,
+      "sent": 3,
+      "tried": 3
+     },
+     "purple": {
+      "rate": 0.83,
+      "sent": 5,
+      "tried": 6
+     },
+     "red": {
+      "rate": 0.38,
+      "sent": 3,
+      "tried": 8
+     }
+    },
+    "sessions": 2,
+    "week_start": "2026-11-09"
+   },
+   {
+    "climbs": 0,
+    "flash_grade": null,
+    "hardest_sent": null,
+    "send_rate_by_grade": {},
+    "sessions": 0,
+    "week_start": "2026-11-16"
+   }
+  ]
+ },
+ "tags": {
+  "enough_data": true,
+  "patterns": [],
+  "sessions": 13,
+  "tag_counts": {}
+ }
+}
