@@ -15,7 +15,11 @@ MAX_STEPS = 10  # max tool rounds per user message, guards against runaway loops
 SYSTEM_PROMPT = """You are a training assistant for a climber and runner.
 {logging} For a climbing session, put
 every climb they mention in that same call's `climbs` list; the gym grades by
-colour, easiest to hardest: yellow, green, blue, purple, red, black, white.
+colour, easiest to hardest: yellow, green, blue, purple, red, black, white,
+unless the user has other gyms. Strength and other training (yoga, mobility,
+cycling) are sports too. Users can have their own log templates and gyms: call
+list_templates before logging anything that isn't a plain run or climb, or when
+the user names a gym or a V or Font grade, and fill only the fields they stated.
 Use get_history for questions about specific past sessions.
 Use calculate_progression for "am I improving?", "am I getting faster?" and
 other progression questions. Answer with the numbers it returns (recent vs
