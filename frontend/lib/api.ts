@@ -382,6 +382,16 @@ export function getTrainingLoad(weeks = 8, signal?: AbortSignal, sport?: Sport):
   return request(`/training-load?weeks=${weeks}${sport ? `&sport=${sport}` : ""}`, { signal });
 }
 
+/** The all-sports load with each sport's own under `by_sport`, in one request,
+ *  so the Dashboard filter (#46) switches without fetching. A backend from
+ *  before `by_sport` leaves it out; lib/dashboard-data.ts then fetches per sport. */
+export function getTrainingLoadBySport(
+  weeks = 8,
+  signal?: AbortSignal,
+): Promise<TrainingLoad & { by_sport?: Record<Sport, TrainingLoad> }> {
+  return request(`/training-load?weeks=${weeks}&by_sport=true`, { signal });
+}
+
 export function getProgression(weeks = 8, signal?: AbortSignal): Promise<Progression> {
   return request(`/progression?weeks=${weeks}`, { signal });
 }

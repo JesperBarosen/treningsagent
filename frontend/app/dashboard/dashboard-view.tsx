@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { GradeDot } from "@/components/grade";
 import { ChartIcon, ChevronIcon } from "@/components/icons";
 import { GoalsSection } from "@/components/goals-panel";
@@ -10,14 +10,14 @@ import { EmptyState, ErrorState, Skeleton } from "@/components/states";
 import {
   ApiError,
   DISTANCE_BANDS,
-  getProgression,
-  getTrainingLoad,
   type Grade,
   type Progression,
+  type Sport,
   type TrainingLoad,
   type Trend,
   type TrendWord,
 } from "@/lib/api";
+import { fetchDashboard, fetchSportLoad, missingSports, shownFilter, type DashboardData } from "@/lib/dashboard-data";
 import {
   BAND_LABELS,
   mainPaceBand,
@@ -51,18 +51,16 @@ import {
 
 const WEEKS = 8;
 
-type State =
-  | { status: "loading" }
-  | { status: "error"; error: ApiError }
-  | { status: "ready"; load: TrainingLoad; progression: Progression; sport: SportFilter };
+const asApiError = (e: unknown) => (e instanceof ApiError ? e : new ApiError(String(e), 0));
 
-/** All / Running / Climbing at the top of the Dashboard (#46); remembered on this device. */
+/** All / Running / Climbing at the top of the Dashboard (#46); remembered on this
+ *  device. The tapped one shows as chosen at once, before any numbers change. */
 export function SportFilterControl({ value }: { value: SportFilter }) {
   return (
     <div
       role="radiogroup"
       aria-label="Show sport"
-      className="mt-3 inline-flex rounded-full border border-control bg-surface p-0.5"
+      className="inline-flex rounded-full border border-control bg-surface p-0.5"
     >
       {SPORT_FILTERS.map((f) => (
         <button
@@ -80,54 +78,111 @@ export function SportFilterControl({ value }: { value: SportFilter }) {
   );
 }
 
-export function DashboardView() {
-  const [state, setState] = useState<State>({ status: "loading" });
-  const sport = useSportFilter();
+/** Next to the filter while numbers load: a spinner, or with reduced motion a
+ *  still "Loading…". Screen readers hear "Loading…" either way. */
+export function LoadingIndicator() {
+  return (
+    <span role="status" className="inline-flex items-center gap-1.5 text-sm text-ink-muted">
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        data-testid="spinner"
+        className="size-4 animate-spin motion-reduce:hidden"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      >
+        <path d="M12 3a9 9 0 1 0 9 9" />
+      </svg>
+      <span className="sr-only motion-reduce:not-sr-only">Loading…</span>
+    </span>
+  );
+}
 
-  // Switching sport keeps the shown numbers until the new ones arrive (no
-  // skeleton flash); the load is fetched for the chosen sport only (#46).
-  const fetchAll = useCallback((filter: SportFilter, signal?: AbortSignal) => {
-    const loadSport = filter === "all" ? undefined : filter;
-    Promise.all([getTrainingLoad(WEEKS, signal, loadSport), getProgression(WEEKS, signal)])
-      .then(([load, progression]) => setState({ status: "ready", load, progression, sport: filter }))
-      .catch((e) => {
-        if (signal?.aborted) return;
-        setState({ status: "error", error: e instanceof ApiError ? e : new ApiError(String(e), 0) });
-      });
-  }, []);
+export function DashboardView() {
+  const sport = useSportFilter();
+  // Every filter's load, from one request (lib/dashboard-data.ts): kept for the
+  // visit, so switching back and forth draws at once without a request.
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
+  // Per sport, only with a backend that can't send them all at once.
+  const [sportErrors, setSportErrors] = useState<Partial<Record<Sport, ApiError>>>({});
+  const [reload, setReload] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchAll(sport, controller.signal);
+    const { signal } = controller;
+    fetchDashboard(WEEKS, signal)
+      .then((d) => {
+        setData(d);
+        setError(null);
+        setSportErrors({});
+        setRefreshing(false);
+        // An older backend sent no per-sport numbers: prefetch them now, in the
+        // background, so a switch is usually instant anyway.
+        for (const s of missingSports(d.loads)) {
+          fetchSportLoad(WEEKS, s, signal)
+            .then((l) => setData((prev) => prev && { ...prev, loads: { ...prev.loads, [s]: l } }))
+            .catch((e) => {
+              if (!signal.aborted) setSportErrors((prev) => ({ ...prev, [s]: asApiError(e) }));
+            });
+        }
+      })
+      .catch((e) => {
+        if (signal.aborted) return;
+        setError(asApiError(e));
+        setRefreshing(false);
+      });
     return () => controller.abort();
-  }, [fetchAll, sport]);
+  }, [reload]);
 
-  function retry() {
-    setState({ status: "loading" });
-    fetchAll(sport);
+  /** Fetch again (Try again, or after a break ends), keeping what is shown meanwhile. */
+  function refetch() {
+    setRefreshing(true);
+    setError(null);
+    setReload((n) => n + 1);
   }
+
+  const shown = data ? shownFilter(data.loads, sport) : null;
+  const sportError = sport === "all" ? undefined : sportErrors[sport];
+  // The chosen filter's numbers aren't here yet: keep the last ones, dimmed.
+  const pending = refreshing || (data !== null && shown !== sport && !sportError);
+  const firstLoad = data === null && error === null;
+  const failed = error ?? sportError;
 
   return (
     <div className="mx-auto max-w-5xl pt-4 pb-12">
       <h1 className="font-display text-xl font-semibold">Dashboard</h1>
       <p className="text-sm text-ink-muted">The last {WEEKS} weeks · the current week is partial</p>
-      <SportFilterControl value={sport} />
+      <div className="mt-3 flex min-h-11 items-center gap-3">
+        <SportFilterControl value={sport} />
+        {(pending || firstLoad) && <LoadingIndicator />}
+      </div>
 
-      <div className="mt-4" aria-busy={state.status === "ready" && state.sport !== sport}>
-        {state.status === "loading" && <LoadingDashboard />}
-        {state.status === "error" && (
-          <ErrorState offline={state.error.status === null} message={state.error.message} onRetry={retry} />
-        )}
-        {state.status === "ready" && (
+      <div className="mt-4">
+        {failed ? (
+          <ErrorState offline={failed.status === null} message={failed.message} onRetry={refetch} />
+        ) : data === null || shown === null ? (
+          <LoadingDashboard />
+        ) : (
           <>
-            {/* N2: what the user is aiming for comes first. */}
-            <GoalsSection />
-            <Dashboard
-              load={state.load}
-              progression={state.progression}
-              sport={state.sport}
-              onPauseEnded={retry}
-            />
+            {/* N2: what the user is aiming for comes first. Goals follow the
+                filter at once; they are already loaded. */}
+            <GoalsSection sport={sport} />
+            <div
+              data-testid="dashboard-content"
+              aria-busy={pending}
+              className={`transition-opacity motion-reduce:transition-none ${pending ? "opacity-60" : ""}`}
+            >
+              <Dashboard
+                load={data.loads[shown]!}
+                progression={data.progression}
+                sport={shown}
+                onPauseEnded={refetch}
+              />
+            </div>
           </>
         )}
       </div>
