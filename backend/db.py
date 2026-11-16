@@ -9,6 +9,7 @@ import json
 import os
 import time
 from contextlib import contextmanager
+from datetime import datetime, timezone
 
 import psycopg
 from psycopg import sql
@@ -23,9 +24,13 @@ SESSION_COLUMNS = ("id", "sport", "date", "duration_min", "effort", "notes", "di
 PAUSE_COLUMNS = ("id", "start_date", "planned_end", "ended_on", "reason", "body_part", "pain",
                  "note", "resume_choice")
 GOAL_COLUMNS = ("id", "kind", "grade", "climb_mode", "band", "target_pace", "start_pace",
-                "target_date", "status", "achieved_on", "created_on")
+                "target_date", "status", "achieved_on", "created_on",
+                "grade_system", "gym_id", "gym_grade_id")
 CLIMB_COLUMNS = ("id", "session_id", "grade", "grade_ordinal", "attempts", "sent", "style",
-                 "notes")
+                 "notes", "grade_system", "gym_id", "gym_grade_id")
+GYM_COLUMNS = ("id", "name", "range_system", "archived_at")
+GYM_GRADE_COLUMNS = ("id", "gym_id", "position", "name", "colour", "range_low", "range_high",
+                     "archived_at")
 
 
 def connect(url: str | None = None) -> psycopg.Connection:
@@ -284,6 +289,119 @@ class PostgresStore:
         with self._as_user() as conn:
             return conn.execute("delete from public.goals where id = %s returning id",
                                 (goal_id,)).fetchone() is not None
+
+    # --- Gyms (#98) -----------------------------------------------------------------
+    # Need migrations 20261116120000_create_gyms.sql and ..._climb_grade_systems.sql.
+
+    @staticmethod
+    def _gym_grade(row: dict) -> dict:
+        out = dict(row)
+        for k in ("range_low", "range_high"):  # numeric -> float for JSON
+            if out.get(k) is not None:
+                out[k] = float(out[k])
+        if out.get("archived_at") is not None:
+            out["archived_at"] = out["archived_at"].isoformat()
+        return out
+
+    def _gyms(self, conn, gym_id: int | None = None) -> list[dict]:
+        where = sql.SQL("where id = %s") if gym_id is not None else sql.SQL("")
+        gyms = conn.execute(sql.SQL("select {} from public.gyms {} order by id").format(
+            sql.SQL(", ").join(map(sql.Identifier, GYM_COLUMNS)), where),
+            (gym_id,) if gym_id is not None else ()).fetchall()
+        colours = conn.execute(sql.SQL(
+            "select {} from public.gym_grades order by gym_id, position, id").format(
+            sql.SQL(", ").join(map(sql.Identifier, GYM_GRADE_COLUMNS)))).fetchall()
+        out = []
+        for g in gyms:
+            gym = {**g, "archived_at": g["archived_at"] and g["archived_at"].isoformat()}
+            gym["grades"] = [self._gym_grade(c) for c in colours if c["gym_id"] == g["id"]]
+            out.append(gym)
+        return out
+
+    def gyms(self) -> list[dict]:
+        with self._as_user() as conn:
+            return self._gyms(conn)
+
+    def _write_colours(self, conn, gym_id: int, colours: list[dict]) -> None:
+        """Make the gym's colours match `colours` (gyms.validate_gym's rows):
+        update those with an id, add the rest, delete the ones left out."""
+        current = {r["id"]: r for r in conn.execute(
+            "select id, archived_at from public.gym_grades where gym_id = %s", (gym_id,))}
+        keep = {c["id"] for c in colours if c.get("id")}
+        unknown = keep - set(current)
+        if unknown:
+            raise ValueError(f"colours {sorted(unknown)} are not part of this gym")
+        for gone in set(current) - keep:
+            conn.execute("delete from public.gym_grades where id = %s", (gone,))
+        # Move positions out of the way first: the unique index on (gym_id,
+        # position) would otherwise trip halfway through a reorder.
+        conn.execute("update public.gym_grades set position = position + 1000 where gym_id = %s",
+                     (gym_id,))
+        for c in colours:
+            values = {k: c[k] for k in ("position", "name", "colour", "range_low", "range_high")}
+            if c.get("id"):
+                was = current[c["id"]]["archived_at"]
+                values["archived_at"] = (was or datetime.now(timezone.utc)) if c["archived"] else None
+                conn.execute(sql.SQL("update public.gym_grades set {} where id = %s").format(
+                    sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(k)) for k in values)),
+                    (*values.values(), c["id"]))
+            else:
+                if c["archived"]:
+                    values["archived_at"] = datetime.now(timezone.utc)
+                self._insert(conn, "gym_grades", {**values, "gym_id": gym_id})
+
+    def insert_gym(self, row: dict, colours: list[dict]) -> dict:
+        try:
+            with self._as_user() as conn:
+                gym_id = self._insert(conn, "gyms", row)
+                self._write_colours(conn, gym_id, colours)
+                return self._gyms(conn, gym_id)[0]
+        except psycopg.errors.IntegrityError as e:
+            raise ValueError(e.diag.message_primary) from None
+
+    def update_gym(self, gym_id: int, row: dict, colours: list[dict] | None) -> dict | None:
+        """Change a gym (name, range_system, archived) and, unless `colours` is
+        None, its colours. None if not found. ValueError if a used colour would
+        be deleted (archive it instead)."""
+        values = dict(row)
+        if "archived" in values:
+            values["archived_at"] = datetime.now(timezone.utc) if values.pop("archived") else None
+        try:
+            with self._as_user() as conn:
+                if values:
+                    found = conn.execute(sql.SQL(
+                        "update public.gyms set {} where id = %s returning id").format(
+                        sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(k)) for k in values)),
+                        (*values.values(), gym_id)).fetchone()
+                else:
+                    found = conn.execute("select id from public.gyms where id = %s",
+                                         (gym_id,)).fetchone()
+                if found is None:
+                    return None
+                if colours is not None:
+                    self._write_colours(conn, gym_id, colours)
+                return self._gyms(conn, gym_id)[0]
+        except psycopg.errors.ForeignKeyViolation:
+            raise ValueError("a colour that climbs or goals use can't be deleted; archive it") from None
+        except psycopg.errors.IntegrityError as e:
+            raise ValueError(e.diag.message_primary) from None
+
+    def delete_gym(self, gym_id: int) -> bool:
+        """Delete an unused gym. ValueError if climbs or goals use it."""
+        try:
+            with self._as_user() as conn:
+                return conn.execute("delete from public.gyms where id = %s returning id",
+                                    (gym_id,)).fetchone() is not None
+        except psycopg.errors.ForeignKeyViolation:
+            raise ValueError("a gym that climbs or goals use can't be deleted; archive it") from None
+
+    def last_gym_id(self) -> int | None:
+        """The gym of the most recent climbing session with a gym."""
+        with self._as_user() as conn:
+            row = conn.execute(
+                "select c.gym_id from public.climbs c join public.sessions s on s.id = c.session_id"
+                " where c.gym_id is not null order by s.date desc, c.id desc limit 1").fetchone()
+        return row["gym_id"] if row else None
 
     def claim_chat_request(self, daily_limit: int) -> bool:
         """Record one /chat request unless the user already made `daily_limit`

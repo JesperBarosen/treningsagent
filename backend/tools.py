@@ -11,14 +11,18 @@ from datetime import date, timedelta
 from typing import Protocol
 
 import goals
+import grades
+import gyms
 import pauses
 import progression
 
 SPORTS = ("running", "climbing")
 RUNNING_FIELDS = ("distance_km", "elevation_m")
-# The gym's colour scale, easiest first. A grade's ordinal is its position + 1.
-GRADES = ("yellow", "green", "blue", "purple", "red", "black", "white")
+# The colours of "My gym", easiest first: the scale every user had before gyms
+# (#98). Other gyms and V/Font grades are in grades.py.
+GRADES = grades.LEGACY_COLOURS
 CLIMB_STYLES = ("boulder", "kilter", "rope")
+CLIMB_FIELDS = {"grade", "attempts", "sent", "style", "notes", "grade_system", "gym_id"}
 # The acute:chronic ratio compares 7 days with 28, so it means little before
 # 28 days of history.
 RATIO_MIN_HISTORY_DAYS = 28
@@ -36,6 +40,12 @@ class Store(Protocol):
     def update_session(self, session_id: int, row: dict,
                        climbs: list[dict] | None) -> bool: ...
     def delete_session(self, session_id: int) -> bool: ...
+    # Gyms (#98): each with its colours under "grades", archived ones included.
+    def gyms(self) -> list[dict]: ...
+    def insert_gym(self, row: dict, colours: list[dict]) -> dict: ...
+    def update_gym(self, gym_id: int, row: dict, colours: list[dict] | None) -> dict | None: ...
+    def delete_gym(self, gym_id: int) -> bool: ...
+    def last_gym_id(self) -> int | None: ...
 
 
 SESSION_FIELDS = ("sport", "date", "duration_min", "effort", "notes")
@@ -71,6 +81,7 @@ def log_session(
     """Validate and store one session, and for climbing its individual climbs,
     in one go. Returns the stored session with its id."""
     row, climb_rows = validate_session(sport, date, duration_min, effort, notes, climbs,
+                                       gym_list=_gyms_for(store, climbs, create=True),
                                        **sport_fields)
     session_id = store.insert_session(row, climb_rows)
     result = {"id": session_id, **row}
@@ -93,6 +104,7 @@ def draft_session(
     storing it. The app shows the draft with Save and Review, so the user
     confirms what the agent understood before anything is written (N4)."""
     row, climb_rows = validate_session(sport, date, duration_min, effort, notes, climbs,
+                                       gym_list=_gyms_for(store, climbs, create=False),
                                        **sport_fields)
     result = {"draft": True, **row}
     if climb_rows:
@@ -116,7 +128,8 @@ def update_session(store: Store, session_id: int, changes: dict) -> dict:
     merged.update(changes)
     climbs = merged.pop("climbs", None)
 
-    row, climb_rows = validate_session(**merged, climbs=climbs)
+    row, climb_rows = validate_session(**merged, climbs=climbs,
+                                       gym_list=_gyms_for(store, climbs, create=True))
     if row["sport"] != "climbing":
         replace_climbs = []  # a session that's no longer climbing keeps no climbs
     else:
@@ -141,10 +154,13 @@ def validate_session(
     effort: int,
     notes: str | None = None,
     climbs: list[dict] | None = None,
+    gym_list: list[dict] | None = None,
     **sport_fields,
 ) -> tuple[dict, list[dict]]:
     """The rules every stored session follows, whoever writes it (the agent
-    or the app). Returns the session row and the validated climb rows."""
+    or the app). Returns the session row and the validated climb rows.
+    `gym_list` is the user's gyms with the default gym first (_gyms_for);
+    without it, colours are checked against "My gym"'s."""
     if sport not in SPORTS:
         raise ValueError(f"sport must be one of {SPORTS}, got {sport!r}")
     _parse_date(date)
@@ -160,7 +176,8 @@ def validate_session(
         raise ValueError(f"fields not valid for {sport}: {sorted(unexpected)}")
     if climbs and sport != "climbing":
         raise ValueError("climbs can only be logged for climbing sessions")
-    climb_rows = [_climb_row(c) for c in climbs or []]
+    gym_list = gym_list or [grades.legacy_gym()]
+    climb_rows = [_climb_row(c, gym_list) for c in climbs or []]
 
     row = {"sport": sport, "date": date, "duration_min": duration_min,
            "effort": effort, "notes": notes, **sport_fields}
@@ -169,14 +186,49 @@ def validate_session(
     return row, climb_rows
 
 
-def _climb_row(climb: dict) -> dict:
-    """Validate one climb and add its grade ordinal."""
-    unexpected = set(climb) - {"grade", "attempts", "sent", "style", "notes"}
+def _gyms_for(store: Store, climbs: list[dict] | None, *, create: bool) -> list[dict] | None:
+    """The user's gyms with the default one (gyms.default_gym) first, when a
+    climb may need them; None when there are no climbs. With `create`, a user
+    without gyms gets "My gym" (as the migration gave existing users)."""
+    if not climbs or not hasattr(store, "gyms"):  # no store: "My gym"'s colours
+        return None
+    gym_list = store.gyms()
+    # Only a colour without a gym_id needs the default gym (and may create it).
+    needs_default = any((c.get("grade_system") or "gym") == "gym" and c.get("gym_id") is None
+                        for c in climbs)
+    default = gyms.default_gym(store, gym_list, create=create and needs_default)
+    return [default] + [g for g in gym_list if g is not default]
+
+
+def _climb_row(climb: dict, gym_list: list[dict]) -> dict:
+    """Validate one climb and resolve its grade: a colour of its gym (the
+    default gym, gym_list[0], unless gym_id says otherwise) or a V/Font grade."""
+    unexpected = set(climb) - CLIMB_FIELDS
     if unexpected:
         raise ValueError(f"unknown climb fields: {sorted(unexpected)}")
-    grade = str(climb.get("grade", "")).strip().lower()
-    if grade not in GRADES:
-        raise ValueError(f"climb grade must be one of {GRADES}, got {climb.get('grade')!r}")
+    system = climb.get("grade_system") or "gym"
+    if system not in grades.SYSTEMS:
+        raise ValueError(f"climb grade_system must be one of {grades.SYSTEMS}, got {system!r}")
+    gym = None
+    if climb.get("gym_id") is not None:
+        gym = next((g for g in gym_list if g["id"] == climb["gym_id"]), None)
+        if gym is None:
+            raise ValueError(f"gym {climb['gym_id']} not found")
+    if system == "gym":
+        gym = gym or gym_list[0]
+        wanted = str(climb.get("grade", "")).strip().lower()
+        # An archived colour still matches, so an old session can be edited.
+        match = next((g for g in sorted(gym["grades"], key=lambda g: bool(g.get("archived_at")))
+                      if g["name"] == wanted), None)
+        if match is None:
+            names = tuple(g["name"] for g in grades.active_grades(gym))
+            raise ValueError(f"climb grade must be one of {names} at {gym['name']}, "
+                             f"got {climb.get('grade')!r}")
+        resolved = {"grade": match["name"], "grade_ordinal": match["position"],
+                    "grade_system": "gym", "gym_id": gym["id"], "gym_grade_id": match["id"]}
+    else:
+        resolved = {"grade": grades.normalise(system, climb.get("grade", "")), "grade_ordinal": None,
+                    "grade_system": system, "gym_id": gym and gym["id"], "gym_grade_id": None}
     if climb.get("style") not in CLIMB_STYLES:
         raise ValueError(f"climb style must be one of {CLIMB_STYLES}, got {climb.get('style')!r}")
     if not isinstance(climb.get("sent"), bool):
@@ -184,8 +236,7 @@ def _climb_row(climb: dict) -> dict:
     attempts = climb.get("attempts")
     if attempts is not None and (not isinstance(attempts, int) or attempts < 1):
         raise ValueError("climb attempts must be a positive integer")
-    return {"grade": grade, "grade_ordinal": GRADES.index(grade) + 1,
-            "attempts": attempts, "sent": climb["sent"], "style": climb["style"],
+    return {**resolved, "attempts": attempts, "sent": climb["sent"], "style": climb["style"],
             "notes": climb.get("notes")}
 
 
@@ -196,10 +247,10 @@ def get_history(store: Store, days: int, today: date | None = None) -> list[dict
         raise ValueError("days must be at least 1")
     today = today or date.today()
     since = (today - timedelta(days=days - 1)).isoformat()
+    climbs = annotated_climbs(store, since)
     climbs_by_session: dict[int, list[dict]] = {}
-    for c in store.climbs_since(since):
-        climb = {k: v for k, v in c.items() if v is not None and k not in ("id", "session_id")}
-        climbs_by_session.setdefault(c["session_id"], []).append(climb)
+    for c in climbs:
+        climbs_by_session.setdefault(c["session_id"], []).append(c)
 
     sessions = []
     for row in store.sessions_since(since):
@@ -207,8 +258,20 @@ def get_history(store: Store, days: int, today: date | None = None) -> list[dict
         if s["id"] in climbs_by_session:
             s["climbs"] = climbs_by_session[s["id"]]
         s.update(derived_metrics(s))
+        if "climbs" in s:  # index and level are internal; gym and colour are shown
+            s["climbs"] = [{k: v for k, v in c.items() if v is not None
+                            and k not in ("id", "session_id", "index", "level", "label")}
+                           for c in s["climbs"]]
         sessions.append(s)
     return sessions
+
+
+def annotated_climbs(store: Store, since: str) -> list[dict]:
+    """Climbs since `since` with index, level and label (grades.annotate)."""
+    climbs = [dict(c) for c in store.climbs_since(since)]
+    if climbs:
+        grades.annotate(climbs, store.gyms())
+    return climbs
 
 
 def session_load(session: dict) -> int:
@@ -302,10 +365,10 @@ def tag_patterns(store: Store, days: int = 56, today: date | None = None) -> dic
     today = today or date.today()
     since = (today - timedelta(days=days - 1)).isoformat()
     sessions = [s for s in store.sessions_since(since) if _parse_date(s["date"]) <= today]
-    hardest: dict[int, int] = {}
-    for c in store.climbs_since(since):
-        if c["sent"]:
-            hardest[c["session_id"]] = max(hardest.get(c["session_id"], 0), c["grade_ordinal"])
+    hardest: dict[int, float] = {}
+    for c in annotated_climbs(store, since):
+        if c["sent"] and c["level"] is not None:
+            hardest[c["session_id"]] = max(hardest.get(c["session_id"], 0), c["level"])
 
     def weakness(s: dict) -> float | None:  # higher = weaker
         if s["sport"] == "running":
@@ -345,10 +408,12 @@ def list_goals(store: Store, today: date | None = None) -> list[dict]:
     if not rows:
         return []
     since = min(_parse_date(g["created_on"]) for g in rows) - timedelta(days=goals.LOOKBACK)
-    sessions, climbs = store.sessions_since(since.isoformat()), store.climbs_since(since.isoformat())
+    sessions = store.sessions_since(since.isoformat())
+    climbs = annotated_climbs(store, since.isoformat())
+    gym_list = store.gyms() if any(g["kind"] == "climb_grade" for g in rows) else []
     out = []
     for g in rows:
-        g = goals.with_progress(g, sessions, climbs, today)
+        g = goals.with_progress(g, sessions, climbs, today, gym_list)
         reached = g["progress"]["reached_on"]
         if g["status"] == "active" and reached:
             g = {**g, **store.update_goal(g["id"], {"status": "achieved", "achieved_on": reached}),
@@ -359,11 +424,23 @@ def list_goals(store: Store, today: date | None = None) -> list[dict]:
 
 def set_goal(store: Store, kind: str, grade: str | None = None, climb_mode: str | None = None,
              band: str | None = None, target_pace: float | None = None,
-             target_date: str | None = None, today: date | None = None) -> dict:
+             target_date: str | None = None, today: date | None = None,
+             grade_system: str | None = None, gym_id: int | None = None) -> dict:
     """Add a goal the user chose. A pace goal starts from the user's recent pace
-    in that band, so progress shows how far they have come."""
+    in that band, so progress shows how far they have come. A gym-colour goal
+    is for `gym_id`, or the default gym (the last one used)."""
     today = today or date.today()
-    row = goals.validate_goal(kind, grade, climb_mode, band, target_pace, target_date, today)
+    gym = None
+    if kind == "climb_grade" and (grade_system or "gym") == "gym":
+        gym_list = store.gyms()
+        if gym_id is None:
+            gym = gyms.default_gym(store, gym_list, create=True)
+        else:
+            gym = next((g for g in gym_list if g["id"] == gym_id), None)
+            if gym is None:
+                raise ValueError(f"gym {gym_id} not found")
+    row = goals.validate_goal(kind, grade, climb_mode, band, target_pace, target_date, today,
+                              grade_system=grade_system, gym=gym)
     if kind == "run_pace":
         since = (today - timedelta(days=goals.NOW_DAYS)).isoformat()
         row["start_pace"] = goals.start_pace(store.sessions_since(since), band, today)
@@ -394,27 +471,29 @@ def calculate_progression(store: Store, weeks: int = 8, today: date | None = Non
     since = min(start, windows.baseline_start).isoformat()
     shown = [start + timedelta(days=7 * i) for i in range(weeks)]
     excluded, _ = _pause_days(store, windows.baseline_start, today)
-    result = progression.calculate(store.sessions_since(since), store.climbs_since(since),
-                                   shown, today, excluded)
+    climbs = [dict(c) for c in store.climbs_since(since)]
+    scale = grades.annotate(climbs, store.gyms())
+    result = progression.calculate(store.sessions_since(since), climbs, shown, today, excluded)
     # How many days of the trend windows a pause (or a fresh start) left out.
     result["paused_days"] = sum(1 for d in excluded if windows.baseline_start <= d <= today)
     climbing = result["climbing"]
-    climbing["grade_scale"] = list(GRADES)
+    # Grade numbers are levels on this scale: 1 = its first grade (#98).
+    climbing["grade_scale"] = list(scale.names)
+    climbing["grade_scale_detail"] = scale.detail()
+    climbing["grade_scale_gym"] = next((g["name"] for g in store.gyms() if g["id"] == scale.gym_id),
+                                       None) if scale.gym_id is not None else None
     for key in ("avg_session_hardest_sent", "avg_session_flash_grade"):
         t = climbing["trends"][key]
-        t["recent_grade"] = nearest_grade(t["recent"])
-        t["baseline_grade"] = nearest_grade(t["baseline"])
+        t["recent_grade"] = scale.nearest(t["recent"])
+        t["baseline_grade"] = scale.nearest(t["baseline"])
     return {"weeks": weeks, "today": today.isoformat(),
             "trend_rule": progression.TREND_RULE, **result}
 
 
 def nearest_grade(ordinal: float | None) -> str | None:
-    """The grade whose ordinal is closest to an average, halves rounding up
-    (4.5 -> red). Python's round() would send 4.5 down to purple."""
-    if ordinal is None:
-        return None
-    index = min(max(int(ordinal + 0.5), 1), len(GRADES)) - 1
-    return GRADES[index]
+    """The "My gym" colour whose position is closest to an average, halves
+    rounding up (4.5 -> red). Python's round() would send 4.5 down to purple."""
+    return grades.gym_scale(grades.legacy_gym()).nearest(ordinal)
 
 
 def derived_metrics(session: dict) -> dict:
@@ -427,7 +506,10 @@ def derived_metrics(session: dict) -> dict:
         sent = [c for c in climbs if c["sent"]]
         metrics["climbs_sent"] = len(sent)
         if sent:
-            metrics["hardest_sent_grade"] = max(sent, key=lambda c: c["grade_ordinal"])["grade"]
+            def hardness(c: dict) -> tuple[float, float]:
+                level, index = grades.level_of(c), c.get("index")
+                return (level if level is not None else -99, index if index is not None else -99)
+            metrics["hardest_sent_grade"] = max(sent, key=hardness)["grade"]
     return metrics
 
 

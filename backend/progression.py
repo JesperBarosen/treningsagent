@@ -18,6 +18,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, timedelta
 
+import grades
+
 RECENT_DAYS = 14
 BASELINE_DAYS = 28
 MIN_SESSIONS = 3
@@ -163,8 +165,26 @@ def running(sessions: list[dict], climbs_by_session: dict[int, list[dict]],
 
 # --- Climbing ----------------------------------------------------------------
 
+def _level(c: dict) -> float | None:
+    """The climb's place on the display scale (grades.annotate), 1 = its first
+    grade. None for a climb that can't be placed (a colour without a range at
+    another gym): it counts as a climb, but not for grade averages."""
+    return grades.level_of(c)
+
+
+def _label(c: dict) -> str:
+    return c.get("label") or c["grade"]
+
+
+def _sort_key(c: dict) -> float:
+    """Easiest first; climbs that can't be placed go last."""
+    level = _level(c)
+    return level if level is not None else float("inf")
+
+
 def _hardest(climbs: list[dict]) -> dict | None:
-    return max(climbs, key=lambda c: c["grade_ordinal"], default=None)
+    placed = [c for c in climbs if _level(c) is not None]
+    return max(placed, key=_level, default=None)
 
 
 def _sends(climbs: list[dict]) -> list[dict]:
@@ -178,8 +198,8 @@ def _flashes(climbs: list[dict]) -> list[dict]:
 
 def _send_rate_by_grade(climbs: list[dict]) -> dict:
     by_grade: dict[str, dict] = {}
-    for c in sorted(climbs, key=lambda c: c["grade_ordinal"]):
-        g = by_grade.setdefault(c["grade"], {"sent": 0, "tried": 0})
+    for c in sorted(climbs, key=_sort_key):
+        g = by_grade.setdefault(_label(c), {"sent": 0, "tried": 0})
         g["tried"] += 1
         g["sent"] += c["sent"]
     for g in by_grade.values():
@@ -203,8 +223,8 @@ def climbing(sessions: list[dict], climbs_by_session: dict[int, list[dict]],
             "week_start": start.isoformat(),
             "sessions": len(week),
             "climbs": len(climbs),
-            "hardest_sent": hardest and hardest["grade"],
-            "flash_grade": flash and flash["grade"],
+            "hardest_sent": hardest and _label(hardest),
+            "flash_grade": flash and _label(flash),
             "send_rate_by_grade": _send_rate_by_grade(climbs),
         })
 
@@ -212,9 +232,9 @@ def climbing(sessions: list[dict], climbs_by_session: dict[int, list[dict]],
     baseline = windows.baseline(climbing_sessions)
 
     def per_session_top(group: list[dict], pick: Callable) -> tuple[float | None, int]:
-        """Average over sessions of each session's hardest picked climb's ordinal."""
+        """Average over sessions of each session's hardest picked climb's level."""
         tops = [_hardest(pick(climbs_by_session.get(s["id"], []))) for s in group]
-        ordinals = [t["grade_ordinal"] for t in tops if t]
+        ordinals = [_level(t) for t in tops if t]
         return (sum(ordinals) / len(ordinals) if ordinals else None), len(ordinals)
 
     def grade_trend(pick: Callable) -> dict:
@@ -222,18 +242,17 @@ def climbing(sessions: list[dict], climbs_by_session: dict[int, list[dict]],
                      flat=GRADE_FLAT)
 
     def with_climbs(group: list[dict], grade: str | None = None) -> int:
-        return sum(1 for s in group if any(grade in (None, c["grade"])
+        return sum(1 for s in group if any(grade in (None, _label(c))
                                            for c in climbs_by_session.get(s["id"], [])))
 
     def send_rate_trend(grade: str) -> dict:
-        r = [c for c in climbs_of(recent) if c["grade"] == grade]
-        b = [c for c in climbs_of(baseline) if c["grade"] == grade]
+        r = [c for c in climbs_of(recent) if _label(c) == grade]
+        b = [c for c in climbs_of(baseline) if _label(c) == grade]
         return trend(len(_sends(r)) / len(r) if r else None, with_climbs(recent, grade),
                      len(_sends(b)) / len(b) if b else None, with_climbs(baseline, grade),
                      flat=SEND_RATE_FLAT)
 
-    tried = sorted({(c["grade_ordinal"], c["grade"])
-                    for c in climbs_of(recent) + climbs_of(baseline)})
+    tried = sorted({(_sort_key(c), _label(c)) for c in climbs_of(recent) + climbs_of(baseline)})
     return {
         "sessions": sum(w["sessions"] for w in weekly),
         "weekly": weekly,

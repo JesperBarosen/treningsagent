@@ -21,6 +21,7 @@ import auth
 import chat
 import db
 import env
+import gyms
 import pauses
 import tools
 
@@ -144,11 +145,15 @@ def get_sessions(days: int = Query(56, ge=1, le=366),
 # tools.validate_session, shared with the agent's log_session.
 
 class ClimbIn(BaseModel, extra="forbid"):
+    # A colour of the climb's gym (gym_id, else the last gym used), or with
+    # grade_system "v" or "font" a V or Font grade (#98).
     grade: str
     style: str
     sent: bool
     attempts: int | None = None
     notes: str | None = None
+    grade_system: Literal["gym", "v", "font"] | None = None
+    gym_id: int | None = None
 
 
 class SessionChanges(BaseModel, extra="forbid"):
@@ -208,6 +213,75 @@ def delete_session(session_id: int, store: db.PostgresStore = Depends(get_store)
         tools.delete_session(store, session_id)
     except LookupError:
         raise HTTPException(404, "Session not found.") from None
+
+
+# --- Gyms (#98) --------------------------------------------------------------------
+
+class GymColourIn(BaseModel, extra="forbid"):
+    id: int | None = None
+    name: str
+    # A palette name ("blue") or its hex value.
+    colour: str
+    # [lowest, highest] in the gym's range_system, e.g. ["V1", "V3"]; null = unknown.
+    range: list[str] | None = None
+    range_text: str | None = None  # as GET returns it; ignored
+    archived: bool = False
+
+
+class GymIn(BaseModel, extra="forbid"):
+    name: str
+    range_system: Literal["v", "font"] = "v"
+    colours: list[GymColourIn]
+
+
+class GymChange(BaseModel, extra="forbid"):
+    name: str | None = None
+    range_system: Literal["v", "font"] | None = None
+    archived: bool | None = None
+    # The whole new list, easiest first; colours left out are deleted (only if unused).
+    colours: list[GymColourIn] | None = None
+
+
+@app.get("/gyms")
+def get_gyms(store: db.PostgresStore = Depends(get_store)) -> dict:
+    """The user's gyms with their colours, and the gym used last."""
+    return gyms.list_gyms(store)
+
+
+@app.post("/gyms", status_code=201)
+def post_gym(body: GymIn, store: db.PostgresStore = Depends(get_store)) -> dict:
+    try:
+        return gyms.create_gym(store, body.name, body.range_system,
+                               [c.model_dump(exclude_none=True) for c in body.colours])
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@app.patch("/gyms/{gym_id}")
+def patch_gym(gym_id: int, body: GymChange, store: db.PostgresStore = Depends(get_store)) -> dict:
+    """Rename, archive or restore a gym, or replace its colours."""
+    changes = body.model_dump(include=body.model_fields_set, exclude_none=True)
+    if body.colours is not None:
+        changes["colours"] = [c.model_dump(exclude_none=True) for c in body.colours]
+    if not changes:
+        raise HTTPException(422, "Nothing to change.")
+    try:
+        return gyms.update_gym(store, gym_id, changes)
+    except LookupError:
+        raise HTTPException(404, "Gym not found.") from None
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@app.delete("/gyms/{gym_id}", status_code=204)
+def delete_gym(gym_id: int, store: db.PostgresStore = Depends(get_store)) -> None:
+    """Delete a gym nothing uses; a used gym can only be archived (409)."""
+    try:
+        gyms.delete_gym(store, gym_id)
+    except LookupError:
+        raise HTTPException(404, "Gym not found.") from None
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
 
 
 @app.get("/training-load")
@@ -305,6 +379,9 @@ def post_pause_end(body: PauseEnd, store: db.PostgresStore = Depends(get_store))
 class GoalIn(BaseModel):
     kind: Literal["climb_grade", "run_pace"]
     grade: str | None = None
+    # A gym colour (gym_id, else the last gym used) or a V or Font grade (#98).
+    grade_system: Literal["gym", "v", "font"] | None = None
+    gym_id: int | None = None
     climb_mode: Literal["send", "flash"] | None = None
     band: str | None = None
     target_pace: float | None = None
