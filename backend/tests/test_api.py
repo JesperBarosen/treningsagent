@@ -164,6 +164,17 @@ def test_get_training_load_matches_the_tool(make_app, store):
     assert http.get("/training-load", params={"sport": "swimming"}).status_code == 422
 
 
+def test_get_training_load_by_sport_in_one_request(make_app, store):
+    # The Dashboard filter fetches once and splits on the client.
+    seed_store(store)
+    http, _ = make_app()
+    body = http.get("/training-load", params={"weeks": 4, "by_sport": "true"}).json()
+    by_sport = body.pop("by_sport")
+    assert body == tools.get_training_load(store, 4)
+    assert by_sport == {s: tools.get_training_load(store, 4, sport=s) for s in tools.SPORTS}
+    assert "by_sport" not in http.get("/training-load", params={"weeks": 4}).json()
+
+
 def test_get_progression_matches_the_tool(make_app, store):
     seed_store(store)
     http, _ = make_app()

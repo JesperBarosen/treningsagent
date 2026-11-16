@@ -213,10 +213,16 @@ def delete_session(session_id: int, store: db.PostgresStore = Depends(get_store)
 @app.get("/training-load")
 def get_training_load(weeks: int = Query(8, ge=1, le=12),
                       sport: Literal["running", "climbing"] | None = None,
+                      by_sport: bool = False,
                       store: db.PostgresStore = Depends(get_store)) -> dict:
     """get_training_load: weekly and daily load by sport and the acute:chronic
-    ratio; with `sport` (the Dashboard filter, #46), that sport's only."""
-    return tools.get_training_load(store, weeks, sport=sport)
+    ratio; with `sport` (the Dashboard filter, #46), that sport's only. With
+    `by_sport`, the all-sports result also carries each sport's own under
+    "by_sport", so the Dashboard switches filters without another request."""
+    result = tools.get_training_load(store, weeks, sport=sport)
+    if by_sport and sport is None:
+        result["by_sport"] = {s: tools.get_training_load(store, weeks, sport=s) for s in tools.SPORTS}
+    return result
 
 
 @app.get("/progression")

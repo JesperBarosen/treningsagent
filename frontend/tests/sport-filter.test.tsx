@@ -5,7 +5,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Pause, Progression, TrainingLoad, Trend } from "@/lib/api";
 
-const api = vi.hoisted(() => ({ getTrainingLoad: vi.fn(), getProgression: vi.fn(), getGoals: vi.fn() }));
+const api = vi.hoisted(() => ({
+  getTrainingLoad: vi.fn(),
+  getTrainingLoadBySport: vi.fn(),
+  getProgression: vi.fn(),
+  getGoals: vi.fn(),
+}));
 vi.mock("@/lib/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api")>()),
   ...api,
@@ -75,6 +80,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
   api.getTrainingLoad.mockResolvedValue(load());
+  // One request for every filter: All, plus each sport's own.
+  api.getTrainingLoadBySport.mockResolvedValue({ ...load(), by_sport: { running: runOnly(), climbing: load() } });
   api.getProgression.mockResolvedValue(progression());
   api.getGoals.mockResolvedValue([]);
 });
@@ -191,8 +198,18 @@ describe("the Dashboard per sport", () => {
   });
 });
 
+/** A promise the test resolves by hand, to hold a request "in flight". */
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((r) => (resolve = r));
+  return { promise, resolve };
+}
+
+const requests = () =>
+  api.getTrainingLoad.mock.calls.length + api.getTrainingLoadBySport.mock.calls.length + api.getProgression.mock.calls.length;
+
 describe("the filter on the Dashboard page", () => {
-  it("starts on All, loads the chosen sport only, and remembers it", async () => {
+  it("loads every filter in one request and switches without another", async () => {
     const user = userEvent.setup();
     const { unmount } = render(<DashboardView />);
     const filter = screen.getByRole("radiogroup", { name: "Show sport" });
@@ -200,20 +217,129 @@ describe("the filter on the Dashboard page", () => {
     expect(within(filter).getByRole("radio", { name: "All" })).toHaveAttribute("aria-checked", "true");
     for (const r of within(filter).getAllByRole("radio")) expect(r).toHaveClass("min-h-11");
     await screen.findByRole("heading", { name: "Weekly load" });
-    expect(api.getTrainingLoad).toHaveBeenLastCalledWith(8, expect.anything(), undefined);
+    expect(api.getTrainingLoadBySport).toHaveBeenCalledTimes(1);
+    const before = requests();
 
-    api.getTrainingLoad.mockResolvedValue(runOnly());
     await user.click(within(filter).getByRole("radio", { name: "Running" }));
-    expect(await screen.findByRole("heading", { name: "Weekly running load" })).toBeInTheDocument();
-    expect(api.getTrainingLoad).toHaveBeenLastCalledWith(8, expect.anything(), "running");
+    expect(screen.getByRole("heading", { name: "Weekly running load" })).toBeInTheDocument(); // at once
+    expect(screen.getByTestId("dashboard-content")).toHaveAttribute("aria-busy", "false");
+    expect(screen.queryByRole("status")).toBeNull();
+    await user.click(within(filter).getByRole("radio", { name: "Climbing" }));
+    await user.click(within(filter).getByRole("radio", { name: "All" }));
+    await user.click(within(filter).getByRole("radio", { name: "Running" }));
+    expect(screen.getByRole("heading", { name: "Weekly running load" })).toBeInTheDocument();
+    expect(requests()).toBe(before); // every switch came from what was already loaded
     expect(localStorage.getItem(SPORT_FILTER_KEY)).toBe("running");
     unmount();
 
-    // Next visit: Running again, fetched for running from the start.
-    api.getTrainingLoad.mockClear();
+    // Next visit: Running is still chosen.
     render(<DashboardView />);
     expect(screen.getByRole("radio", { name: "Running" })).toHaveAttribute("aria-checked", "true");
-    await screen.findByRole("heading", { name: "Weekly running load" });
+    expect(await screen.findByRole("heading", { name: "Weekly running load" })).toBeInTheDocument();
+  });
+
+  it("shows the tap at once, and dims the old numbers with a spinner until the new ones arrive", async () => {
+    // A backend without by_sport: each sport is fetched on its own, in the background.
+    api.getTrainingLoadBySport.mockResolvedValue(load());
+    const running = deferred<TrainingLoad>();
+    api.getTrainingLoad.mockImplementation((_w: number, _s: AbortSignal, sport?: string) =>
+      sport === "running" ? running.promise : Promise.resolve(load()),
+    );
+    const user = userEvent.setup();
+    render(<DashboardView />);
+    await screen.findByRole("heading", { name: "Weekly load" });
+    // Prefetched right after the first load, before anyone taps.
     expect(api.getTrainingLoad).toHaveBeenCalledWith(8, expect.anything(), "running");
+    expect(api.getTrainingLoad).toHaveBeenCalledWith(8, expect.anything(), "climbing");
+
+    await user.click(screen.getByRole("radio", { name: "Running" }));
+    expect(screen.getByRole("radio", { name: "Running" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "All" })).toHaveAttribute("aria-checked", "false");
+    const content = screen.getByTestId("dashboard-content");
+    expect(content).toHaveAttribute("aria-busy", "true");
+    expect(content).toHaveClass("opacity-60");
+    expect(screen.getByRole("heading", { name: "Weekly load" })).toBeInTheDocument(); // kept, not blank
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("Loading…");
+    // Reduced motion: the spinner hides and the words show instead.
+    expect(within(status).getByTestId("spinner")).toHaveClass("animate-spin", "motion-reduce:hidden");
+    expect(within(status).getByText("Loading…")).toHaveClass("sr-only", "motion-reduce:not-sr-only");
+
+    running.resolve(runOnly());
+    expect(await screen.findByRole("heading", { name: "Weekly running load" })).toBeInTheDocument();
+    expect(content).toHaveAttribute("aria-busy", "false");
+    expect(content).not.toHaveClass("opacity-60");
+    expect(screen.queryByRole("status")).toBeNull();
+
+    // Back and forth again: cached, no new request.
+    const before = requests();
+    await user.click(screen.getByRole("radio", { name: "All" }));
+    await user.click(screen.getByRole("radio", { name: "Running" }));
+    expect(screen.getByRole("heading", { name: "Weekly running load" })).toBeInTheDocument();
+    expect(requests()).toBe(before);
+  });
+
+  it("offers Try again when one sport's numbers fail to load", async () => {
+    api.getTrainingLoadBySport.mockResolvedValue(load());
+    const { ApiError } = await import("@/lib/api");
+    api.getTrainingLoad.mockImplementation((_w: number, _s: AbortSignal, sport?: string) =>
+      sport === "climbing" ? Promise.reject(new ApiError("Server error", 500)) : Promise.resolve(runOnly()),
+    );
+    const user = userEvent.setup();
+    render(<DashboardView />);
+    await screen.findByRole("heading", { name: "Weekly load" });
+    await user.click(screen.getByRole("radio", { name: "Climbing" }));
+    expect(await screen.findByRole("button", { name: /Try again/ })).toBeInTheDocument();
+  });
+});
+
+describe("goals follow the filter", () => {
+  const base = { status: "active" as const, achieved_on: null, created_on: "2026-11-01", overdue: false, target_date: null };
+  const GRADE = {
+    ...base, id: 1, kind: "climb_grade", grade: "red", climb_mode: "send",
+    progress: { steps: 4, of: 5, best_grade: "purple", best_count_28d: 3, reached_on: null },
+  };
+  const PACE = {
+    ...base, id: 2, kind: "run_pace", band: "7_to_15km", target_pace: 5, start_pace: 5.5,
+    progress: { start_pace: 5.5, now_pace: 5.2, target_pace: 5, fraction: 0.6, reached_on: null },
+  };
+  const goalNames = () =>
+    within(screen.getByRole("region", { name: "Goals" })).queryAllByRole("listitem").map((li) => li.getAttribute("aria-label"));
+
+  it("All shows every goal, Running only pace goals, Climbing only grade goals", async () => {
+    api.getGoals.mockResolvedValue([GRADE, PACE]);
+    const user = userEvent.setup();
+    render(<DashboardView />);
+    await screen.findByRole("listitem", { name: "Send a red" });
+    expect(goalNames()).toEqual(["Send a red", "7–15 km at 5:00 /km"]);
+    await user.click(screen.getByRole("radio", { name: "Running" }));
+    expect(goalNames()).toEqual(["7–15 km at 5:00 /km"]);
+    await user.click(screen.getByRole("radio", { name: "Climbing" }));
+    expect(goalNames()).toEqual(["Send a red"]);
+    expect(api.getGoals).toHaveBeenCalledTimes(1); // filtered, not fetched again
+  });
+
+  it("shows the sport's empty state, and Add a goal preselects that kind", async () => {
+    api.getGoals.mockResolvedValue([GRADE]);
+    saveSportFilter("running");
+    const user = userEvent.setup();
+    render(<DashboardView />);
+    expect(await screen.findByText(/No running goal yet/)).toBeInTheDocument();
+    expect(goalNames()).toEqual([]);
+    await user.click(screen.getByRole("button", { name: /Add a goal/ }));
+    expect(screen.getByRole("radio", { name: "Running pace" })).toHaveAttribute("aria-checked", "true");
+
+    await user.click(screen.getByRole("radio", { name: "Climbing" }));
+    expect(screen.getByRole("radio", { name: "Climbing grade" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("keeps a goal opened from Coach visible whatever the filter", async () => {
+    api.getGoals.mockResolvedValue([GRADE, PACE]);
+    saveSportFilter("running");
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    window.history.replaceState(null, "", "/dashboard#goal-1");
+    render(<DashboardView />);
+    expect(await screen.findByRole("listitem", { name: "Send a red" })).toBeInTheDocument();
+    window.history.replaceState(null, "", "/");
   });
 });

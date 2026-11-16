@@ -21,6 +21,7 @@ import {
 import { BAND_LABELS } from "@/lib/dashboard";
 import { SENSITIVE } from "@/lib/discreet";
 import { formatPace, shortDate } from "@/lib/format";
+import type { SportFilter } from "@/lib/sport-filter";
 import { GradeDot } from "./grade";
 import { CheckIcon, ChevronIcon, PlusIcon } from "./icons";
 import { Button } from "./states";
@@ -261,8 +262,17 @@ function GoalCard({ goal, onChanged }: { goal: Goal; onChanged: () => void }) {
   );
 }
 
-export function AddGoalForm({ onAdded, onCancel }: { onAdded: () => void; onCancel: () => void }) {
-  const [kind, setKind] = useState<"climb_grade" | "run_pace">("climb_grade");
+export function AddGoalForm({
+  onAdded,
+  onCancel,
+  initialKind = "climb_grade",
+}: {
+  onAdded: () => void;
+  onCancel: () => void;
+  /** Preselected by the Dashboard's sport filter (#46). */
+  initialKind?: GoalKind;
+}) {
+  const [kind, setKind] = useState<GoalKind>(initialKind);
   const [grade, setGrade] = useState<Grade>("red");
   const [mode, setMode] = useState<"send" | "flash">("send");
   const [band, setBand] = useState<DistanceBand>("7_to_15km");
@@ -379,8 +389,23 @@ export function AddGoalForm({ onAdded, onCancel }: { onAdded: () => void; onCanc
   );
 }
 
-/** The Goals section at the top of the Dashboard. Goals the user let go are hidden. */
-export function GoalsSection() {
+type GoalKind = Goal["kind"];
+
+/** The goal kind that belongs to each sport filter (#46); All shows every kind. */
+const FILTER_KIND: Record<Exclude<SportFilter, "all">, GoalKind> = {
+  running: "run_pace",
+  climbing: "climb_grade",
+};
+
+const EMPTY_TEXT: Record<SportFilter, string> = {
+  all: "Something to aim for, like a grade or a pace. Optional, and you can change it any time.",
+  running: "No running goal yet. A pace on a distance you run often works well. Optional.",
+  climbing: "No climbing goal yet. A grade to send or flash works well. Optional.",
+};
+
+/** The Goals section at the top of the Dashboard. Goals the user let go are
+ *  hidden; with a sport filter (#46) only that sport's goals show. */
+export function GoalsSection({ sport = "all" }: { sport?: SportFilter }) {
   const [goals, setGoals] = useState<Goal[] | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -406,7 +431,12 @@ export function GoalsSection() {
     document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ block: "start" });
   }, [loaded]);
 
-  const shown = (goals ?? []).filter((g) => g.status !== "dropped");
+  const kind = sport === "all" ? null : FILTER_KIND[sport];
+  // A goal opened from Coach's goal line stays visible whatever the filter.
+  const linked = goals !== null ? window.location.hash.match(/^#goal-(\d+)$/)?.[1] : undefined;
+  const shown = (goals ?? []).filter(
+    (g) => g.status !== "dropped" && (kind === null || g.kind === kind || String(g.id) === linked),
+  );
   return (
     <section aria-labelledby="goals-title" className="mb-4">
       <div className="mb-2 flex items-center justify-between">
@@ -421,6 +451,9 @@ export function GoalsSection() {
       </div>
       {adding && (
         <AddGoalForm
+          // A new form per filter, so the preselected kind follows it.
+          key={sport}
+          initialKind={kind ?? undefined}
           onCancel={() => setAdding(false)}
           onAdded={() => {
             setAdding(false);
@@ -436,7 +469,7 @@ export function GoalsSection() {
         </ul>
       )}
       {goals !== null && shown.length === 0 && !adding && (
-        <p className="text-sm text-ink-muted">Something to aim for, like a grade or a pace. Optional, and you can change it any time.</p>
+        <p className="text-sm text-ink-muted">{EMPTY_TEXT[sport]}</p>
       )}
     </section>
   );
