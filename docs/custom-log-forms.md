@@ -99,7 +99,7 @@ create table public.session_templates (
     user_id      uuid        not null default auth.uid()
                  references auth.users (id) on delete cascade,
     name         text        not null check (char_length(name) between 1 and 40),
-    sport        text        not null check (sport in ('running', 'climbing', 'other')),
+    sport        text        not null check (sport in ('running', 'climbing', 'strength', 'other')),
     -- Optional built-in fields this template shows (running: distance_km, elevation_m).
     core_fields  text[]      not null default '{}',
     fields       jsonb       not null default '[]'
@@ -141,7 +141,9 @@ Types and their extra properties:
 | `sets` | `reps_unit` (`reps` or `s`), `load_unit` (`kg`, `lb` or none), `load_signed` (allow negative load for assisted hangs or pull-ups), `extras`: up to 2 number columns `{key, label, unit, min, max, decimals}` | array of up to 30 rows `{sets, reps, load?, <extra keys>}` |
 | `climbs` | `default_style` (`boulder`, `kilter`, `rope`); climbing templates only, at most one per template | not in `custom_values`: stored in `climbs` like today |
 
-A `sets` row is a **group of identical sets**: `{sets: 6, reps: 10, load: 10, edge_mm: 20}` reads "6 × 10 s on 20 mm, +10 kg". Whether the form enters groups or one row per set is alternative **T3**.
+A `sets` row is a **group of identical sets**: `{sets: 6, reps: 10, load: 10, edge_mm: 20}` reads "6 × 10 s on 20 mm, +10 kg". Whether the form enters groups or one row per set is alternative **T3** (decided: groups).
+
+**Units** (Q7): each field has one unit, fixed when it is created. Values are stored and shown in that unit; there is no kg/lb conversion.
 
 Example: the Fingerboard template.
 
@@ -172,7 +174,7 @@ Sessions keep pointing at the template, and the template is read when the sessio
 - A field that no session uses can be deleted; a used field is archived.
 - A template that no session uses can be deleted; a used template is archived.
 
-This is alternative **D1 A** (archive, never rewrite). Alternative **D1 B** keeps a version number on the template and a full schema snapshot per version, with `sessions.template_version`. B allows any edit, but every reader has to handle several versions, and the coach sees one template under several shapes. **Recommendation: A.** It is simpler and the rules above cover the realistic edits.
+This is alternative **D1 A** (archive, never rewrite). Alternative **D1 B** keeps a version number on the template and a full schema snapshot per version, with `sessions.template_version`. B allows any edit, but every reader has to handle several versions, and the coach sees one template under several shapes. **Decided (Q8): A.** It is simpler and the rules above cover the realistic edits.
 
 ### 3.3 Sessions
 
@@ -185,13 +187,14 @@ alter table public.sessions
 
 alter table public.sessions drop constraint sessions_sport_check;
 alter table public.sessions add constraint sessions_sport_check
-    check (sport in ('running', 'climbing', 'other'));
+    check (sport in ('running', 'climbing', 'strength', 'other'));
 ```
 
 - `template_id` null means the built-in Run or Climb form, as today.
 - `custom_values` holds the template's fields by `key`. It is `{}` without a template.
 - A templated session's `sport` must equal the template's sport. A check constraint can't see another table, so `forms.py` enforces it (section 4).
-- **A third sport, `other`**, for training that isn't running or climbing: strength, fingerboard, mobility, cycling. It counts in weekly load and uses the reserved chart colour `--chart-strength` (#58). This also covers #27 ("Other training"), if you agree (question Q1). A Fingerboard template could be `climbing` or `other`; that is the user's choice, and the sport decides which Dashboard series it counts in.
+- **Two new built-in sports, `strength` and `other`** (Q1). `strength` is for weights and bodyweight training and uses the chart colour reserved for a third sport, `--chart-strength` (#58, #77). `other` is for everything else (mobility, cycling, yoga) and uses a neutral series colour, `--chart-other`, validated in #100. Both count in weekly load, the acute:chronic ratio and the Dashboard sport filter. No user-named sports yet. This closes #27 ("Other training"). A Fingerboard template could be `climbing`, `strength` or `other`; the user chooses, and the sport decides which Dashboard series it counts in.
+- Strength and Other have a built-in form like Run and Climb: the core fields only. Their real shape comes from templates.
 
 ### 3.4 Gyms and grades
 
@@ -269,11 +272,11 @@ Every climb gets a **difficulty index**: a number on the V-scale, computed when 
 - A colour without a range has no index. Its climbs still show in that gym's own view and count for that gym's goals, but are left out of comparisons across gyms. The gym editor nudges to add a range.
 - Kilter and Moon boards use V or Font, so they need no gym.
 
-Alternative **D2**: store the index on each climb when it is logged (B) instead of computing it when read (A). B keeps history fixed if a range is edited later; A follows the project's rule that derived values are computed when read, and lets a corrected range fix old sessions too. **Recommendation: A.** A range is an approximation the user refines; a reset circuit is a new gym (or new colours), not an edited range.
+Alternative **D2**: store the index on each climb when it is logged (B) instead of computing it when read (A). B keeps history fixed if a range is edited later; A follows the project's rule that derived values are computed when read, and lets a corrected range fix old sessions too. **Decided (Q8): A.** A range is an approximation the user refines; a reset circuit is a new gym (or new colours), not an edited range.
 
 ### 3.6 Goals
 
-`climb_grade` goals get `grade_system`, `gym_id` and `gym_grade_id`, and lose the fixed-colour check. "Send a red at My gym" is reached by a send at that gym's red or by any climb whose index is at least red's range low; whether climbs at other gyms count is question Q4. A V or Font goal ("send V5") compares by index across everything.
+`climb_grade` goals get `grade_system`, `gym_id` and `gym_grade_id`, and lose the fixed-colour check. **A goal is reached by an equally hard climb anywhere** (Q4): "send a red at My gym" is reached by a send (or flash) of that red, or of any climb at any gym or outdoors whose difficulty index is at least the red's. A V or Font goal ("send V5") compares the same way. The goal card shows where it was reached ("Reached 12 Nov: blue at Klatreverket, about V4"). A colour without a range has no index, so its goal is reached only by that colour at that gym.
 
 ### 3.7 Validation (server side)
 
@@ -328,11 +331,11 @@ Four migrations, all additive except dropping the fixed-colour checks:
 | `…_create_gyms.sql` | #98 | `gyms`, `gym_grades`, RLS, grants |
 | `…_climb_grade_systems.sql` | #98 | new `climbs` and `goals` columns, backfill, drop colour checks, new policies |
 | `…_create_session_templates.sql` | #100 | `session_templates`, RLS, grants |
-| `…_session_templates_on_sessions.sql` | #100 | `sessions.template_id`, `custom_values`, sport `other`, new policies and grants |
+| `…_session_templates_on_sessions.sql` | #100 | `sessions.template_id`, `custom_values`, sports `strength` and `other`, new policies and grants |
 
 **Backfill in `…_climb_grade_systems.sql`**, in one transaction:
 
-1. For each user with climbs or climb goals, insert a gym "My gym" with today's seven colours in order, the current screen colours, and default ranges: yellow VB–V0, green V0–V1, blue V1–V3, purple V3–V4, red V4–V6, black V6–V8, white V8–V10 (question Q2).
+1. For each user with climbs or climb goals, insert a gym "My gym" with today's seven colours in order, the current screen colours, and default ranges: yellow VB–V0, green V0–V1, blue V1–V3, purple V3–V4, red V4–V6, black V6–V8, white V8–V10 (agreed in Q2).
 2. Set `grade_system = 'gym'`, `gym_id` and `gym_grade_id` on every climb from its colour.
 3. Do the same for every `climb_grade` goal.
 4. Then drop the checks and add the new constraints, so the backfilled rows are validated by them.
@@ -354,19 +357,21 @@ Mobile first, as everywhere: every control at least 44 × 44 px, labels above fi
 
 [Mockup 1](design-mockups/custom-forms/01-template-list.html). A list of the user's templates grouped by sport, each row with its name, sport badge and a one-line field summary ("Protocol · Grip · Hangs · Pain"). "New template" at the top; archived templates folded away at the bottom. Gyms are listed in their own section on the same screen ("Gyms"), since both shape the Log form.
 
+**Starter templates** (Q3). On first use, when the user has no templates yet, the list offers four starters to add with one tap each: **Fingerboard** (other: protocol, grip, hangs as sets × seconds × kg with an edge column, rest, finger pain), **Strength** (strength: exercise select, sets × reps × kg), **Intervals** (running: workout select, reps, rep distance, distance) and **Mobility** (other: focus select, text). A starter becomes an ordinary template the user owns and can change; the offer goes away once any template exists. The starter definitions live in the backend (`forms.STARTERS`) and pass the same validation as any template.
+
 **Alternative T1, built-in forms in the list.**
 - **A**: Run and Climb appear as built-in entries (lock icon). Tapping one lets you hide the optional fields (elevation, climbs) and set it as the default, but not delete it.
 - **B**: Only the user's own templates appear; Run and Climb stay fixed and unlisted.
-- **Recommendation: A.** One place for "how my log looks", and an easy start: "Duplicate Run" for an Intervals template.
+- **Decided (Q8): A.** One place for "how my log looks", and an easy start: "Duplicate Run" for an Intervals template.
 
 ### 6.2 Template editor
 
-[Mockup 2](design-mockups/custom-forms/02-template-editor.html). Name, sport (Run, Climb, Other), the core fields shown greyed and locked ("Always: date, duration, effort, notes, tags"), then the template's fields as cards. "Add field" opens a sheet with the six types, each with an icon and one line of explanation. A field card opens inline to edit label, unit, options or columns. A preview button shows the Log form as it will look.
+[Mockup 2](design-mockups/custom-forms/02-template-editor.html). Name, sport (Run, Climb, Strength, Other), the core fields shown greyed and locked ("Always: date, duration, effort, notes, tags"), then the template's fields as cards. "Add field" opens a sheet with the six types, each with an icon and one line of explanation. A field card opens inline to edit label, unit, options or columns. A preview button shows the Log form as it will look.
 
 **Alternative T2, reordering fields.**
 - **A**: Up and down buttons on each field card (44 px each).
 - **B**: A drag handle, with up and down in the field's menu as the accessible fallback.
-- **Recommendation: A.** Templates have few fields, buttons are exact on a phone and need no fallback.
+- **Decided (Q8): A.** Templates have few fields, buttons are exact on a phone and need no fallback.
 
 ### 6.3 Picking a template in Log, and the templated form
 
@@ -375,12 +380,12 @@ Mobile first, as everywhere: every control at least 44 × 44 px, labels above fi
 **Alternative T4, where the template is picked.**
 - **A**: Templates are tiles next to Run and Climb in the "What did you do?" grid (most-used first, up to six, then "More").
 - **B**: Pick the sport first, then a row of form chips under it ("Standard", "Intervals", "Fingerboard").
-- **Recommendation: A** for one tap; B scales better past ten templates. A with a "More" sheet covers both.
+- **Decided (Q8): A** for one tap; B scales better past ten templates. A with a "More" sheet covers both.
 
 **Alternative T3, entering sets.**
 - **A**: Grouped rows: each row is "sets × reps × load (+ extras)", with steppers. Most fingerboard and strength sessions are one or two rows.
 - **B**: One row per set, with "Copy last set". Exact when every set differs (pyramids, drop sets), but long.
-- **Recommendation: A**, as the data model stores groups; B's case is covered by adding rows.
+- **Decided (Q8): A**, as the data model stores groups; B's case is covered by adding rows.
 
 ### 6.4 Gym picker in the climbing log
 
@@ -389,7 +394,7 @@ Mobile first, as everywhere: every control at least 44 × 44 px, labels above fi
 **Alternative G1, picking the gym.**
 - **A**: A button with the gym's name that opens a sheet with the gyms, "Outdoors (V/Font)" and "Add gym".
 - **B**: A row of gym chips, always visible.
-- **Recommendation: A.** Most people climb at one or two gyms; the button keeps the form short and the chips for grades.
+- **Decided (Q8): A.** Most people climb at one or two gyms; the button keeps the form short and the chips for grades.
 
 ### 6.5 Gym editor
 
@@ -398,11 +403,11 @@ Mobile first, as everywhere: every control at least 44 × 44 px, labels above fi
 **Alternative G2, entering a range.**
 - **A**: Two selects, "from" and "to".
 - **B**: A V/Font ruler per colour where you tap the lowest and highest grade.
-- **Recommendation: A.** Smaller, works with screen readers out of the box. B shows overlap between colours at a glance, so it could come later as a read-only overview.
+- **Decided (Q8): A.** Smaller, works with screen readers out of the box. B shows overlap between colours at a glance, so it could come later as a read-only overview.
 
 ### 6.6 Discreet mode
 
-Custom numbers, `sets` rows, text values and climb ranges are marked `SENSITIVE` and blur like today's numbers and notes; a tap reveals them. Template names, field labels and gym names stay visible, as sport names do today. A template name can be revealing ("Knee rehab"); see Q6.
+Custom numbers, `sets` rows, text values and climb ranges are marked `SENSITIVE` and blur like today's numbers and notes; a tap reveals them. Template names, field labels and gym names stay visible, as sport names do today (Q6): only values blur.
 
 ## 7. Agent
 
@@ -432,7 +437,7 @@ A new read-only tool. It returns what the coach needs to fill in a form:
 
 Archived templates and fields are left out. The tool description tells the model to call it before logging anything that isn't a plain run or climb, or when the user names a gym.
 
-Alternative **A1**: put a short list of template and gym names into the system prompt every turn (B) instead of a tool (A). B saves a tool call but costs tokens every turn and goes stale within a conversation. **Recommendation: A**, with names only in the system prompt as a hint if evals show the model forgets to call it.
+Alternative **A1**: put a short list of template and gym names into the system prompt every turn (B) instead of a tool (A). B saves a tool call but costs tokens every turn and goes stale within a conversation. **Decided (Q8): A**, with names only in the system prompt as a hint if evals show the model forgets to call it.
 
 ### 7.2 `log_session` and `draft_session`
 
@@ -458,7 +463,7 @@ Both gain two optional properties, and climbs gain a grade system:
 **Alternative A2, showing values on the card.**
 - **A**: One compact summary line per field ("Max hangs · half crimp", "6 × 10 s · 20 mm · +10 kg").
 - **B**: A two-column table of label and value.
-- **Recommendation: A.** It matches the session card in Sessions and keeps the chat scannable; Review shows the full form.
+- **Decided (Q8): A.** It matches the session card in Sessions and keeps the chat scannable; Review shows the full form.
 
 ### 7.4 Evals
 
@@ -482,8 +487,8 @@ The existing evals must keep passing, in particular `chat_drafts_instead_of_logg
 **Unchanged: session-RPE load = duration (min) × effort (1–10)** (Foster et al. 2001) for every session, templated or not, in every sport. Duration and effort are core fields, so every templated session has them.
 
 - Template fields never change load. A fingerboard session of 40 min at effort 7 is 280, whatever the hangs were.
-- The `other` sport counts in weekly load, the acute:chronic ratio and the Dashboard, with its own series colour and an "Other" entry in the sport filter.
-- Volume measures (tonnage, time under tension, total hang time) are possible later as values derived from `sets` and shown in the session sheet. They don't enter load; see Q5.
+- The `strength` and `other` sports count in weekly load, the acute:chronic ratio and the Dashboard, each with its own series colour and an entry in the sport filter. Load per sport is computed the same way for all four.
+- Volume measures (tonnage, time under tension, total hang time) come later (Q5), as values derived from `sets` and shown in the session sheet. They won't enter load.
 
 ## 9. Risks
 
@@ -498,18 +503,20 @@ The existing evals must keep passing, in particular `chat_drafts_instead_of_logg
 | The coach picks the wrong template, or invents values | `list_templates` first, only stated fields, evals for both; drafts are confirmed by the user by default |
 | `jsonb` values are hard to chart later | Keys never change, so values can be queried by key; a per-field chart is a follow-up, not blocked |
 | Extra grade colours (orange, pink, grey) are not colour-blind safe | Validate each with the existing checks (#55) before adding it to the palette; names always shown |
-| Custom fields reveal private context in discreet mode | Values blur; Q6 for names |
+| Custom fields reveal private context in discreet mode | Values blur; names stay visible by decision (Q6) |
 
-## 10. Open questions for you
+## 10. Decisions (answered 16 Nov 2026)
 
-1. **Q1. A third sport `other`?** Is "Other" right as the third sport (and does it close #27), or do you want user-named sports such as "Strength" and "Cycling"? User-named sports touch the Dashboard filter, colours and load per sport; one `other` keeps that simple.
-2. **Q2. Default ranges for "My gym".** Are yellow VB–V0, green V0–V1, blue V1–V3, purple V3–V4, red V4–V6, black V6–V8, white V8–V10 close enough for your gym? They decide how old climbs compare to new ones.
-3. **Q3. Should templates be per sport only, or also offer "copy from" a starter set** (Fingerboard, Strength, Intervals, Mobility) on first use?
-4. **Q4. Goals across gyms.** Should "send a red at My gym" also be reached by an equally hard climb at another gym or outdoors, or only at that gym?
-5. **Q5. Volume from sets.** Do you want tonnage or total hang time shown in the session sheet in this milestone, or later?
-6. **Q6. Discreet mode and template names.** Blur template names too, or keep them visible like sport names?
-7. **Q7. kg and lb.** One unit per field (as designed), or convert between kg and lb for display?
-8. **Q8. Alternatives.** Do you agree with the recommendations for T1–T4, G1, G2, A1, A2, D1 and D2, or do you prefer a B anywhere after seeing the mockups?
+| | Question | Decision | Where it changed the design |
+|---|----------|----------|-----------------------------|
+| Q1 | A third sport? | Two built-in sports: **`strength`** (the colour reserved in #77, `--chart-strength`) and **`other`**. No user-named sports yet. Closes #27. | 3.2, 3.3, 8; built in #100 (check constraint, Dashboard filter, colours, load per sport) |
+| Q2 | Default ranges for "My gym" | **Keep as written**: yellow VB–V0, green V0–V1, blue V1–V3, purple V3–V4, red V4–V6, black V6–V8, white V8–V10. | 5 |
+| Q3 | Starter templates? | **Yes**: Fingerboard, Strength, Intervals and Mobility offered on first use. | 6.1 |
+| Q4 | Goals across gyms | **Any gym or outdoors**: a goal is reached by an equally hard climb by difficulty index; the goal card shows where. | 3.6 |
+| Q5 | Volume from sets | **Later**, not in this milestone. | 8, 11 |
+| Q6 | Discreet mode and template names | **Names stay visible**; only values blur. | 6.6 |
+| Q7 | kg and lb | **One unit per field**, no conversion. | 3.2 |
+| Q8 | Alternatives | **Variant A** for every alternative: T1–T4, G1, G2, A1, A2, D1, D2. | 3.2, 3.5, 6, 7 |
 
 ## 11. Follow-ups outside this milestone
 
