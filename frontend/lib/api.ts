@@ -9,18 +9,92 @@ export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:800
   "",
 );
 
+/** "My gym"'s colours, easiest first: the scale everyone had before gyms (#98),
+ *  and the fallback when the gyms haven't loaded. Each has a --color-grade-* token. */
 export const GRADES = ["yellow", "green", "blue", "purple", "red", "black", "white"] as const;
-export type Grade = (typeof GRADES)[number];
+export type LegacyGrade = (typeof GRADES)[number];
+/** A grade as the user knows it: a gym colour ("blue"), "V4" or "6B+". */
+export type Grade = string;
+export type GradeSystem = "gym" | "v" | "font";
 export type Sport = "running" | "climbing";
+
+/** V and Font grades, easiest first (backend grades.py). */
+export const V_GRADES = ["VB", ...Array.from({ length: 18 }, (_, i) => `V${i}`)];
+export const FONT_GRADES = [
+  "4", "4+", "5", "5+", "6A", "6A+", "6B", "6B+", "6C", "6C+", "7A", "7A+",
+  "7B", "7B+", "7C", "7C+", "8A", "8A+", "8B", "8B+", "8C", "8C+", "9A",
+];
 
 export type Climb = {
   grade: Grade;
-  grade_ordinal: number;
+  /** The colour's place in its gym (1 = easiest); null for V and Font. */
+  grade_ordinal?: number | null;
   sent: boolean;
   style: "boulder" | "kilter" | "rope";
   attempts?: number | null;
   notes?: string | null;
+  /** Absent on rows from before #98: a "My gym" colour. */
+  grade_system?: GradeSystem;
+  gym_id?: number | null;
+  gym_grade_id?: number | null;
+  /** The gym's name and the colour's swatch, as history returns them. */
+  gym?: string;
+  colour?: string;
 };
+
+// --- Gyms (#98, #99) --------------------------------------------------------------
+
+export type GymColour = {
+  id: number | null;
+  name: string;
+  colour: string; // a palette hex value
+  /** [lowest, highest] in the gym's range_system, e.g. ["V1", "V3"]. */
+  range: [string, string] | null;
+  range_text?: string | null;
+  archived: boolean;
+};
+
+export type Gym = {
+  id: number;
+  name: string;
+  range_system: "v" | "font";
+  archived: boolean;
+  colours: GymColour[];
+};
+
+/** The swatches a gym colour may use (backend grades.PALETTE): the screen-safe grade colours. */
+export const PALETTE: { name: LegacyGrade; hex: string }[] = [
+  { name: "yellow", hex: "#f2c230" },
+  { name: "green", hex: "#3fae5f" },
+  { name: "blue", hex: "#2f6fd6" },
+  { name: "purple", hex: "#9440b8" },
+  { name: "red", hex: "#c0302f" },
+  { name: "black", hex: "#1a1a1a" },
+  { name: "white", hex: "#ffffff" },
+];
+
+export type GymInput = {
+  name: string;
+  range_system: "v" | "font";
+  colours: Omit<GymColour, "range_text">[];
+};
+
+export function getGyms(signal?: AbortSignal): Promise<{ gyms: Gym[]; last_gym_id: number | null }> {
+  return request("/gyms", { signal });
+}
+
+export function createGym(input: GymInput): Promise<Gym> {
+  return request("/gyms", { method: "POST", body: JSON.stringify(input) });
+}
+
+/** PATCH /gyms/{id}: `colours`, when sent, is the whole new list. */
+export function updateGym(id: number, change: Partial<GymInput> & { archived?: boolean }): Promise<Gym> {
+  return request(`/gyms/${id}`, { method: "PATCH", body: JSON.stringify(change) });
+}
+
+export function deleteGym(id: number): Promise<void> {
+  return request(`/gyms/${id}`, { method: "DELETE" });
+}
 
 /** Context tags (N6), in the backend's order (tools.TAGS). Optional, one tap each. */
 export const TAGS = ["slept_badly", "sore", "tired", "felt_strong", "hot", "stressed"] as const;
@@ -80,12 +154,7 @@ export function draftInput(d: Draft): SessionInput {
   if (d.sport === "running" && d.distance_km) input.distance_km = d.distance_km;
   if (d.sport === "running" && d.elevation_m != null) input.elevation_m = d.elevation_m;
   if (d.sport === "climbing" && d.climbs?.length) {
-    input.climbs = d.climbs.map(({ grade, style, sent, attempts }) => ({
-      grade,
-      style,
-      sent,
-      attempts: attempts ?? null,
-    }));
+    input.climbs = d.climbs.map(climbInput);
   }
   if (d.tags?.length) input.tags = d.tags;
   return input;
@@ -148,10 +217,24 @@ export type SessionInput = {
   distance_km?: number;
   /** Running only: elevation gain in whole metres (#84). */
   elevation_m?: number;
-  climbs?: Pick<Climb, "grade" | "style" | "sent" | "attempts">[];
+  climbs?: ClimbInput[];
   /** Context tags (N6); [] clears a session's tags on edit. */
   tags?: Tag[];
 };
+
+/** A climb as the Log form sends it. Without gym_id a colour goes to the last gym used. */
+export type ClimbInput = Pick<Climb, "grade" | "style" | "sent" | "attempts"> & {
+  grade_system?: GradeSystem;
+  gym_id?: number | null;
+};
+
+/** The fields of a stored or drafted climb that the backend takes back. */
+export function climbInput(c: Climb | ClimbInput): ClimbInput {
+  const out: ClimbInput = { grade: c.grade, style: c.style, sent: c.sent, attempts: c.attempts ?? null };
+  if (c.grade_system) out.grade_system = c.grade_system;
+  if (c.gym_id != null) out.gym_id = c.gym_id;
+  return out;
+}
 
 export function createSession(input: SessionInput): Promise<Session> {
   return request("/sessions", { method: "POST", body: JSON.stringify(input) });
@@ -225,7 +308,17 @@ export type GradeGoal = GoalBase & {
   kind: "climb_grade";
   grade: Grade;
   climb_mode: "send" | "flash";
-  progress: { steps: number; of: number; best_grade: Grade | null; best_count_28d: number; reached_on: string | null };
+  grade_system?: GradeSystem;
+  gym_id?: number | null;
+  progress: {
+    steps: number;
+    of: number;
+    best_grade: Grade | null;
+    best_count_28d: number;
+    reached_on: string | null;
+    /** Where it was reached: any gym or outdoors counts when as hard (#98, Q4). */
+    reached_with?: { grade: Grade; grade_system: GradeSystem; gym: string | null; about: string | null };
+  };
 };
 
 export type PaceGoal = GoalBase & {
@@ -245,7 +338,14 @@ export type PaceGoal = GoalBase & {
 export type Goal = GradeGoal | PaceGoal;
 
 export type GoalInput =
-  | { kind: "climb_grade"; grade: Grade; climb_mode: "send" | "flash"; target_date?: string | null }
+  | {
+      kind: "climb_grade";
+      grade: Grade;
+      climb_mode: "send" | "flash";
+      target_date?: string | null;
+      grade_system?: GradeSystem;
+      gym_id?: number | null;
+    }
   | { kind: "run_pace"; band: DistanceBand; target_pace: number; target_date?: string | null };
 
 export function getGoals(signal?: AbortSignal): Promise<Goal[]> {
@@ -349,13 +449,24 @@ export type ClimbingProgression = {
   last_session: string | null;
   days_since_last_session: number | null;
   sessions: number;
+  /** The grades the numbers are measured on (1 = the first): the main gym's
+   *  colours, or V. Levels in trends are places on this scale (#98). */
   grade_scale: Grade[];
+  /** Swatch (null for V/Font) and approximate range per grade_scale entry. */
+  grade_scale_detail?: { name: Grade; colour: string | null; range: string | null }[];
+  /** The gym the scale belongs to, or null for V. */
+  grade_scale_gym?: string | null;
   weekly: {
     week_start: string;
     sessions: number;
     climbs: number;
     hardest_sent: Grade | null;
     flash_grade: Grade | null;
+    /** Places on grade_scale (1 = its first grade), possibly between two (#99). */
+    hardest_sent_level?: number | null;
+    flash_level?: number | null;
+    hardest_sent_colour?: string | null;
+    flash_colour?: string | null;
     send_rate_by_grade: Partial<Record<Grade, SendRate>>;
   }[];
   trends: {

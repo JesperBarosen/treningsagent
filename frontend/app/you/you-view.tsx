@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronIcon, KeyIcon, SignOutIcon } from "@/components/icons";
+import { ChevronIcon, KeyIcon, PinIcon, SignOutIcon } from "@/components/icons";
 import { useSignOut } from "@/components/nav";
 import { BreakSection } from "@/components/break-section";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -19,6 +19,16 @@ export function YouView() {
         <li className={row}>
           <span className="flex-1 font-medium">Light or dark</span>
           <ThemeToggle />
+        </li>
+        <li>
+          <Link href="/gyms" className={`${row} hover:bg-sunken`}>
+            <PinIcon size={20} />
+            <span className="flex-1">
+              <span className="block font-medium">Gyms</span>
+              <span className="block text-sm text-ink-muted">Colour circuits and their approximate grades</span>
+            </span>
+            <ChevronIcon size={18} />
+          </Link>
         </li>
         <li>
           <Link href="/account" className={`${row} hover:bg-sunken`}>

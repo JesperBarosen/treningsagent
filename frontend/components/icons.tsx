@@ -89,6 +89,27 @@ export const PlusIcon = (p: IconProps) => (
   </Icon>
 );
 
+/** A map pin: a gym. */
+export const PinIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z" />
+    <circle cx="12" cy="10" r="2" />
+  </Icon>
+);
+
+/** Up and down arrows, for reordering. */
+export const ArrowUpIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m6 15 6-6 6 6" />
+  </Icon>
+);
+
+export const ArrowDownIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m6 9 6 6 6-6" />
+  </Icon>
+);
+
 export const ChevronIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="m9 6 6 6-6 6" />

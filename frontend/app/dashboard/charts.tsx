@@ -19,13 +19,13 @@ import {
 import type { Grade, Progression, TrainingLoad } from "@/lib/api";
 import { HIDE_IN_DISCREET } from "@/lib/discreet";
 import { formatPace, nf, shortDate } from "@/lib/format";
+import { gradeSwatch } from "@/lib/grades";
 
 const RUN = "var(--chart-run)";
 const CLIMB = "var(--chart-climb)";
 const MUTED = "var(--ink-muted)";
 const LINE = "var(--line)";
 const SURFACE = "var(--surface)";
-const gradeFill = (g: Grade) => `var(--color-grade-${g})`;
 
 const AXIS_TICK = { fill: MUTED, fontSize: 12 };
 const BAR_SIZE = 20; // under the 24px cap; the rest of the slot is air
@@ -274,17 +274,32 @@ type GradeRow = {
   flash: number | null;
   sendGrade: Grade | null;
   flashGrade: Grade | null;
+  sendFill: string;
+  flashFill: string;
 };
 
+/** The swatch for a grade on the chart: its own colour, the scale's colour of
+ *  that name, a "My gym" token, else the climbing series colour (V and Font). */
+function fillFor(climbing: Progression["climbing"], grade: Grade | null, colour?: string | null): string {
+  if (!grade) return CLIMB;
+  const own = climbing.grade_scale_detail?.find((d) => d.name === grade)?.colour;
+  return gradeSwatch(grade, colour ?? own) ?? CLIMB;
+}
+
 export function gradeRows(climbing: Progression["climbing"]): GradeRow[] {
-  // Grades sit on the y axis by their place on the gym's scale.
-  const place = (g: Grade | null) => (g ? climbing.grade_scale.indexOf(g) + 1 : null);
+  // Grades sit on the y axis by their place on the main gym's scale (#98). The
+  // backend gives the place, so a grade from another gym or in V/Font lands
+  // between the scale's own grades; an older backend only gives the name.
+  const place = (g: Grade | null, level?: number | null) =>
+    level ?? (g ? climbing.grade_scale.indexOf(g) + 1 || null : null);
   return climbing.weekly.map((w) => ({
     label: shortDate(w.week_start),
-    send: place(w.hardest_sent),
-    flash: place(w.flash_grade),
+    send: place(w.hardest_sent, w.hardest_sent_level),
+    flash: place(w.flash_grade, w.flash_level),
     sendGrade: w.hardest_sent,
     flashGrade: w.flash_grade,
+    sendFill: fillFor(climbing, w.hardest_sent, w.hardest_sent_colour),
+    flashFill: fillFor(climbing, w.flash_grade, w.flash_colour),
   }));
 }
 
@@ -296,7 +311,7 @@ function SendDot({ cx, cy, payload }: DotProps) {
   return (
     <g>
       <circle cx={cx} cy={cy} r={7.5} fill={SURFACE} />
-      <circle cx={cx} cy={cy} r={5.5} fill={gradeFill(payload.sendGrade)} stroke="var(--grade-ring)" strokeWidth={1} />
+      <circle cx={cx} cy={cy} r={5.5} fill={payload.sendFill} stroke="var(--grade-ring)" strokeWidth={1} />
     </g>
   );
 }
@@ -308,17 +323,30 @@ function FlashDot({ cx, cy, payload }: DotProps) {
   return (
     <g>
       <path d={d(7.5)} fill={SURFACE} />
-      <path d={d(5)} fill={gradeFill(payload.flashGrade)} stroke="var(--grade-ring)" strokeWidth={1} />
+      <path d={d(5)} fill={payload.flashFill} stroke="var(--grade-ring)" strokeWidth={1} />
     </g>
   );
 }
 
-function GradeTick({ x, y, value, scale }: { x: number; y: number; value: number; scale: Grade[] }) {
+function GradeTick({
+  x,
+  y,
+  value,
+  scale,
+  colours,
+}: {
+  x: number;
+  y: number;
+  value: number;
+  scale: Grade[];
+  colours: (string | null)[];
+}) {
   const grade = scale[value - 1];
   if (!grade) return <g />;
+  const fill = gradeSwatch(grade, colours[value - 1]);
   return (
     <g transform={`translate(${x},${y})`}>
-      <circle cx={-54} cy={0} r={4} fill={gradeFill(grade)} stroke="var(--grade-ring)" strokeWidth={1} />
+      {fill && <circle cx={-54} cy={0} r={4} fill={fill} stroke="var(--grade-ring)" strokeWidth={1} />}
       <text x={-46} y={0} dy="0.35em" fill={MUTED} fontSize={12}>
         {grade[0].toUpperCase() + grade.slice(1)}
       </text>
@@ -329,9 +357,11 @@ function GradeTick({ x, y, value, scale }: { x: number; y: number; value: number
 export function GradeChart({ climbing }: { climbing: Progression["climbing"] }) {
   const rows = gradeRows(climbing);
   const scale = climbing.grade_scale;
+  const colours = scale.map((g) => climbing.grade_scale_detail?.find((d) => d.name === g)?.colour ?? null);
   const placed = rows.flatMap((r) => [r.send, r.flash]).filter((v): v is number => v !== null);
-  const lo = Math.max(1, Math.min(...placed) - 1);
-  const hi = Math.min(scale.length, Math.max(...placed) + 1);
+  // Places can fall between grades (another gym, V or Font): ticks stay whole grades.
+  const lo = Math.max(1, Math.floor(Math.min(...placed)) - 1);
+  const hi = Math.min(scale.length, Math.ceil(Math.max(...placed)) + 1);
   const ticks = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
   return (
     <div className="h-56">
@@ -352,7 +382,15 @@ export function GradeChart({ climbing }: { climbing: Progression["climbing"] }) 
             domain={[lo - 0.4, hi + 0.4]}
             ticks={ticks}
             interval={0}
-            tick={(p) => <GradeTick x={Number(p.x)} y={Number(p.y)} value={Number(p.payload.value)} scale={scale} />}
+            tick={(p) => (
+              <GradeTick
+                x={Number(p.x)}
+                y={Number(p.y)}
+                value={Number(p.payload.value)}
+                scale={scale}
+                colours={colours}
+              />
+            )}
             tickLine={false}
             axisLine={false}
             width={76}

@@ -1,10 +1,11 @@
-import type { Climb, Grade } from "@/lib/api";
+import type { Climb, Grade, LegacyGrade } from "@/lib/api";
 import { climbOutcome } from "@/lib/format";
+import { climbRank, gradeWithGym } from "@/lib/grades";
 import { BoltIcon, CheckIcon } from "./icons";
 
 // Full class names so Tailwind finds them. Every dot has a ring so white and
 // black holds stay visible in both themes.
-const DOT: Record<Grade, string> = {
+const DOT: Record<LegacyGrade, string> = {
   yellow: "bg-grade-yellow",
   green: "bg-grade-green",
   blue: "bg-grade-blue",
@@ -14,21 +15,25 @@ const DOT: Record<Grade, string> = {
   white: "bg-grade-white",
 };
 
-export function GradeDot({ grade, size = 10 }: { grade: Grade; size?: number }) {
+/** The grade's dot: a gym colour's own swatch (`colour`), a "My gym" colour's
+ *  token, or nothing for V and Font grades, whose name says it all. */
+export function GradeDot({ grade, colour, size = 10 }: { grade: Grade; colour?: string | null; size?: number }) {
+  const token = DOT[grade as LegacyGrade];
+  if (!colour && !token) return null;
   return (
     <span
       aria-hidden="true"
-      className={`${DOT[grade]} inline-block shrink-0 rounded-full ring-1 ring-grade-ring`}
-      style={{ width: size, height: size }}
+      className={`${colour ? "" : token} inline-block shrink-0 rounded-full ring-1 ring-grade-ring`}
+      style={{ width: size, height: size, ...(colour ? { background: colour } : {}) }}
     />
   );
 }
 
 const OUTCOME_LABEL = { flash: "flashed", sent: "sent", tried: "not sent" } as const;
 
-export function climbLabel(c: Pick<Climb, "grade" | "style" | "sent" | "attempts">): string {
+export function climbLabel(c: Pick<Climb, "grade" | "style" | "sent" | "attempts"> & { gym?: string }): string {
   const attempts = c.attempts && c.attempts > 1 ? `, ${c.attempts} attempts` : "";
-  return `${c.grade} ${c.style}, ${OUTCOME_LABEL[climbOutcome(c)]}${attempts}`;
+  return `${gradeWithGym(c)} ${c.style}, ${OUTCOME_LABEL[climbOutcome(c)]}${attempts}`;
 }
 
 /** Grade dot + name + outcome: bolt for a flash, check for a send, dashed when not sent. */
@@ -46,7 +51,7 @@ export function ClimbChip({ climb }: { climb: Climb }) {
           : "border-line bg-sunken text-ink"
       }`}
     >
-      <GradeDot grade={climb.grade} />
+      <GradeDot grade={climb.grade} colour={climb.colour} />
       {climb.grade}
       {outcome === "flash" && <BoltIcon size={12} className="text-accent" />}
       {outcome === "sent" && <CheckIcon size={12} className="text-accent" />}
@@ -57,7 +62,7 @@ export function ClimbChip({ climb }: { climb: Climb }) {
 /** Climbs as a wrapping row of chips, hardest first, with a "+n" overflow chip. */
 export function ClimbChips({ climbs, max }: { climbs: Climb[]; max?: number }) {
   const sorted = [...climbs].sort(
-    (a, b) => b.grade_ordinal - a.grade_ordinal || Number(b.sent) - Number(a.sent),
+    (a, b) => climbRank(b) - climbRank(a) || Number(b.sent) - Number(a.sent),
   );
   const shown = max ? sorted.slice(0, max) : sorted;
   const hidden = sorted.length - shown.length;
