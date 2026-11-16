@@ -1,0 +1,26 @@
+{
+  "id": "template_validation_retry",
+  "note": "#102: the server refuses a value outside a field's limits (the Fingerboard edge is 4-60 mm) and returns an error naming the field. The coach must ask the user to check it, not present a draft with the bad value or drop the field silently.",
+  "seed": {
+    "templates": [{"starter": "Fingerboard"}],
+    "running": [{"days_ago": 1, "distance_km": 5, "duration_min": 30, "effort": 4}],
+    "climbing": []
+  },
+  "known_bad": {
+    "source": "Constructed: the typo carried straight into the draft.",
+    "why": "Presents a draft with a 200 mm edge, which the template doesn't allow.",
+    "should_fail": "must_not-1",
+    "answer": "Your Fingerboard session is ready to save or review: 30 min, effort 6, max hangs, 4 × 10 s on a 200 mm edge."
+  },
+  "question": "Fingerboard today 30 min effort 6: max hangs 4 x 10 s on 200 mm",
+  "expect": {
+    "tools_called": ["list_templates"],
+    "must": [
+      "Ask the user to check the edge size, saying 200 mm is outside what the Fingerboard template allows (4-60 mm), or that it looks like a typo"
+    ],
+    "must_not": [
+      "Present a draft, or say the session is ready, saved or logged, with a 200 mm edge",
+      "Silently leave the edge out and present the draft as complete"
+    ]
+  }
+}

@@ -200,6 +200,41 @@ def list_templates(store: Store) -> list[dict]:
     return [forms.view(t) for t in rows]
 
 
+def _coach_field(f: dict) -> dict:
+    """A field as the coach needs it to fill it in: no archived options, no noise."""
+    out = {"key": f["key"], "label": f["label"], "type": f["type"]}
+    if f.get("required"):
+        out["required"] = True
+    for prop in ("unit", "min", "max", "multiple", "reps_unit", "load_unit", "load_signed",
+                 "max_length", "default_style"):
+        if f.get(prop) not in (None, False):
+            out[prop] = f[prop]
+    if f["type"] == "select":
+        out["options"] = [{"value": o["value"], "label": o["label"]}
+                          for o in f["options"] if not o.get("archived")]
+    if f.get("extras"):
+        out["extras"] = [{k: c[k] for k in ("key", "label", "unit") if c.get(k)} for c in f["extras"]]
+    return out
+
+
+def templates_for_coach(store: Store) -> dict:
+    """list_templates for the agent (#102): live templates with their fields,
+    gyms with their colours and approximate V range, and the gym used last."""
+    templates = [{"id": t["id"], "name": t["name"], "sport": t["sport"],
+                  **({"core_fields": t["core_fields"]} if t.get("core_fields") else {}),
+                  "fields": [_coach_field(f) for f in t["fields"] if not f.get("archived")]}
+                 for t in (store.templates() if hasattr(store, "templates") else [])
+                 if not t.get("archived_at")]
+    gym_list = [{"id": g["id"], "name": g["name"],
+                 "colours": [{"name": c["name"], "range": grades.range_text(c, "v")}
+                             for c in grades.active_grades(g)]}
+                for g in (store.gyms() if hasattr(store, "gyms") else []) if not g.get("archived_at")]
+    return {"templates": templates, "gyms": gym_list,
+            "last_gym_id": store.last_gym_id() if hasattr(store, "last_gym_id") else None,
+            "grades": "Gym colours belong to a gym (no gym_id = the last gym used, or My gym). "
+                      "Outdoors and boards use grade_system v (VB, V0-V17) or font (4 to 9A)."}
+
+
 def create_template(store: Store, name: str, sport: str, fields: list,
                     core_fields: list | None = None) -> dict:
     row = forms.validate_template(name, sport, fields, core_fields)
@@ -662,7 +697,9 @@ TOOLS = [
             "Store one completed training session. Call this when the user describes "
             "a workout they did. Only include fields the user actually stated; never "
             "guess numbers. Use running fields only for running. For climbing, list "
-            "each climb the user mentions in `climbs`, all in this one call."
+            "each climb the user mentions in `climbs`, all in this one call. If the "
+            "session fits one of the user's templates (list_templates), pass its "
+            "template_id and the fields they stated in `values`."
         ),
         "input_schema": {
             "type": "object",
@@ -690,9 +727,19 @@ TOOLS = [
                     "items": {
                         "type": "object",
                         "properties": {
-                            "grade": {"type": "string", "enum": list(GRADES),
-                                      "description": "Gym colour, easiest to hardest: "
-                                                     + ", ".join(GRADES)},
+                            "grade": {"type": "string",
+                                      "description": "As the user said it: a colour of the "
+                                                     "gym (grade_system gym; list_templates "
+                                                     "has each gym's colours, My gym's are "
+                                                     + ", ".join(GRADES) + "), or a V grade "
+                                                     "such as V4, or a Font grade such as 6B+"},
+                            "grade_system": {"type": "string", "enum": list(grades.SYSTEMS),
+                                             "description": "gym (default) for a colour, v "
+                                                            "or font outdoors or on a board"},
+                            "gym_id": {"type": "integer",
+                                       "description": "From list_templates, when the user "
+                                                      "names a gym; leave out for the last "
+                                                      "gym used, and outdoors"},
                             "style": {"type": "string", "enum": list(CLIMB_STYLES),
                                       "description": "boulder = gym boulder, kilter = Kilter "
                                                      "board, rope = top rope or lead"},
@@ -706,6 +753,18 @@ TOOLS = [
                         "additionalProperties": False,
                     },
                 },
+                "template_id": {"type": "integer",
+                                "description": "A template from list_templates whose sport and "
+                                               "fields fit the session. Leave out for a plain "
+                                               "run, climb, strength or other session; never "
+                                               "invent one."},
+                "values": {"type": "object",
+                           "description": "The template's fields by key, only what the user "
+                                          "stated: number, option value (a list when the field "
+                                          "is multiple), true/false, text, or for sets a list of "
+                                          "{sets, reps, load, <extra keys>} rows, one per group "
+                                          "of identical sets ('6 x 10 s on 20 mm with +10 kg' -> "
+                                          "{sets: 6, reps: 10, edge_mm: 20, load: 10})."},
             },
             "required": ["sport", "date", "duration_min", "effort"],
             "additionalProperties": False,
@@ -793,7 +852,14 @@ SET_GOAL = {
         "type": "object",
         "properties": {
             "kind": {"type": "string", "enum": list(goals.KINDS)},
-            "grade": {"type": "string", "enum": list(GRADES)},
+            "grade": {"type": "string",
+                      "description": "A gym colour (My gym: " + ", ".join(GRADES) + "), or with "
+                                     "grade_system v or font a V or Font grade"},
+            "grade_system": {"type": "string", "enum": list(grades.SYSTEMS),
+                             "description": "gym (default), v or font. An equally hard climb "
+                                            "at any gym or outdoors reaches the goal"},
+            "gym_id": {"type": "integer", "description": "The gym of a colour goal, from "
+                                                         "list_templates; default the last gym used"},
             "climb_mode": {"type": "string", "enum": ["send", "flash"]},
             "band": {"type": "string", "enum": list(goals.BANDS),
                      "description": "Running distance band"},
@@ -836,7 +902,21 @@ GET_TAG_PATTERNS = {
     },
 }
 
-TOOLS += [SET_GOAL, GET_GOALS, GET_TAG_PATTERNS]
+LIST_TEMPLATES = {
+    "name": "list_templates",
+    "description": (
+        "Get the user's log templates (custom forms per kind of session, with each field's "
+        "key, label, type, unit and options) and gyms (each with its colours easiest first "
+        "and their approximate V range), and the gym used last. Call it before logging or "
+        "drafting anything that isn't a plain run or climb (fingerboard, strength, intervals, "
+        "mobility...), or when the user names a gym or a colour you don't know. If one "
+        "template clearly fits, use it; if two could fit, ask which; if none fits, log "
+        "without a template. Tell the user which template you used."
+    ),
+    "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
+}
+
+TOOLS += [SET_GOAL, GET_GOALS, GET_TAG_PATTERNS, LIST_TEMPLATES]
 
 DRAFT_SESSION = {
     "name": "draft_session",
@@ -889,6 +969,8 @@ def run_tool(store: Store, name: str, tool_input: dict) -> str:
         result = list_goals(store, **tool_input)
     elif name == "get_tag_patterns":
         result = tag_patterns(store, **tool_input)
+    elif name == "list_templates":
+        result = templates_for_coach(store, **tool_input)
     else:
         raise ValueError(f"unknown tool {name!r}")
     return json.dumps(result)

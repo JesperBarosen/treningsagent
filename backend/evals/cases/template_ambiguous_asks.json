@@ -1,0 +1,33 @@
+{
+  "id": "template_ambiguous_asks",
+  "note": "#102: when two templates fit equally (Strength A and Strength B, both strength with the same fields), the coach asks which one instead of guessing.",
+  "seed": {
+    "templates": [
+      {"name": "Strength A", "sport": "strength", "fields": [
+        {"label": "Exercise", "type": "select", "options": [{"label": "Squat"}, {"label": "Bench press"}, {"label": "Row"}]},
+        {"key": "sets", "label": "Sets", "type": "sets", "reps_unit": "reps", "load_unit": "kg"}]},
+      {"name": "Strength B", "sport": "strength", "fields": [
+        {"label": "Exercise", "type": "select", "options": [{"label": "Squat"}, {"label": "Deadlift"}, {"label": "Pull-up"}]},
+        {"key": "sets", "label": "Sets", "type": "sets", "reps_unit": "reps", "load_unit": "kg"}]}
+    ],
+    "running": [{"days_ago": 3, "distance_km": 7, "duration_min": 40, "effort": 5}],
+    "climbing": []
+  },
+  "known_bad": {
+    "source": "Constructed: the agent picks the first template without asking.",
+    "why": "Drafts the session with Strength A without asking which of the two fitting templates to use.",
+    "should_fail": "must-1",
+    "answer": "Your strength session is ready to save or review in Strength A: 50 min, effort 7, squat 3 × 5 at 100 kg."
+  },
+  "question": "Strength session today, 50 min, effort 7: 3 x 5 squats at 100 kg",
+  "expect": {
+    "tools_called": ["list_templates"],
+    "must": [
+      "Ask whether to use Strength A or Strength B (or without a template) before presenting a draft"
+    ],
+    "must_not": [
+      "Present the session as ready to save in one of the two templates without asking",
+      "Say the session is logged or saved"
+    ]
+  }
+}
