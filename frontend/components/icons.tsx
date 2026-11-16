@@ -133,11 +133,34 @@ export const ChartIcon = (p: IconProps) => (
 );
 
 /** The sport's icon on its soft sport colour. */
+/** A dumbbell: strength. */
+export const StrengthIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12" />
+  </Icon>
+);
+
+/** Four dots in a square: other training. */
+export const OtherIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="8" cy="8" r="2" />
+    <circle cx="16" cy="8" r="2" />
+    <circle cx="8" cy="16" r="2" />
+    <circle cx="16" cy="16" r="2" />
+  </Icon>
+);
+
+const BADGE: Record<Sport, { Glyph: (p: IconProps) => React.ReactElement; colours: string }> = {
+  running: { Glyph: RunIcon, colours: "bg-accent-soft text-accent" },
+  climbing: { Glyph: ClimbIcon, colours: "bg-climb-soft text-climb" },
+  // The series colour on a sunken disc: 3:1 or more in both themes (#100).
+  strength: { Glyph: StrengthIcon, colours: "bg-sunken text-chart-strength" },
+  other: { Glyph: OtherIcon, colours: "bg-sunken text-ink-muted" },
+};
+
 export function SportBadge({ sport, size = "md" }: { sport: Sport; size?: "sm" | "md" }) {
   const box = size === "sm" ? "size-8" : "size-10";
-  const Glyph = sport === "running" ? RunIcon : ClimbIcon;
-  const colours =
-    sport === "running" ? "bg-accent-soft text-accent" : "bg-climb-soft text-climb";
+  const { Glyph, colours } = BADGE[sport];
   return (
     <span className={`${box} ${colours} grid shrink-0 place-items-center rounded-full`}>
       <Glyph size={size === "sm" ? 16 : 20} />

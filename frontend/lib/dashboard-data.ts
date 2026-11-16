@@ -8,6 +8,7 @@ import {
   getProgression,
   getTrainingLoad,
   getTrainingLoadBySport,
+  SPORTS,
   type Progression,
   type Sport,
   type TrainingLoad,
@@ -16,8 +17,6 @@ import type { SportFilter } from "./sport-filter";
 
 export type Loads = Partial<Record<SportFilter, TrainingLoad>>;
 export type DashboardData = { loads: Loads; progression: Progression };
-
-const SPORTS: Sport[] = ["running", "climbing"];
 
 /** The load per filter and the progression, from one load request when the backend can. */
 export async function fetchDashboard(weeks: number, signal?: AbortSignal): Promise<DashboardData> {

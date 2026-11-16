@@ -69,6 +69,8 @@ const LOAD_SUBJECT: Record<SportFilter, string> = {
   all: "Your",
   running: "Your running",
   climbing: "Your climbing",
+  strength: "Your strength",
+  other: "Your other training's",
 };
 
 /** Average sessions per week over the complete weeks shown (the current week is
@@ -106,12 +108,12 @@ export function summarySentence(load: TrainingLoad, progression: Progression, sp
   const view = ratioView(load);
   if (view.kind === "ok") parts.push(`${LOAD_SUBJECT[sport]} ${LOAD_SENTENCE[view.zone]}`);
   else if (view.kind === "paused") parts.push(`${LOAD_SUBJECT[sport]} load ratio is paused for your break.`);
-  if (sport !== "climbing") {
+  if (sport === "all" || sport === "running") {
     const band = mainPaceBand(progression.running);
     const pace = band && PACE_SENTENCE[progression.running.trends.pace_by_distance[band].trend];
     if (band && pace) parts.push(`Pace on ${BAND_LABELS[band].toLowerCase()} runs ${pace}.`);
   }
-  if (sport !== "running") {
+  if (sport === "all" || sport === "climbing") {
     const grade = GRADE_SENTENCE[progression.climbing.trends.avg_session_hardest_sent.trend];
     if (grade) parts.push(grade);
   }

@@ -11,8 +11,10 @@ import {
   climbInput,
   FONT_GRADES,
   getGyms,
+  getTemplates,
   GRADES,
   V_GRADES,
+  type Template,
   type Climb,
   type Grade,
   type GradeSystem,
@@ -26,7 +28,9 @@ import {
 } from "@/lib/api";
 import { SENSITIVE } from "@/lib/discreet";
 import { climbOutcome, formatPace } from "@/lib/format";
+import { checkValues, cleanValues } from "@/lib/form-values";
 import { activeColours, startGym } from "@/lib/grades";
+import { TemplateFields, type FormValues } from "./template-fields";
 
 type Style = Climb["style"];
 type FormClimb = {
@@ -48,6 +52,9 @@ const STYLES: { value: Style; label: string }[] = [
 const SPORTS: { value: Sport; label: string }[] = [
   { value: "running", label: "Run" },
   { value: "climbing", label: "Climb" },
+  // Built-in forms with the core fields only; templates shape them (#100, #101).
+  { value: "strength", label: "Strength" },
+  { value: "other", label: "Other" },
 ];
 
 export const today = () => new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD, local
@@ -66,7 +73,11 @@ function useToday(): string {
 export function nextOutcome(c: FormClimb): FormClimb {
   switch (climbOutcome(c)) {
     case "tried":
-      return { ...c, sent: true, attempts: c.attempts && c.attempts > 1 ? c.attempts : null };
+      return {
+        ...c,
+        sent: true,
+        attempts: c.attempts && c.attempts > 1 ? c.attempts : null,
+      };
     case "sent":
       return { ...c, sent: true, attempts: 1 };
     case "flash":
@@ -78,6 +89,8 @@ export function nextOutcome(c: FormClimb): FormClimb {
 const field =
   "block min-h-11 w-full min-w-0 rounded-md border border-control bg-surface px-3 text-base text-ink tabular-nums";
 const label = "mb-1 block text-sm font-medium";
+const tile =
+  "flex min-h-14 min-w-0 items-center gap-3 rounded-md border border-control bg-surface px-3 text-left font-medium aria-checked:border-accent aria-checked:bg-accent-soft";
 /** Two equal columns that can shrink below their content's width. */
 const pair = "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3";
 
@@ -122,6 +135,29 @@ export function SessionForm({
       colour,
     })),
   );
+  // Templates (#101): picked as tiles next to the sports (T4 variant A). An
+  // edit starts with the session's own template, archived or not.
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templateId, setTemplateId] = useState<number | null>(session?.template_id ?? null);
+  const [values, setValues] = useState<FormValues>(session?.custom_values ?? {});
+  const [moreTemplates, setMoreTemplates] = useState(false);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    getTemplates(ctrl.signal)
+      .then((r) => setTemplates(r.templates))
+      .catch(() => {}); // without templates the form is the built-in one, as before
+    return () => ctrl.abort();
+  }, []);
+  const template = templates.find((t) => t.id === templateId) ?? null;
+  const picker = templates.filter((t) => !t.archived || t.id === templateId);
+  const shownPicker = moreTemplates ? picker : picker.slice(0, 4);
+  const valueProblem = template
+    ? checkValues(template, cleanValues(values), session?.template_id === template.id ? session.custom_values : {})
+    : null;
+  const core = (name: "distance_km" | "elevation_m") => !templateId || (template?.core_fields.includes(name) ?? false);
+  const climbsShown =
+    sport === "climbing" && (!templateId || (template?.fields.some((f) => f.type === "climbs") ?? false));
+
   // Gyms (#99): the gym starts as the session's own, else the last one used.
   const [gyms, setGyms] = useState<Gym[]>([]);
   const [gymId, setGymId] = useState<number | null>(null);
@@ -154,7 +190,12 @@ export function SessionForm({
   const metres = Number(elevation);
   const elevationOk = elevation === "" || (Number.isInteger(metres) && metres >= 0);
   const valid =
-    sport !== null && date !== "" && durationOk && distanceOk && (sport !== "running" || elevationOk);
+    sport !== null &&
+    date !== "" &&
+    durationOk &&
+    distanceOk &&
+    (sport !== "running" || elevationOk) &&
+    (templateId === null || (template !== null && valueProblem === null));
   const pace = sport === "running" && durationOk && km > 0 ? formatPace(minutes / km) : null;
 
   const updateClimb = (i: number, f: (c: FormClimb) => FormClimb) =>
@@ -170,10 +211,16 @@ export function SessionForm({
       effort,
       notes: notes.trim() || null,
     };
-    if (sport === "running" && distance !== "") input.distance_km = km;
+    if (sport === "running" && distance !== "" && core("distance_km")) input.distance_km = km;
     // A chat draft's elevation survives "Review in Log form" (#84).
-    if (sport === "running" && elevation !== "") input.elevation_m = metres;
-    if (sport === "climbing") input.climbs = climbs.map(climbInput);
+    if (sport === "running" && elevation !== "" && core("elevation_m")) input.elevation_m = metres;
+    if (climbsShown) input.climbs = climbs.map(climbInput);
+    if (template) {
+      input.template_id = template.id;
+      input.values = cleanValues(values);
+    } else if (session?.template_id != null) {
+      input.template_id = null; // an edit back to the built-in form
+    }
     // Only when used: [] is sent to clear tags a session already had.
     if (tags.length || session?.tags?.length) input.tags = tags;
     setBusy(true);
@@ -186,25 +233,109 @@ export function SessionForm({
     }
   }
 
+  const climbsField = (
+    <ClimbsField
+      style={style}
+      onStyle={setStyle}
+      climbs={climbs}
+      onAdd={({ grade, colour }) =>
+        setClimbs((cs) => [
+          ...cs,
+          {
+            grade,
+            style,
+            sent: false,
+            attempts: 1,
+            colour,
+            // Before the gyms load, a colour goes to the backend's default gym.
+            ...(system !== "gym" || gym
+              ? {
+                  grade_system: system,
+                  gym_id: outdoors ? null : (gym?.id ?? null),
+                }
+              : {}),
+          },
+        ])
+      }
+      gyms={gyms}
+      gym={gym}
+      system={system}
+      outdoors={outdoors}
+      onGym={(g) => {
+        setOutdoors(g === null);
+        if (g) setGymId(g.id);
+        if (g === null && system === "gym") setSystem("v");
+        if (g !== null) setSystem("gym");
+      }}
+      onSystem={setSystem}
+      onCycle={(i) => updateClimb(i, nextOutcome)}
+      onAttempts={(i, delta) =>
+        updateClimb(i, (c) => ({
+          ...c,
+          attempts: Math.max(1, (c.attempts ?? 1) + delta),
+        }))
+      }
+      onRemove={(i) => setClimbs((cs) => cs.filter((_, j) => j !== i))}
+    />
+  );
+
   return (
     <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
       <fieldset>
-        <legend className={label}>Sport</legend>
+        <legend className={label}>What did you do?</legend>
         <div role="radiogroup" aria-label="Sport" className="grid grid-cols-2 gap-2">
           {SPORTS.map((s) => (
             <button
               key={s.value}
               type="button"
               role="radio"
-              aria-checked={sport === s.value}
-              onClick={() => setSport(s.value)}
-              className="flex min-h-14 items-center gap-3 rounded-md border border-control bg-surface px-3 font-medium aria-checked:border-accent aria-checked:bg-accent-soft"
+              aria-checked={sport === s.value && templateId === null}
+              onClick={() => {
+                setSport(s.value);
+                setTemplateId(null);
+              }}
+              className={tile}
             >
               <SportBadge sport={s.value} size="sm" />
               {s.label}
             </button>
           ))}
+          {shownPicker.map((t) => (
+            <button
+              key={`t${t.id}`}
+              type="button"
+              role="radio"
+              aria-checked={templateId === t.id}
+              onClick={() => {
+                setSport(t.sport);
+                if (templateId !== t.id) setValues(session?.template_id === t.id ? (session.custom_values ?? {}) : {});
+                setTemplateId(t.id);
+              }}
+              className={tile}
+            >
+              <SportBadge sport={t.sport} size="sm" />
+              <span className="min-w-0 truncate">{t.name}</span>
+            </button>
+          ))}
+          {picker.length > 4 && (
+            <button
+              type="button"
+              onClick={() => setMoreTemplates((m) => !m)}
+              aria-expanded={moreTemplates}
+              className={`${tile} text-ink-muted`}
+            >
+              {moreTemplates ? "Fewer" : `More (${picker.length - 4})`}
+            </button>
+          )}
         </div>
+        {templates.length === 0 && (
+          <p className="mt-2 text-sm text-ink-muted">
+            Want your own fields?{" "}
+            <Link href="/templates" className="font-medium text-accent underline-offset-2 hover:underline">
+              Make a log form
+            </Link>
+          </p>
+        )}
       </fieldset>
 
       {sport && (
@@ -232,49 +363,55 @@ export function SessionForm({
             </div>
           </div>
 
-          {sport === "running" && (
+          {sport === "running" && (core("distance_km") || core("elevation_m")) && (
             <div className={pair}>
-              <div>
-                <label htmlFor="distance" className={label}>
-                  Distance (km)
-                </label>
-                <input
-                  id="distance"
-                  type="text"
-                  inputMode="decimal"
-                  value={distance}
-                  onChange={(e) => setDistance(e.target.value)}
-                  aria-invalid={!distanceOk}
-                  className={field}
-                />
-              </div>
-              <div>
-                <span className={label} id="pace-label">
-                  Pace
-                </span>
-                <output
-                  aria-labelledby="pace-label"
-                  aria-live="polite"
-                  className="flex min-h-11 items-center font-display text-lg font-semibold tabular-nums"
-                >
-                  {pace ? `${pace} /km` : "–"}
-                </output>
-              </div>
-              <div>
-                <label htmlFor="elevation" className={label}>
-                  Elevation gain (m) <span className="font-normal text-ink-muted">(optional)</span>
-                </label>
-                <input
-                  id="elevation"
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  value={elevation}
-                  onChange={(e) => setElevation(e.target.value)}
-                  aria-invalid={!elevationOk}
-                  className={field}
-                />
-              </div>
+              {core("distance_km") && (
+                <>
+                  <div>
+                    <label htmlFor="distance" className={label}>
+                      Distance (km)
+                    </label>
+                    <input
+                      id="distance"
+                      type="text"
+                      inputMode="decimal"
+                      value={distance}
+                      onChange={(e) => setDistance(e.target.value)}
+                      aria-invalid={!distanceOk}
+                      className={field}
+                    />
+                  </div>
+                  <div>
+                    <span className={label} id="pace-label">
+                      Pace
+                    </span>
+                    <output
+                      aria-labelledby="pace-label"
+                      aria-live="polite"
+                      className="flex min-h-11 items-center font-display text-lg font-semibold tabular-nums"
+                    >
+                      {pace ? `${pace} /km` : "–"}
+                    </output>
+                  </div>
+                </>
+              )}
+              {core("elevation_m") && (
+                <div>
+                  <label htmlFor="elevation" className={label}>
+                    Elevation gain (m) <span className="font-normal text-ink-muted">(optional)</span>
+                  </label>
+                  <input
+                    id="elevation"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    value={elevation}
+                    onChange={(e) => setElevation(e.target.value)}
+                    aria-invalid={!elevationOk}
+                    className={field}
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -299,49 +436,31 @@ export function SessionForm({
             </div>
           </div>
 
-          {sport === "climbing" && (
-            <ClimbsField
-              style={style}
-              onStyle={setStyle}
-              climbs={climbs}
-              onAdd={({ grade, colour }) =>
-                setClimbs((cs) => [
-                  ...cs,
-                  {
-                    grade,
-                    style,
-                    sent: false,
-                    attempts: 1,
-                    colour,
-                    // Before the gyms load, a colour goes to the backend's default gym.
-                    ...(system !== "gym" || gym
-                      ? { grade_system: system, gym_id: outdoors ? null : (gym?.id ?? null) }
-                      : {}),
-                  },
-                ])
-              }
-              gyms={gyms}
-              gym={gym}
-              system={system}
-              outdoors={outdoors}
-              onGym={(g) => {
-                setOutdoors(g === null);
-                if (g) setGymId(g.id);
-                if (g === null && system === "gym") setSystem("v");
-                if (g !== null) setSystem("gym");
-              }}
-              onSystem={setSystem}
-              onCycle={(i) => updateClimb(i, nextOutcome)}
-              onAttempts={(i, delta) =>
-                updateClimb(i, (c) => ({ ...c, attempts: Math.max(1, (c.attempts ?? 1) + delta) }))
-              }
-              onRemove={(i) => setClimbs((cs) => cs.filter((_, j) => j !== i))}
-            />
+          {template ? (
+            <>
+              <TemplateFields
+                template={template}
+                values={values}
+                onChange={(key, v) => setValues((vs) => ({ ...vs, [key]: v }))}
+                climbs={climbsShown ? climbsField : null}
+              />
+              {valueProblem && (
+                <p role="status" className="text-sm text-ink-muted">
+                  {valueProblem}
+                </p>
+              )}
+            </>
+          ) : (
+            climbsShown && climbsField
           )}
 
           <TagsField
             tags={tags}
-            onToggle={(t) => setTags((ts) => (ts.includes(t) ? ts.filter((x) => x !== t) : TAGS.filter((x) => x === t || ts.includes(x))))}
+            onToggle={(t) =>
+              setTags((ts) =>
+                ts.includes(t) ? ts.filter((x) => x !== t) : TAGS.filter((x) => x === t || ts.includes(x)),
+              )
+            }
           />
 
           <div>
@@ -410,10 +529,18 @@ function gradeChoices(system: GradeSystem, gym: Gym | null): GradeChoice[] {
   if (system === "v") return V_GRADES.map((g) => ({ grade: g, colour: null, range: null }));
   if (system === "font") return FONT_GRADES.map((g) => ({ grade: g, colour: null, range: null }));
   if (!gym) return GRADES.map((g) => ({ grade: g, colour: null, range: null }));
-  return activeColours(gym).map((c) => ({ grade: c.name, colour: c.colour, range: c.range_text ?? null }));
+  return activeColours(gym).map((c) => ({
+    grade: c.name,
+    colour: c.colour,
+    range: c.range_text ?? null,
+  }));
 }
 
-type GradeChoice = { grade: Grade; colour: string | null; range: string | null };
+type GradeChoice = {
+  grade: Grade;
+  colour: string | null;
+  range: string | null;
+};
 
 const SYSTEMS: { value: GradeSystem; label: string }[] = [
   { value: "gym", label: "Gym colours" },
@@ -465,7 +592,12 @@ function GymPicker({
           <h2 id="gym-sheet-title" className="font-display text-lg font-semibold">
             Where did you climb?
           </h2>
-          <button type="button" onClick={close} aria-label="Close" className="grid size-11 place-items-center rounded-full hover:bg-sunken">
+          <button
+            type="button"
+            onClick={close}
+            aria-label="Close"
+            className="grid size-11 place-items-center rounded-full hover:bg-sunken"
+          >
             <CloseIcon size={16} />
           </button>
         </div>
@@ -571,7 +703,11 @@ function ClimbsField({
           </button>
         ))}
       </div>
-      <div role="radiogroup" aria-label="Default style" className="inline-flex self-start rounded-full border border-control bg-surface p-1">
+      <div
+        role="radiogroup"
+        aria-label="Default style"
+        className="inline-flex self-start rounded-full border border-control bg-surface p-1"
+      >
         {STYLES.map((s) => (
           <button
             key={s.value}

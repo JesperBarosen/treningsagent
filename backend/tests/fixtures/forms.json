@@ -1,0 +1,55 @@
+{
+  "_about": "Shared by backend/tests/test_templates.py and frontend/tests/form-values.test.ts (#100, #101), so the server's rules (forms.validate_values) and the Log form's instant checks agree. `error` is a fragment of the server's message; the frontend only checks valid vs invalid.",
+  "template": {
+    "id": 1,
+    "name": "Fingerboard",
+    "sport": "other",
+    "core_fields": [],
+    "fields": [
+      {"key": "protocol", "label": "Protocol", "type": "select", "required": false, "archived": false, "multiple": false,
+       "options": [{"value": "max_hangs", "label": "Max hangs", "archived": false},
+                   {"value": "repeaters", "label": "Repeaters", "archived": false},
+                   {"value": "density", "label": "Density", "archived": true}]},
+      {"key": "grip", "label": "Grip", "type": "select", "required": false, "archived": false, "multiple": true,
+       "options": [{"value": "half_crimp", "label": "Half crimp", "archived": false},
+                   {"value": "open_hand", "label": "Open hand", "archived": false}]},
+      {"key": "hangs", "label": "Hangs", "type": "sets", "required": true, "archived": false,
+       "reps_unit": "s", "load_unit": "kg", "load_signed": true,
+       "extras": [{"key": "edge_mm", "label": "Edge", "unit": "mm", "min": 4, "max": 60, "decimals": 0}]},
+      {"key": "rest_s", "label": "Rest", "type": "number", "required": false, "archived": false,
+       "unit": "s", "min": 0, "max": 600, "decimals": 0},
+      {"key": "bodyweight", "label": "Bodyweight", "type": "number", "required": false, "archived": false,
+       "unit": "kg", "min": 30, "max": 150, "decimals": 1},
+      {"key": "pain", "label": "Any finger pain?", "type": "boolean", "required": false, "archived": false},
+      {"key": "board", "label": "Board", "type": "text", "required": false, "archived": false, "max_length": 20},
+      {"key": "old_note", "label": "Old note", "type": "text", "required": false, "archived": true, "max_length": 200}
+    ]
+  },
+  "valid": [
+    {"name": "only the required field", "values": {"hangs": [{"sets": 6, "reps": 10}]}},
+    {"name": "everything", "values": {
+      "protocol": "max_hangs", "grip": ["half_crimp", "open_hand"],
+      "hangs": [{"sets": 6, "reps": 10, "edge_mm": 20, "load": 10}, {"sets": 3, "reps": 7, "load": -5}],
+      "rest_s": 180, "bodyweight": 71.5, "pain": false, "board": "Beastmaker"}},
+    {"name": "a null value is left out", "values": {"hangs": [{"sets": 1, "reps": 1}], "rest_s": null}}
+  ],
+  "invalid": [
+    {"name": "required field missing", "values": {"rest_s": 120}, "error": "Hangs is required"},
+    {"name": "unknown key", "values": {"hangs": [{"sets": 1, "reps": 1}], "weight": 10}, "error": "no such fields"},
+    {"name": "number below min", "values": {"hangs": [{"sets": 1, "reps": 1}], "bodyweight": 20}, "error": "between 30 and 150"},
+    {"name": "too many decimals", "values": {"hangs": [{"sets": 1, "reps": 1}], "bodyweight": 70.25}, "error": "decimals"},
+    {"name": "whole number expected", "values": {"hangs": [{"sets": 1, "reps": 1}], "rest_s": 1.5}, "error": "whole numbers"},
+    {"name": "boolean as text", "values": {"hangs": [{"sets": 1, "reps": 1}], "pain": "no"}, "error": "yes or no"},
+    {"name": "not an option", "values": {"hangs": [{"sets": 1, "reps": 1}], "protocol": "campus"}, "error": "not an option"},
+    {"name": "archived option on a new session", "values": {"hangs": [{"sets": 1, "reps": 1}], "protocol": "density"}, "error": "not an option"},
+    {"name": "single select given a list", "values": {"hangs": [{"sets": 1, "reps": 1}], "protocol": ["max_hangs"]}, "error": "not an option"},
+    {"name": "multiple select given a string", "values": {"hangs": [{"sets": 1, "reps": 1}], "grip": "half_crimp"}, "error": "pick one or more"},
+    {"name": "text too long", "values": {"hangs": [{"sets": 1, "reps": 1}], "board": "a board with a very long name"}, "error": "longer than 20"},
+    {"name": "archived field", "values": {"hangs": [{"sets": 1, "reps": 1}], "old_note": "hi"}, "error": "archived"},
+    {"name": "no rows", "values": {"hangs": []}, "error": "1 to 30 rows"},
+    {"name": "row without sets", "values": {"hangs": [{"reps": 10}]}, "error": "row 1: sets is missing"},
+    {"name": "seconds out of range", "values": {"hangs": [{"sets": 1, "reps": 0}]}, "error": "seconds must be"},
+    {"name": "extra column out of range", "values": {"hangs": [{"sets": 1, "reps": 10, "edge_mm": 200}]}, "error": "row 1: edge must be between 4 and 60 mm"},
+    {"name": "unknown column", "values": {"hangs": [{"sets": 1, "reps": 10, "angle": 5}]}, "error": "unknown columns"}
+  ]
+}

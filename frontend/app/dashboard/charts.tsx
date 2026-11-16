@@ -16,7 +16,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { Grade, Progression, TrainingLoad } from "@/lib/api";
+import { SPORTS, type Grade, type Progression, type Sport, type TrainingLoad } from "@/lib/api";
 import { HIDE_IN_DISCREET } from "@/lib/discreet";
 import { formatPace, nf, shortDate } from "@/lib/format";
 import { gradeSwatch } from "@/lib/grades";
@@ -103,7 +103,7 @@ type BarShapeProps = { x?: number; y?: number; width?: number; height?: number; 
 
 // --- Weekly load, stacked by sport ---------------------------------------------
 
-type LoadRow = { week: string; label: string; running: number; climbing: number; total: number };
+type LoadRow = { week: string; label: string; total: number } & Record<Sport, number>;
 
 export function loadRows(load: TrainingLoad): LoadRow[] {
   return load.weekly.map((w) => ({
@@ -111,20 +111,41 @@ export function loadRows(load: TrainingLoad): LoadRow[] {
     label: shortDate(w.week_start),
     running: w.load_by_sport.running ?? 0,
     climbing: w.load_by_sport.climbing ?? 0,
+    strength: w.load_by_sport.strength ?? 0,
+    other: w.load_by_sport.other ?? 0,
     total: w.load,
   }));
 }
 
-/** `sports`: the series to show (the Dashboard filter, #46); both by default. */
+/** Each sport's series colour, in the fixed stacking order (#58, #100). */
+export const SPORT_COLOUR: Record<Sport, string> = {
+  running: "var(--chart-run)",
+  climbing: "var(--chart-climb)",
+  strength: "var(--chart-strength)",
+  other: "var(--chart-other)",
+};
+
+/** The series a load chart shows, in the fixed order: the filtered sport, or
+ *  running and climbing plus strength and other when they have load (#100). */
+export function loadSports(load: TrainingLoad, sports: readonly Sport[] = SPORTS): Sport[] {
+  if (sports.length === 1) return [...sports];
+  return SPORTS.filter(
+    (s) => sports.includes(s) && (s === "running" || s === "climbing" || load.weekly.some((w) => (w.load_by_sport[s] ?? 0) > 0)),
+  );
+}
+
+/** `sports`: the series to show (the Dashboard filter, #46); all by default,
+ *  stacked in the fixed order (loadSports). */
 export function WeeklyLoadChart({
   load,
-  sports = ["running", "climbing"],
+  sports = SPORTS,
 }: {
   load: TrainingLoad;
-  sports?: readonly ("running" | "climbing")[];
+  sports?: readonly Sport[];
 }) {
   const rows = loadRows(load);
-  const both = sports.length > 1;
+  const shown = loadSports(load, sports);
+  const both = shown.length > 1;
   return (
     <div className="h-56">
       <ResponsiveContainer width="100%" height="100%">
@@ -153,47 +174,39 @@ export function WeeklyLoadChart({
                 <TooltipCard
                   title={`Week of ${row.label}`}
                   rows={[
-                    ...(sports.includes("climbing")
-                      ? [{ key: <LineKey colour={CLIMB} />, name: "climbing", value: nf.format(row.climbing) }]
-                      : []),
-                    ...(sports.includes("running")
-                      ? [{ key: <LineKey colour={RUN} />, name: "running", value: nf.format(row.running) }]
-                      : []),
+                    // Top of the stack first, as it reads in the bar.
+                    ...[...shown].reverse().map((s) => ({
+                      key: <LineKey colour={SPORT_COLOUR[s]} />,
+                      name: s,
+                      value: nf.format(row[s]),
+                    })),
                     ...(both ? [{ key: <span className="w-3.5" />, name: "total", value: nf.format(row.total) }] : []),
                   ]}
                 />
               );
             }}
           />
-          <Bar
-            dataKey="running"
-            stackId="load"
-            name="Running"
-            fill={RUN}
-            barSize={BAR_SIZE}
-            isAnimationActive={false}
-            shape={(p: BarShapeProps) => {
-              const { x = 0, y = 0, width = 0, height = 0, payload } = p;
-              if (height <= 0) return <g />;
-              // Round the top only when nothing is stacked on it.
-              const r = payload && payload.climbing > 0 ? 0 : 4;
-              return <path d={columnPath(x, y, width, height, r)} fill={RUN} />;
-            }}
-          />
-          <Bar
-            dataKey="climbing"
-            stackId="load"
-            name="Climbing"
-            fill={CLIMB}
-            barSize={BAR_SIZE}
-            isAnimationActive={false}
-            shape={(p: BarShapeProps) => {
-              const { x = 0, y = 0, width = 0, height = 0, payload } = p;
-              const gap = payload && payload.running > 0 ? GAP : 0;
-              if (height - gap <= 0) return <g />;
-              return <path d={columnPath(x, y, width, height - gap, 4)} fill={CLIMB} />;
-            }}
-          />
+          {shown.map((s, i) => (
+            <Bar
+              key={s}
+              dataKey={s}
+              stackId="load"
+              name={s[0].toUpperCase() + s.slice(1)}
+              fill={SPORT_COLOUR[s]}
+              barSize={BAR_SIZE}
+              isAnimationActive={false}
+              shape={(p: BarShapeProps) => {
+                const { x = 0, y = 0, width = 0, height = 0, payload } = p;
+                // A surface gap under every segment that sits on another, and a
+                // rounded top only on the top segment.
+                const below = payload ? shown.slice(0, i).some((b) => payload[b] > 0) : false;
+                const above = payload ? shown.slice(i + 1).some((b) => payload[b] > 0) : false;
+                const gap = below ? GAP : 0;
+                if (height - gap <= 0) return <g />;
+                return <path d={columnPath(x, y, width, height - gap, above ? 0 : 4)} fill={SPORT_COLOUR[s]} />;
+              }}
+            />
+          ))}
         </BarChart>
       </ResponsiveContainer>
     </div>

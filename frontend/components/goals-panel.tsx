@@ -467,15 +467,20 @@ export function AddGoalForm({
 type GoalKind = Goal["kind"];
 
 /** The goal kind that belongs to each sport filter (#46); All shows every kind. */
-const FILTER_KIND: Record<Exclude<SportFilter, "all">, GoalKind> = {
+// Strength and Other (#100) have no goal kind yet: their filter shows no goals.
+const FILTER_KIND: Record<Exclude<SportFilter, "all">, GoalKind | null> = {
   running: "run_pace",
   climbing: "climb_grade",
+  strength: null,
+  other: null,
 };
 
 const EMPTY_TEXT: Record<SportFilter, string> = {
   all: "Something to aim for, like a grade or a pace. Optional, and you can change it any time.",
   running: "No running goal yet. A pace on a distance you run often works well. Optional.",
   climbing: "No climbing goal yet. A grade to send or flash works well. Optional.",
+  strength: "Goals for strength training aren't available yet.",
+  other: "Goals for other training aren't available yet.",
 };
 
 /** The Goals section at the top of the Dashboard. Goals the user let go are
@@ -510,7 +515,7 @@ export function GoalsSection({ sport = "all" }: { sport?: SportFilter }) {
   // A goal opened from Coach's goal line stays visible whatever the filter.
   const linked = goals !== null ? window.location.hash.match(/^#goal-(\d+)$/)?.[1] : undefined;
   const shown = (goals ?? []).filter(
-    (g) => g.status !== "dropped" && (kind === null || g.kind === kind || String(g.id) === linked),
+    (g) => g.status !== "dropped" && (sport === "all" || g.kind === kind || String(g.id) === linked),
   );
   return (
     <section aria-labelledby="goals-title" className="mb-4">

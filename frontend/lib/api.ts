@@ -16,7 +16,9 @@ export type LegacyGrade = (typeof GRADES)[number];
 /** A grade as the user knows it: a gym colour ("blue"), "V4" or "6B+". */
 export type Grade = string;
 export type GradeSystem = "gym" | "v" | "font";
-export type Sport = "running" | "climbing";
+/** The built-in sports, in the fixed chart order (#100 adds strength and other). */
+export const SPORTS = ["running", "climbing", "strength", "other"] as const;
+export type Sport = (typeof SPORTS)[number];
 
 /** V and Font grades, easiest first (backend grades.py). */
 export const V_GRADES = ["VB", ...Array.from({ length: 18 }, (_, i) => `V${i}`)];
@@ -41,6 +43,83 @@ export type Climb = {
   gym?: string;
   colour?: string;
 };
+
+// --- Session templates (#100, #101) -------------------------------------------------
+
+export const FIELD_TYPES = ["number", "select", "boolean", "text", "sets", "climbs"] as const;
+export type FieldType = (typeof FIELD_TYPES)[number];
+
+export type SelectOption = { value: string; label: string; archived?: boolean };
+export type ExtraColumn = { key: string; label: string; unit?: string; min?: number; max?: number; decimals?: number };
+
+/** One field of a template's schema (docs/custom-log-forms.md 3.2). */
+export type TemplateField = {
+  key: string;
+  label: string;
+  type: FieldType;
+  required?: boolean;
+  help?: string;
+  archived?: boolean;
+  // number
+  unit?: string;
+  min?: number;
+  max?: number;
+  decimals?: number;
+  // select
+  options?: SelectOption[];
+  multiple?: boolean;
+  // text
+  max_length?: number;
+  // sets
+  reps_unit?: "reps" | "s";
+  load_unit?: "kg" | "lb" | null;
+  load_signed?: boolean;
+  extras?: ExtraColumn[];
+  // climbs
+  default_style?: "boulder" | "kilter" | "rope";
+};
+
+export type SetRow = { sets: number; reps: number; load?: number } & Record<string, number | undefined>;
+export type TemplateValue = number | string | boolean | string[] | SetRow[];
+export type TemplateValues = Record<string, TemplateValue>;
+export type DescribedValue = { key: string; label: string; type: FieldType; value: TemplateValue; text: string };
+
+export type Template = {
+  id: number;
+  name: string;
+  sport: Sport;
+  core_fields: ("distance_km" | "elevation_m")[];
+  fields: TemplateField[];
+  position: number;
+  archived: boolean;
+};
+
+export type TemplateInput = Pick<Template, "name" | "sport" | "core_fields"> & {
+  fields: (Omit<TemplateField, "key"> & { key?: string })[];
+};
+
+export function getTemplates(signal?: AbortSignal): Promise<{ templates: Template[]; starters: { name: string; sport: Sport }[] }> {
+  return request("/templates", { signal });
+}
+
+export function createTemplate(input: TemplateInput): Promise<Template> {
+  return request("/templates", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function addStarters(names: string[]): Promise<Template[]> {
+  return request("/templates/starters", { method: "POST", body: JSON.stringify({ names }) });
+}
+
+export function updateTemplate(
+  id: number,
+  change: Partial<TemplateInput> & { archived?: boolean; position?: number },
+): Promise<Template> {
+  return request(`/templates/${id}`, { method: "PATCH", body: JSON.stringify(change) });
+}
+
+export function deleteTemplate(id: number): Promise<void> {
+  return request(`/templates/${id}`, { method: "DELETE" });
+}
 
 // --- Gyms (#98, #99) --------------------------------------------------------------
 
@@ -121,6 +200,11 @@ export type Session = {
   climbs?: Climb[];
   /** Context tags (N6); absent before the tags migration. */
   tags?: Tag[];
+  /** A session template (#100): its id, name and values, and the values described. */
+  template_id?: number | null;
+  template?: string;
+  custom_values?: TemplateValues;
+  fields?: DescribedValue[];
   // Derived by the backend (get_history only).
   load?: number;
   pace_min_per_km?: number;
@@ -157,6 +241,10 @@ export function draftInput(d: Draft): SessionInput {
     input.climbs = d.climbs.map(climbInput);
   }
   if (d.tags?.length) input.tags = d.tags;
+  if (d.template_id != null) {
+    input.template_id = d.template_id;
+    input.values = d.custom_values ?? {};
+  }
   return input;
 }
 
@@ -220,6 +308,9 @@ export type SessionInput = {
   climbs?: ClimbInput[];
   /** Context tags (N6); [] clears a session's tags on edit. */
   tags?: Tag[];
+  /** A template (#100) and its values by field key; null on an edit drops the template. */
+  template_id?: number | null;
+  values?: TemplateValues;
 };
 
 /** A climb as the Log form sends it. Without gym_id a colour goes to the last gym used. */

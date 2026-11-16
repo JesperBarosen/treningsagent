@@ -235,6 +235,20 @@ function Details({
       </dl>
       <p className="mt-2 text-xs text-ink-muted">Load = minutes × effort (session-RPE).</p>
 
+      {s.fields && s.fields.length > 0 && (
+        // A template's values (#101): labels stay visible in discreet mode, values blur (Q6).
+        <dl className="mt-4 divide-y divide-line rounded-md border border-line">
+          {s.fields.map((f) => (
+            <div key={f.key} className="flex min-h-11 items-baseline justify-between gap-3 px-3 py-2">
+              <dt className="text-sm text-ink-muted">{f.label}</dt>
+              <dd {...SENSITIVE} className="text-right text-sm font-medium tabular-nums">
+                {f.text}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
       <TagList tags={s.tags} className="mt-4" />
       {s.notes && (
         <p {...SENSITIVE} className="mt-4 rounded-md bg-sunken px-4 py-3 text-sm">
