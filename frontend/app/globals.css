@@ -24,7 +24,8 @@
   /* Chart series: the sport colours, re-stepped to pass the chart palette checks. */
   --chart-run: #008571;
   --chart-climb: #a85f12;
-  --chart-strength: #4a5bb5; /* reserved for a third sport (#58) */
+  --chart-strength: #4a5bb5; /* the third sport, strength (#58, #100) */
+  --chart-other: #4a463f; /* a neutral fourth for Other training (#100) */
   --sheet-shadow: 0 -8px 32px rgb(21 25 27 / 0.12);
   /* Height of the phone tab bar's row (components/nav.tsx), without the safe area. */
   --tab-bar-h: 3.5rem;
@@ -55,6 +56,7 @@
   --chart-run: #21a589;
   --chart-climb: #c98030;
   --chart-strength: #7083e0;
+  --chart-other: #cfc9bd;
   --sheet-shadow: 0 -8px 32px rgb(0 0 0 / 0.5);
   color-scheme: dark;
 }
@@ -80,6 +82,7 @@
     --chart-run: #21a589;
     --chart-climb: #c98030;
     --chart-strength: #7083e0;
+    --chart-other: #cfc9bd;
     --sheet-shadow: 0 -8px 32px rgb(0 0 0 / 0.5);
     color-scheme: dark;
   }
@@ -120,17 +123,20 @@
   --chart-run: #0046ee;
   --chart-climb: #e5753c;
   --chart-strength: #96285a;
+  --chart-other: #36332e;
 }
 :root[data-chart-palette="cvd"][data-theme="dark"] {
   --chart-run: #6446ff;
   --chart-climb: #f25a00;
   --chart-strength: #a85e9c;
+  --chart-other: #cfc9bd;
 }
 @media (prefers-color-scheme: dark) {
   :root[data-chart-palette="cvd"]:not([data-theme="light"]) {
     --chart-run: #6446ff;
     --chart-climb: #f25a00;
     --chart-strength: #a85e9c;
+    --chart-other: #cfc9bd;
   }
 }
 
@@ -207,6 +213,7 @@
   --color-chart-run: var(--chart-run);
   --color-chart-climb: var(--chart-climb);
   --color-chart-strength: var(--chart-strength);
+  --color-chart-other: var(--chart-other);
   --color-focus: var(--accent);
   --shadow-sheet: var(--sheet-shadow);
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;

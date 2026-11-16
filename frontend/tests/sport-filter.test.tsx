@@ -213,7 +213,13 @@ describe("the filter on the Dashboard page", () => {
     const user = userEvent.setup();
     const { unmount } = render(<DashboardView />);
     const filter = screen.getByRole("radiogroup", { name: "Show sport" });
-    expect(within(filter).getAllByRole("radio").map((r) => r.textContent)).toEqual(["All", "Running", "Climbing"]);
+    expect(within(filter).getAllByRole("radio").map((r) => r.textContent)).toEqual([
+      "All",
+      "Running",
+      "Climbing",
+      "Strength",
+      "Other",
+    ]);
     expect(within(filter).getByRole("radio", { name: "All" })).toHaveAttribute("aria-checked", "true");
     for (const r of within(filter).getAllByRole("radio")) expect(r).toHaveClass("min-h-11");
     await screen.findByRole("heading", { name: "Weekly load" });

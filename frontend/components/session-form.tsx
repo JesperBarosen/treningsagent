@@ -48,6 +48,9 @@ const STYLES: { value: Style; label: string }[] = [
 const SPORTS: { value: Sport; label: string }[] = [
   { value: "running", label: "Run" },
   { value: "climbing", label: "Climb" },
+  // Built-in forms with the core fields only; templates shape them (#100, #101).
+  { value: "strength", label: "Strength" },
+  { value: "other", label: "Other" },
 ];
 
 export const today = () => new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD, local

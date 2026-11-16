@@ -10,6 +10,7 @@ import { EmptyState, ErrorState, Skeleton } from "@/components/states";
 import {
   ApiError,
   DISTANCE_BANDS,
+  SPORTS,
   type Grade,
   type Progression,
   type Sport,
@@ -44,8 +45,10 @@ import {
   GradeChart,
   LegendSwatch,
   loadRows,
+  loadSports,
   PaceChart,
   SERIES,
+  SPORT_COLOUR,
   WeeklyLoadChart,
   gradeRows,
 } from "./charts";
@@ -61,7 +64,8 @@ export function SportFilterControl({ value }: { value: SportFilter }) {
     <div
       role="radiogroup"
       aria-label="Show sport"
-      className="inline-flex rounded-full border border-control bg-surface p-0.5"
+      // Five sports since #100: on a phone the row scrolls sideways instead of wrapping.
+      className="inline-flex max-w-full overflow-x-auto rounded-full border border-control bg-surface p-0.5"
     >
       {SPORT_FILTERS.map((f) => (
         <button
@@ -70,7 +74,7 @@ export function SportFilterControl({ value }: { value: SportFilter }) {
           role="radio"
           aria-checked={value === f}
           onClick={() => saveSportFilter(f)}
-          className="min-h-11 rounded-full px-4 text-sm font-medium text-ink-muted aria-checked:bg-accent-soft aria-checked:text-accent"
+          className="min-h-11 shrink-0 rounded-full px-3.5 text-sm font-medium whitespace-nowrap text-ink-muted aria-checked:bg-accent-soft aria-checked:text-accent"
         >
           {SPORT_FILTER_LABELS[f]}
         </button>
@@ -208,7 +212,9 @@ export function Dashboard({
   const { running, climbing } = progression;
   const noLoad = load.weekly.every((w) => w.sessions === 0);
   const nothing = running.sessions === 0 && climbing.sessions === 0 && noLoad;
-  const noneOfSport = sport !== "all" && noLoad && progression[sport].sessions === 0;
+  // Strength and Other (#100) have load but no progression of their own.
+  const sportSessions = sport === "running" || sport === "climbing" ? progression[sport].sessions : 0;
+  const noneOfSport = sport !== "all" && noLoad && sportSessions === 0;
   if (noneOfSport) {
     return (
       <EmptyState
@@ -350,8 +356,8 @@ function DashboardGrid({ load, progression, sport }: SummaryProps) {
       <div className="grid gap-4 md:grid-cols-3">
         <LoadCard load={load} sport={sport} className="md:col-span-2" />
         <RatioCard load={load} sport={sport} />
-        {sport !== "climbing" && <PaceCard running={running} className="md:col-span-3" />}
-        {sport !== "running" && (
+        {(sport === "all" || sport === "running") && <PaceCard running={running} className="md:col-span-3" />}
+        {(sport === "all" || sport === "climbing") && (
           <>
             <GradeCard climbing={climbing} className="md:col-span-2" />
             <SendRateCard climbing={climbing} />
@@ -502,16 +508,18 @@ function Legend({ items }: { items: { swatch: ReactNode; label: string }[] }) {
 
 // --- Training load -------------------------------------------------------------
 
-const SPORT_SERIES = {
-  running: { label: "Running", colour: SERIES.RUN },
-  climbing: { label: "Climbing", colour: SERIES.CLIMB },
-} as const;
+const SPORT_SERIES: Record<Sport, { label: string; colour: string }> = {
+  running: { label: "Running", colour: SPORT_COLOUR.running },
+  climbing: { label: "Climbing", colour: SPORT_COLOUR.climbing },
+  strength: { label: "Strength", colour: SPORT_COLOUR.strength },
+  other: { label: "Other", colour: SPORT_COLOUR.other },
+};
 
 function LoadCard({ load, sport, className }: { load: TrainingLoad; sport: SportFilter; className?: string }) {
   const rows = loadRows(load);
   const thisWeek = load.weekly[load.weekly.length - 1];
   const lastWeek = load.weekly[load.weekly.length - 2];
-  const sports = sport === "all" ? (["running", "climbing"] as const) : ([sport] as const);
+  const sports = loadSports(load, sport === "all" ? SPORTS : [sport]);
   return (
     <Card
       labelledBy="load-title"

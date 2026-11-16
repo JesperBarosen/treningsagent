@@ -6,8 +6,9 @@ import { describe, expect, it } from "vitest";
 import { deltaE } from "./colour-check";
 import { ratio, THEMES, tokens } from "./token-utils";
 
-const SERIES = ["chart-run", "chart-climb", "chart-strength"];
-const PAIRS = [[0, 1], [1, 2], [0, 2]].map(([a, b]) => [SERIES[a], SERIES[b]] as const);
+// #100 adds a fourth, neutral series for Other training.
+const SERIES = ["chart-run", "chart-climb", "chart-strength", "chart-other"];
+const PAIRS = SERIES.flatMap((a, i) => SERIES.slice(i + 1).map((b) => [a, b] as const));
 
 describe("sport chart colours (#58)", () => {
   for (const [name, selector] of Object.entries(THEMES)) {

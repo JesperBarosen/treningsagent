@@ -65,9 +65,10 @@ normal-vision separation and 3:1 contrast with the surface.
 | --- | --- | --- | --- | --- |
 | `--chart-run` | `bg-chart-run` | `#008571` | `#21A589` | running series |
 | `--chart-climb` | `bg-chart-climb` | `#A85F12` | `#C98030` | climbing series |
-| `--chart-strength` | `bg-chart-strength` | `#4A5BB5` | `#7083E0` | reserved for a third sport (strength or other training), not used yet |
+| `--chart-strength` | `bg-chart-strength` | `#4A5BB5` | `#7083E0` | strength series (#100) |
+| `--chart-other` | `bg-chart-other` | `#4A463F` | `#CFC9BD` | other training series, a warm neutral (#100) |
 
-The order is fixed: running, climbing, strength. A filter that hides a sport
+The order is fixed: running, climbing, strength, other. A filter that hides a sport
 never repaints the others. The third colour passes the same checks with the
 other two in both themes (worst protan/deutan ΔE 11.5 light / 11.0 dark, worst
 normal 18.9 / 19.6; `tests/sport-colours.test.ts`). Two limits:
@@ -87,6 +88,12 @@ V-L1). Only the chart tokens change; sport icons keep spruce and ochre.
 | `--chart-run` | `#0046EE` blue | `#6446FF` |
 | `--chart-climb` | `#E5753C` orange | `#F25A00` |
 | `--chart-strength` | `#96285A` plum | `#A85E9C` |
+| `--chart-other` | `#36332E` near-black | `#CFC9BD` |
+
+Other is a neutral in both palettes: next to the three hues it stays apart by
+lightness, which colour-blind viewers see most reliably. Every pair with it
+passes the same checks (`tests/sport-colours.test.ts` checks all four in the
+standard palette).
 
 Every pair passes for protan, deutan **and tritan** (worst ΔE 22.3 light / 15.7
 dark, against 7.5 / 5.7 for the standard palette), with 15+ for normal vision

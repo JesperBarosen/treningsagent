@@ -1,6 +1,6 @@
 import type { Climb, Session } from "./api";
 
-const SPORT_NAMES = { running: "Run", climbing: "Climbing" } as const;
+const SPORT_NAMES = { running: "Run", climbing: "Climbing", strength: "Strength", other: "Other" } as const;
 
 export function sportName(session: Pick<Session, "sport">): string {
   return SPORT_NAMES[session.sport];

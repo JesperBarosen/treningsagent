@@ -22,6 +22,8 @@ const FILTERS: { value: Sport | "all"; label: string }[] = [
   { value: "all", label: "All" },
   { value: "running", label: "Running" },
   { value: "climbing", label: "Climbing" },
+  { value: "strength", label: "Strength" },
+  { value: "other", label: "Other" },
 ];
 
 export function SessionsView() {

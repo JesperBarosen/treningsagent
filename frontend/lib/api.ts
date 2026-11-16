@@ -16,7 +16,9 @@ export type LegacyGrade = (typeof GRADES)[number];
 /** A grade as the user knows it: a gym colour ("blue"), "V4" or "6B+". */
 export type Grade = string;
 export type GradeSystem = "gym" | "v" | "font";
-export type Sport = "running" | "climbing";
+/** The built-in sports, in the fixed chart order (#100 adds strength and other). */
+export const SPORTS = ["running", "climbing", "strength", "other"] as const;
+export type Sport = (typeof SPORTS)[number];
 
 /** V and Font grades, easiest first (backend grades.py). */
 export const V_GRADES = ["VB", ...Array.from({ length: 18 }, (_, i) => `V${i}`)];

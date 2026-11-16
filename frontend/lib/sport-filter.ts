@@ -2,15 +2,18 @@
 // device in localStorage, like the chart preferences (lib/chart-prefs.ts).
 
 import { useSyncExternalStore } from "react";
-import type { Sport } from "./api";
+import { SPORTS, type Sport } from "./api";
 
 export type SportFilter = "all" | Sport;
 
-export const SPORT_FILTERS: SportFilter[] = ["all", "running", "climbing"];
+// Strength and Other (#100) have their own load and ratio; no progression cards.
+export const SPORT_FILTERS: SportFilter[] = ["all", ...SPORTS];
 export const SPORT_FILTER_LABELS: Record<SportFilter, string> = {
   all: "All",
   running: "Running",
   climbing: "Climbing",
+  strength: "Strength",
+  other: "Other",
 };
 
 export const SPORT_FILTER_KEY = "treningsagent.dashboardSport";
@@ -20,7 +23,7 @@ const CHANGE_EVENT = "treningsagent:sport-filter";
 export function readSportFilter(): SportFilter {
   try {
     const saved = localStorage.getItem(SPORT_FILTER_KEY);
-    return saved === "running" || saved === "climbing" ? saved : "all";
+    return (SPORTS as readonly string[]).includes(saved ?? "") ? (saved as Sport) : "all";
   } catch {
     return "all";
   }
