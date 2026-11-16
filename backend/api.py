@@ -21,6 +21,7 @@ import auth
 import chat
 import db
 import env
+import forms
 import gyms
 import pauses
 import tools
@@ -167,6 +168,10 @@ class SessionChanges(BaseModel, extra="forbid"):
     # Context tags (N6); [] clears them. Checked against tools.TAGS.
     tags: list[str] | None = None
     climbs: list[ClimbIn] | None = None
+    # A session template (#100) and its fields by key; template_id null on an
+    # edit goes back to the built-in form. Checked by forms.validate_values.
+    template_id: int | None = None
+    values: dict | None = None
 
 
 class SessionIn(SessionChanges):
@@ -180,7 +185,7 @@ def _fields(body: SessionChanges) -> dict:
     """The fields the client sent. A null `notes` clears it; other nulls are
     treated as not sent, so a running field can't be set on a climb by null."""
     fields = body.model_dump(exclude_unset=True, exclude={"climbs"})
-    fields = {k: v for k, v in fields.items() if v is not None or k == "notes"}
+    fields = {k: v for k, v in fields.items() if v is not None or k in ("notes", "template_id")}
     if body.climbs is not None:
         fields["climbs"] = [c.model_dump(exclude_none=True) for c in body.climbs]
     return fields
@@ -284,9 +289,81 @@ def delete_gym(gym_id: int, store: db.PostgresStore = Depends(get_store)) -> Non
         raise HTTPException(409, str(e)) from None
 
 
+# --- Session templates (#100) -------------------------------------------------------
+
+class TemplateIn(BaseModel, extra="forbid"):
+    name: str
+    sport: Literal["running", "climbing", "strength", "other"]
+    # The field schema (docs/custom-log-forms.md 3.2); forms.validate_template checks it.
+    fields: list[dict] = []
+    core_fields: list[str] = []
+
+
+class TemplateChange(BaseModel, extra="forbid"):
+    name: str | None = None
+    sport: Literal["running", "climbing", "strength", "other"] | None = None
+    fields: list[dict] | None = None
+    core_fields: list[str] | None = None
+    position: int | None = None
+    archived: bool | None = None
+
+
+class StartersIn(BaseModel, extra="forbid"):
+    names: list[str] = Field(min_length=1)
+
+
+@app.get("/templates")
+def get_templates(store: db.PostgresStore = Depends(get_store)) -> dict:
+    """The user's templates, live ones first, and the starters they can add."""
+    return {"templates": tools.list_templates(store),
+            "starters": [{"name": n, "sport": s["sport"]} for n, s in forms.STARTERS.items()]}
+
+
+@app.post("/templates", status_code=201)
+def post_template(body: TemplateIn, store: db.PostgresStore = Depends(get_store)) -> dict:
+    try:
+        return tools.create_template(store, body.name, body.sport, body.fields, body.core_fields)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@app.post("/templates/starters", status_code=201)
+def post_starters(body: StartersIn, store: db.PostgresStore = Depends(get_store)) -> list[dict]:
+    """Add starter templates (Fingerboard, Strength, Intervals, Mobility) on first use."""
+    try:
+        return tools.add_starters(store, body.names)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@app.patch("/templates/{template_id}")
+def patch_template(template_id: int, body: TemplateChange,
+                   store: db.PostgresStore = Depends(get_store)) -> dict:
+    changes = body.model_dump(include=body.model_fields_set, exclude_none=True)
+    if not changes:
+        raise HTTPException(422, "Nothing to change.")
+    try:
+        return tools.update_template(store, template_id, changes)
+    except LookupError:
+        raise HTTPException(404, "Template not found.") from None
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@app.delete("/templates/{template_id}", status_code=204)
+def delete_template(template_id: int, store: db.PostgresStore = Depends(get_store)) -> None:
+    """Delete a template no session uses; a used one can only be archived (409)."""
+    try:
+        tools.delete_template(store, template_id)
+    except LookupError:
+        raise HTTPException(404, "Template not found.") from None
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
 @app.get("/training-load")
 def get_training_load(weeks: int = Query(8, ge=1, le=12),
-                      sport: Literal["running", "climbing"] | None = None,
+                      sport: Literal["running", "climbing", "strength", "other"] | None = None,
                       by_sport: bool = False,
                       store: db.PostgresStore = Depends(get_store)) -> dict:
     """get_training_load: weekly and daily load by sport and the acute:chronic

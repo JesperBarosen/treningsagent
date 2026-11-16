@@ -14,13 +14,18 @@ from datetime import datetime, timezone
 import psycopg
 from psycopg import sql
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 # Fixed user for tests and dev scripts (seed.py, agent.py). The API takes the
 # user id from the verified Supabase JWT instead (auth.py).
 TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
 
 SESSION_COLUMNS = ("id", "sport", "date", "duration_min", "effort", "notes", "distance_km",
-                   "elevation_m", "climbing_style", "hardest_grade", "routes_count")
+                   "elevation_m", "climbing_style", "hardest_grade", "routes_count",
+                   "template_id", "custom_values")
+TEMPLATE_COLUMNS = ("id", "name", "sport", "core_fields", "fields", "position", "archived_at")
+# jsonb columns: psycopg needs their Python values wrapped (text[] lists such as tags are not).
+JSON_COLUMNS = {"custom_values", "fields"}
 PAUSE_COLUMNS = ("id", "start_date", "planned_end", "ended_on", "reason", "body_part", "pain",
                  "note", "resume_choice")
 GOAL_COLUMNS = ("id", "kind", "grade", "climb_mode", "band", "target_pace", "start_pace",
@@ -100,13 +105,17 @@ class PostgresStore:
         return row if self._has_tags() else {k: v for k, v in row.items() if k != "tags"}
 
     @staticmethod
+    def _params(row: dict) -> tuple:
+        return tuple(Jsonb(v) if k in JSON_COLUMNS else v for k, v in row.items())
+
+    @staticmethod
     def _insert(conn: psycopg.Connection, table: str, row: dict) -> int:
         query = sql.SQL("insert into public.{} ({}) values ({}) returning id").format(
             sql.Identifier(table),
             sql.SQL(", ").join(map(sql.Identifier, row)),
             sql.SQL(", ").join(sql.Placeholder() * len(row)),
         )
-        return conn.execute(query, tuple(row.values())).fetchone()["id"]
+        return conn.execute(query, PostgresStore._params(row)).fetchone()["id"]
 
     def insert_session(self, row: dict, climbs: list[dict] = ()) -> int:
         """Insert a session and its climbs in one transaction: all or nothing."""
@@ -161,7 +170,7 @@ class PostgresStore:
             sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(c)) for c in row))
         try:
             with self._as_user() as conn:
-                if conn.execute(query, (*row.values(), session_id)).fetchone() is None:
+                if conn.execute(query, (*self._params(row), session_id)).fetchone() is None:
                     return False
                 if climbs is not None:
                     conn.execute("delete from public.climbs where session_id = %s",
@@ -394,6 +403,66 @@ class PostgresStore:
                                     (gym_id,)).fetchone() is not None
         except psycopg.errors.ForeignKeyViolation:
             raise ValueError("a gym that climbs or goals use can't be deleted; archive it") from None
+
+    # --- Session templates (#100) -------------------------------------------------
+    # Need migrations 20261116130000_create_session_templates.sql and
+    # 20261116130100_session_templates_on_sessions.sql.
+
+    def _template_select(self, where: str = "") -> sql.Composed:
+        return sql.SQL("select {} from public.session_templates " + where + " order by position, id").format(
+            sql.SQL(", ").join(map(sql.Identifier, TEMPLATE_COLUMNS)))
+
+    @staticmethod
+    def _template(row: dict) -> dict:
+        return {**row, "archived_at": row["archived_at"] and row["archived_at"].isoformat()}
+
+    def templates(self) -> list[dict]:
+        with self._as_user() as conn:
+            return [self._template(r) for r in conn.execute(self._template_select()).fetchall()]
+
+    def insert_template(self, row: dict) -> dict:
+        try:
+            with self._as_user() as conn:
+                template_id = self._insert(conn, "session_templates", row)
+                return self._template(conn.execute(self._template_select("where id = %s"),
+                                                   (template_id,)).fetchone())
+        except psycopg.errors.IntegrityError as e:
+            raise ValueError(e.diag.message_primary) from None
+
+    def update_template(self, template_id: int, row: dict) -> dict | None:
+        values = {**row, "updated_at": datetime.now(timezone.utc)}
+        if "archived" in values:
+            archived = values.pop("archived")
+            values["archived_at"] = (sql.SQL("coalesce(archived_at, now())") if archived else None)
+        sets = sql.SQL(", ").join(
+            sql.SQL("{} = {}").format(sql.Identifier(k), v if isinstance(v, sql.Composable) else sql.Placeholder())
+            for k, v in values.items())
+        params = [Jsonb(v) if k in JSON_COLUMNS else v for k, v in values.items()
+                  if not isinstance(v, sql.Composable)]
+        query = sql.SQL("update public.session_templates set {} where id = %s returning {}").format(
+            sets, sql.SQL(", ").join(map(sql.Identifier, TEMPLATE_COLUMNS)))
+        try:
+            with self._as_user() as conn:
+                row = conn.execute(query, (*params, template_id)).fetchone()
+        except psycopg.errors.IntegrityError as e:
+            raise ValueError(e.diag.message_primary) from None
+        return self._template(row) if row else None
+
+    def delete_template(self, template_id: int) -> bool:
+        """Delete an unused template. ValueError if sessions use it."""
+        try:
+            with self._as_user() as conn:
+                return conn.execute("delete from public.session_templates where id = %s returning id",
+                                    (template_id,)).fetchone() is not None
+        except psycopg.errors.ForeignKeyViolation:
+            raise ValueError("a template that sessions use can't be deleted; archive it") from None
+
+    def template_value_keys(self, template_id: int) -> set[str]:
+        """The field keys that this template's sessions have values for."""
+        with self._as_user() as conn:
+            rows = conn.execute("select distinct jsonb_object_keys(custom_values) as key"
+                                " from public.sessions where template_id = %s", (template_id,)).fetchall()
+        return {r["key"] for r in rows}
 
     def last_gym_id(self) -> int | None:
         """The gym of the most recent climbing session with a gym."""

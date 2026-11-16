@@ -10,13 +10,15 @@ import json
 from datetime import date, timedelta
 from typing import Protocol
 
+import forms
 import goals
 import grades
 import gyms
 import pauses
 import progression
 
-SPORTS = ("running", "climbing")
+# Strength and Other (#100) have only the core fields built in; templates shape them.
+SPORTS = forms.SPORTS
 RUNNING_FIELDS = ("distance_km", "elevation_m")
 # The colours of "My gym", easiest first: the scale every user had before gyms
 # (#98). Other gyms and V/Font grades are in grades.py.
@@ -46,6 +48,12 @@ class Store(Protocol):
     def update_gym(self, gym_id: int, row: dict, colours: list[dict] | None) -> dict | None: ...
     def delete_gym(self, gym_id: int) -> bool: ...
     def last_gym_id(self) -> int | None: ...
+    # Session templates (#100), archived ones included.
+    def templates(self) -> list[dict]: ...
+    def insert_template(self, row: dict) -> dict: ...
+    def update_template(self, template_id: int, row: dict) -> dict | None: ...
+    def delete_template(self, template_id: int) -> bool: ...
+    def template_value_keys(self, template_id: int) -> set[str]: ...
 
 
 SESSION_FIELDS = ("sport", "date", "duration_min", "effort", "notes")
@@ -76,18 +84,45 @@ def log_session(
     effort: int,
     notes: str | None = None,
     climbs: list[dict] | None = None,
+    template_id: int | None = None,
+    values: dict | None = None,
     **sport_fields,
 ) -> dict:
     """Validate and store one session, and for climbing its individual climbs,
-    in one go. Returns the stored session with its id."""
+    in one go. Returns the stored session with its id. With `template_id`, the
+    session uses that template and `values` are its fields by key (#100)."""
+    template = _template(store, template_id)
     row, climb_rows = validate_session(sport, date, duration_min, effort, notes, climbs,
                                        gym_list=_gyms_for(store, climbs, create=True),
-                                       **sport_fields)
+                                       template=template, values=values, **sport_fields)
     session_id = store.insert_session(row, climb_rows)
     result = {"id": session_id, **row}
     if climb_rows:
         result["climbs"] = climb_rows
-    return result
+    return _with_template(result, template)
+
+
+def _template(store: Store, template_id: int | None, *, allow_archived: bool = False) -> dict | None:
+    """The user's template `template_id` (None for none). ValueError if it
+    isn't theirs, or is archived (unless an existing session keeps it)."""
+    if template_id is None:
+        return None
+    if isinstance(template_id, bool) or not isinstance(template_id, int):
+        raise ValueError("template_id must be a template's id")
+    template = next((t for t in store.templates() if t["id"] == template_id), None)
+    if template is None:
+        raise ValueError(f"template {template_id} not found")
+    if template.get("archived_at") and not allow_archived:
+        raise ValueError(f"the {template['name']} template is archived")
+    return template
+
+
+def _with_template(session: dict, template: dict | None) -> dict:
+    """Add the template's name and the values with labels (forms.described)."""
+    if template is None:
+        return session
+    return {**session, "template": template["name"],
+            "fields": forms.described(template, session.get("custom_values") or {})}
 
 
 def draft_session(
@@ -98,18 +133,23 @@ def draft_session(
     effort: int,
     notes: str | None = None,
     climbs: list[dict] | None = None,
+    template_id: int | None = None,
+    values: dict | None = None,
     **sport_fields,
 ) -> dict:
     """Check a session the user described, with log_session's rules, without
     storing it. The app shows the draft with Save and Review, so the user
     confirms what the agent understood before anything is written (N4)."""
+    template = _template(store, template_id) if hasattr(store, "templates") else None
+    if template_id is not None and template is None:
+        raise ValueError(f"template {template_id} not found")
     row, climb_rows = validate_session(sport, date, duration_min, effort, notes, climbs,
                                        gym_list=_gyms_for(store, climbs, create=False),
-                                       **sport_fields)
+                                       template=template, values=values, **sport_fields)
     result = {"draft": True, **row}
     if climb_rows:
         result["climbs"] = climb_rows
-    return result
+    return _with_template(result, template)
 
 
 def update_session(store: Store, session_id: int, changes: dict) -> dict:
@@ -125,20 +165,100 @@ def update_session(store: Store, session_id: int, changes: dict) -> dict:
         merged["tags"] = current["tags"]
     if changes.get("sport", current["sport"]) == current["sport"] == "running":
         merged.update({f: current[f] for f in RUNNING_FIELDS if current.get(f) is not None})
+    # An edit keeps the template and its values unless it changes them (#100).
+    old_template_id = current.get("template_id")
+    old_values = current.get("custom_values") or {}
     merged.update(changes)
     climbs = merged.pop("climbs", None)
+    template_id = merged.pop("template_id", old_template_id)
+    same_template = template_id is not None and template_id == old_template_id
+    values = merged.pop("values", old_values if same_template else None)
+    # A session may keep an archived template it already has.
+    template = _template(store, template_id, allow_archived=same_template)
 
     row, climb_rows = validate_session(**merged, climbs=climbs,
-                                       gym_list=_gyms_for(store, climbs, create=True))
+                                       gym_list=_gyms_for(store, climbs, create=True),
+                                       template=template, values=values,
+                                       previous_values=old_values if same_template else None)
     if row["sport"] != "climbing":
         replace_climbs = []  # a session that's no longer climbing keeps no climbs
     else:
         replace_climbs = climb_rows if climbs is not None else None
     # Every column is written, so fields the new version doesn't have become null.
     full_row = {**{f: None for f in RUNNING_FIELDS}, **row}
+    if old_template_id is not None or template is not None:
+        full_row.setdefault("template_id", None)
+        full_row.setdefault("custom_values", {})
     if not store.update_session(session_id, full_row, replace_climbs):
         raise LookupError(f"session {session_id} not found")
-    return {"id": session_id, **row}
+    return _with_template({"id": session_id, **row}, template)
+
+
+def list_templates(store: Store) -> list[dict]:
+    """The user's templates for the app, live ones first, in their order."""
+    rows = sorted(store.templates(), key=lambda t: (bool(t.get("archived_at")), t.get("position", 0), t["id"]))
+    return [forms.view(t) for t in rows]
+
+
+def create_template(store: Store, name: str, sport: str, fields: list,
+                    core_fields: list | None = None) -> dict:
+    row = forms.validate_template(name, sport, fields, core_fields)
+    _unique_name(store, row["name"])
+    row["position"] = len([t for t in store.templates() if not t.get("archived_at")])
+    return forms.view(store.insert_template(row))
+
+
+def add_starters(store: Store, names: list[str]) -> list[dict]:
+    """Add starter templates (forms.STARTERS) the user picked (Q3)."""
+    unknown = [n for n in names if n not in forms.STARTERS]
+    if unknown:
+        raise ValueError(f"unknown starters {unknown}; starters: {list(forms.STARTERS)}")
+    out = []
+    for name in names:
+        row = forms.starter(name)
+        out.append(create_template(store, row["name"], row["sport"], row["fields"], row["core_fields"]))
+    return out
+
+
+def update_template(store: Store, template_id: int, changes: dict) -> dict:
+    """Rename, reorder, archive or reshape a template, under the edit rules in
+    forms.validate_template. LookupError if not found."""
+    current = next((t for t in store.templates() if t["id"] == template_id), None)
+    if current is None:
+        raise LookupError(f"template {template_id} not found")
+    unexpected = set(changes) - {"name", "sport", "fields", "core_fields", "position", "archived"}
+    if unexpected:
+        raise ValueError(f"unknown template fields: {sorted(unexpected)}")
+    merged = {k: changes.get(k, current[k]) for k in ("name", "sport", "fields", "core_fields")}
+    row = forms.validate_template(**merged, previous=current,
+                                  used_keys=store.template_value_keys(template_id))
+    archived = changes.get("archived", bool(current.get("archived_at")))
+    if not archived and row["name"].lower() != current["name"].lower() or (
+            not archived and current.get("archived_at")):
+        _unique_name(store, row["name"], but=template_id)
+    if "position" in changes:
+        if isinstance(changes["position"], bool) or not isinstance(changes["position"], int):
+            raise ValueError("position must be a whole number")
+        row["position"] = changes["position"]
+    if "archived" in changes:
+        row["archived"] = bool(changes["archived"])
+    updated = store.update_template(template_id, row)
+    if updated is None:
+        raise LookupError(f"template {template_id} not found")
+    return forms.view(updated)
+
+
+def delete_template(store: Store, template_id: int) -> None:
+    """Delete an unused template. LookupError if not found, ValueError if
+    sessions use it (archive it instead)."""
+    if not store.delete_template(template_id):
+        raise LookupError(f"template {template_id} not found")
+
+
+def _unique_name(store: Store, name: str, but: int | None = None) -> None:
+    if any(t["name"].lower() == name.lower() and not t.get("archived_at") and t["id"] != but
+           for t in store.templates()):
+        raise ValueError(f"you already have a template called {name!r}")
 
 
 def delete_session(store: Store, session_id: int) -> None:
@@ -155,12 +275,18 @@ def validate_session(
     notes: str | None = None,
     climbs: list[dict] | None = None,
     gym_list: list[dict] | None = None,
+    template: dict | None = None,
+    values: dict | None = None,
+    previous_values: dict | None = None,
     **sport_fields,
 ) -> tuple[dict, list[dict]]:
     """The rules every stored session follows, whoever writes it (the agent
     or the app). Returns the session row and the validated climb rows.
     `gym_list` is the user's gyms with the default gym first (_gyms_for);
-    without it, colours are checked against "My gym"'s."""
+    without it, colours are checked against "My gym"'s. With `template`,
+    `values` are checked by forms.validate_values (#100)."""
+    if values is not None and template is None:
+        raise ValueError("values need a template_id")
     if sport not in SPORTS:
         raise ValueError(f"sport must be one of {SPORTS}, got {sport!r}")
     _parse_date(date)
@@ -183,6 +309,9 @@ def validate_session(
            "effort": effort, "notes": notes, **sport_fields}
     if tags is not None:  # only when given, so rows without tags stay as before
         row["tags"] = tags
+    if template is not None:  # only with a template, so plain rows stay as before
+        row["template_id"] = template["id"]
+        row["custom_values"] = forms.validate_values(template, values, sport, previous_values)
     return row, climb_rows
 
 
@@ -252,9 +381,13 @@ def get_history(store: Store, days: int, today: date | None = None) -> list[dict
     for c in climbs:
         climbs_by_session.setdefault(c["session_id"], []).append(c)
 
+    rows = store.sessions_since(since)
+    templates = ({t["id"]: t for t in store.templates()}
+                 if any(r.get("template_id") for r in rows) else {})
     sessions = []
-    for row in store.sessions_since(since):
-        s = {k: v for k, v in row.items() if v is not None}
+    for row in rows:
+        s = {k: v for k, v in row.items() if v is not None and v != {}}
+        s = _with_template(s, templates.get(s.get("template_id")))
         if s["id"] in climbs_by_session:
             s["climbs"] = climbs_by_session[s["id"]]
         s.update(derived_metrics(s))
