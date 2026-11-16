@@ -1,0 +1,43 @@
+{
+  "id": "gym_named_colours",
+  "note": "#102 (#85): colours the user names at a gym are that gym's colours. The risk: putting Klatreverket's blues at My gym (the last gym used), where blue is a different grade, which would skew progression and goals.",
+  "seed": {
+    "gyms": [
+      {"name": "My gym", "colours": "my_gym"},
+      {"name": "Klatreverket", "colours": [
+        {"name": "green", "colour": "green", "range": ["V0", "V1"]},
+        {"name": "yellow", "colour": "yellow", "range": ["V1", "V2"]},
+        {"name": "blue", "colour": "blue", "range": ["V3", "V4"]},
+        {"name": "red", "colour": "red", "range": ["V4", "V5"]},
+        {"name": "black", "colour": "black", "range": ["V6", "V8"]}]}
+    ],
+    "running": [],
+    "climbing": [
+      {"days_ago": 4, "duration_min": 80, "effort": 7, "climbs": [
+        {"grade": "purple", "style": "boulder", "sent": true, "attempts": 2}]}
+    ]
+  },
+  "known_bad": {
+    "source": "Constructed: the right climbs at the wrong gym.",
+    "why": "Puts the climbs at My gym although the user said Klatreverket.",
+    "should_fail": "must-1",
+    "answer": "Ready to save or review: 75 min bouldering at My gym, effort 7, two blues flashed and a red sent."
+  },
+  "question": "Bouldered at Klatreverket today, 75 min, effort 7: flashed two blues and sent a red",
+  "expect": {
+    "tools_called": ["list_templates", "draft_session"],
+    "tool_inputs": {
+      "draft_session": {"sport": "climbing", "date": "{today}", "duration_min": 75, "effort": 7, "climbs": [
+        {"grade": "blue", "style": "boulder", "sent": true, "attempts": 1, "gym_id": 2},
+        {"grade": "blue", "style": "boulder", "sent": true, "attempts": 1, "gym_id": 2},
+        {"grade": "red", "style": "boulder", "sent": true, "gym_id": 2}]}
+    },
+    "must": [
+      "Present the draft as climbing at Klatreverket (not My gym), with two blues flashed and a red sent"
+    ],
+    "must_not": [
+      "Say or imply the session is already logged, saved or stored",
+      "Invent attempts for the red"
+    ]
+  }
+}

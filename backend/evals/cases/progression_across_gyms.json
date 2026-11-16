@@ -1,0 +1,54 @@
+{
+  "id": "progression_across_gyms",
+  "note": "#102 (#98): grade averages are levels on the main gym's scale (My gym here, which has the most climbs). Recent sends at Klatreverket are blues there (about V3-V4), which sit at My gym's purple, so recent_grade is purple and baseline_grade blue. The risk: reading 'blue' at both gyms as the same grade and calling it flat.",
+  "seed": {
+    "gyms": [
+      {"name": "My gym", "colours": "my_gym"},
+      {"name": "Klatreverket", "colours": [
+        {"name": "green", "colour": "green", "range": ["V0", "V1"]},
+        {"name": "blue", "colour": "blue", "range": ["V3", "V4"]},
+        {"name": "black", "colour": "black", "range": ["V6", "V8"]}]}
+    ],
+    "running": [],
+    "climbing": [
+      {"days_ago": 30, "duration_min": 90, "effort": 7, "climbs": [
+        {"grade": "blue", "style": "boulder", "sent": true, "attempts": 2},
+        {"grade": "green", "style": "boulder", "sent": true, "attempts": 1},
+        {"grade": "green", "style": "boulder", "sent": true, "attempts": 1},
+        {"grade": "purple", "style": "boulder", "sent": false}]},
+      {"days_ago": 25, "duration_min": 90, "effort": 7, "climbs": [
+        {"grade": "blue", "style": "boulder", "sent": true, "attempts": 3},
+        {"grade": "green", "style": "boulder", "sent": true, "attempts": 1},
+        {"grade": "yellow", "style": "boulder", "sent": true, "attempts": 1},
+        {"grade": "purple", "style": "boulder", "sent": false}]},
+      {"days_ago": 20, "duration_min": 90, "effort": 7, "climbs": [
+        {"grade": "blue", "style": "boulder", "sent": true, "attempts": 2},
+        {"grade": "green", "style": "boulder", "sent": true, "attempts": 1},
+        {"grade": "green", "style": "boulder", "sent": true, "attempts": 1},
+        {"grade": "purple", "style": "boulder", "sent": false}]},
+      {"days_ago": 10, "duration_min": 80, "effort": 7, "climbs": [
+        {"grade": "blue", "gym": "Klatreverket", "style": "boulder", "sent": true, "attempts": 2}]},
+      {"days_ago": 6, "duration_min": 80, "effort": 7, "climbs": [
+        {"grade": "blue", "gym": "Klatreverket", "style": "boulder", "sent": true, "attempts": 3}]},
+      {"days_ago": 2, "duration_min": 80, "effort": 7, "climbs": [
+        {"grade": "blue", "gym": "Klatreverket", "style": "boulder", "sent": true, "attempts": 2}]}
+    ]
+  },
+  "known_bad": {
+    "source": "Constructed: an answer that reads the colour names without the gyms.",
+    "why": "Says the hardest sends were blue before and blue now (flat), ignoring that Klatreverket's blue is harder than My gym's.",
+    "should_fail": "must_not-1",
+    "answer": "**Climbing grades: flat.** Your hardest send per session was blue in the 4 weeks before and blue in the last 2 weeks (3 sessions each)."
+  },
+  "question": "How are my climbing grades progressing?",
+  "expect": {
+    "tools_called": ["calculate_progression"],
+    "must": [
+      "Report the hardest-send average with the tool's grade names: purple recently and blue before (on My gym's scale), improving"
+    ],
+    "must_not": [
+      "Call the recent hardest sends blue on the same scale as before, or say the hardest grade stayed the same",
+      "Claim a size of improvement in V grades or numbers the tool result doesn't give"
+    ]
+  }
+}

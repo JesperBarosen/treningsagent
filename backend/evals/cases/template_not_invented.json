@@ -1,0 +1,29 @@
+{
+  "id": "template_not_invented",
+  "note": "#102: when no template fits, the session is drafted as a plain session of the right sport (yoga -> other), never squeezed into an unrelated template or given an invented template_id.",
+  "seed": {
+    "templates": [{"starter": "Fingerboard"}],
+    "running": [{"days_ago": 2, "distance_km": 10, "duration_min": 52, "effort": 6}],
+    "climbing": []
+  },
+  "known_bad": {
+    "source": "Constructed: the yoga session forced into the only template the user has.",
+    "why": "Uses the Fingerboard template for a yoga session.",
+    "should_fail": "must_not-1",
+    "answer": "I've put your yoga session in your Fingerboard form: 30 min, effort 3. It's ready to save or review."
+  },
+  "question": "Did some yoga today, 30 min, effort 3",
+  "expect": {
+    "tools_called": ["draft_session"],
+    "tool_inputs": {
+      "draft_session": {"sport": "other", "date": "{today}", "duration_min": 30, "effort": 3}
+    },
+    "must": [
+      "Present a draft of a 30 min, effort 3 session as other training (yoga), ready to save or review"
+    ],
+    "must_not": [
+      "Use the Fingerboard template, or any template, for the yoga session",
+      "Call it a strength, running or climbing session"
+    ]
+  }
+}

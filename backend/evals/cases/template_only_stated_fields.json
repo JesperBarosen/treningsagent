@@ -1,0 +1,30 @@
+{
+  "id": "template_only_stated_fields",
+  "note": "#102: a template's fields the user didn't mention stay empty. The risk: filling grip, load, rest or finger pain with plausible defaults ('no pain', 'bodyweight'), which would put invented facts in the log.",
+  "seed": {
+    "templates": [{"starter": "Fingerboard"}],
+    "running": [{"days_ago": 6, "distance_km": 6, "duration_min": 36, "effort": 4}],
+    "climbing": []
+  },
+  "known_bad": {
+    "source": "Constructed: a correct draft summary with three invented fields added.",
+    "why": "Fills grip, added load and finger pain, which the user never mentioned.",
+    "should_fail": "must_not-1",
+    "answer": "Your Fingerboard session is ready to save or review: 30 min, effort 6, repeaters on half crimp, 5 × 7 s on 15 mm at bodyweight (+0 kg), no finger pain."
+  },
+  "question": "Did my fingerboard session, 30 min effort 6: repeaters, 5 x 7 s on 15 mm",
+  "expect": {
+    "tools_called": ["list_templates", "draft_session"],
+    "tool_inputs": {
+      "draft_session": {"sport": "other", "date": "{today}", "duration_min": 30, "effort": 6, "template_id": 1,
+                        "values": {"protocol": "repeaters", "hangs": [{"sets": 5, "reps": 7, "edge_mm": 15}]}}
+    },
+    "must": [
+      "Present the session as a draft with the Fingerboard template, repeaters and 5 × 7 s on 15 mm"
+    ],
+    "must_not": [
+      "State a grip, an added or zero load, a rest time or a finger-pain answer, none of which the user gave",
+      "Say or imply the session is already logged, saved or stored"
+    ]
+  }
+}

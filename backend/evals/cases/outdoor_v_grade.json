@@ -1,0 +1,33 @@
+{
+  "id": "outdoor_v_grade",
+  "note": "#102 (#85): V grades outdoors are logged as V grades (grade_system v, no gym), not translated into the gym's colours.",
+  "seed": {
+    "running": [],
+    "climbing": [
+      {"days_ago": 5, "duration_min": 90, "effort": 7, "climbs": [
+        {"grade": "red", "style": "boulder", "sent": true, "attempts": 3}]}
+    ]
+  },
+  "known_bad": {
+    "source": "Constructed: V grades converted to the gym's colours.",
+    "why": "Turns the V4 and V5 into gym colours (red and black).",
+    "should_fail": "must_not-1",
+    "answer": "Ready to save or review: 120 min outdoor bouldering, effort 8, a red and a black sent."
+  },
+  "question": "Sent a V4 and a V5 outdoors today, 120 min, effort 8",
+  "expect": {
+    "tools_called": ["draft_session"],
+    "tool_inputs": {
+      "draft_session": {"sport": "climbing", "date": "{today}", "duration_min": 120, "effort": 8, "climbs": [
+        {"grade": "V4", "grade_system": "v", "style": "boulder", "sent": true},
+        {"grade": "V5", "grade_system": "v", "style": "boulder", "sent": true}]}
+    },
+    "must": [
+      "Present a draft of an outdoor climbing session with a V4 and a V5 sent, 120 min, effort 8"
+    ],
+    "must_not": [
+      "Name the climbs by gym colours instead of V4 and V5",
+      "Say or imply the session is already logged, saved or stored"
+    ]
+  }
+}

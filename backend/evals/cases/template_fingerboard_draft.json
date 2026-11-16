@@ -1,0 +1,35 @@
+{
+  "id": "template_fingerboard_draft",
+  "note": "#102 (docs/custom-log-forms.md 7.4): a session that fits the user's Fingerboard template is drafted with that template and every number the user gave in its fields. Guards against dropping the template (the numbers would end up in notes) and against splitting '6 x 10 s on 20 mm with +10 kg' wrongly.",
+  "seed": {
+    "dates": "days_ago is relative to the day the case runs (0 = today)",
+    "templates": [{"starter": "Fingerboard"}],
+    "running": [{"days_ago": 4, "distance_km": 8, "duration_min": 44, "effort": 5}],
+    "climbing": [],
+    "other": [{"days_ago": 3, "duration_min": 35, "effort": 6, "template": "Fingerboard",
+               "values": {"protocol": "max_hangs", "hangs": [{"sets": 5, "reps": 10, "edge_mm": 20, "load": 6}]}}]
+  },
+  "known_bad": {
+    "source": "Written for this case: the kind of reply a drafting agent gives when it forgets drafts aren't stored.",
+    "why": "Says the session is saved, although only a draft was made.",
+    "should_fail": "must_not-1",
+    "answer": "Saved your Fingerboard session: 40 min, effort 7, max hangs on half crimp, 6 × 10 s on 20 mm with +10 kg."
+  },
+  "question": "Fingerboard today, 40 min, effort 7: max hangs half crimp, 6 x 10 s on 20 mm with +10 kg",
+  "expect": {
+    "tools_called": ["list_templates", "draft_session"],
+    "tool_inputs": {
+      "draft_session": {"sport": "other", "date": "{today}", "duration_min": 40, "effort": 7, "template_id": 1,
+                        "values": {"protocol": "max_hangs", "grip": ["half_crimp"],
+                                   "hangs": [{"sets": 6, "reps": 10, "edge_mm": 20, "load": 10}]}}
+    },
+    "must": [
+      "Say the session is ready to save or review as a draft, and that it uses the Fingerboard template (or form)",
+      "Reflect the hangs as 6 × 10 s on a 20 mm edge with +10 kg"
+    ],
+    "must_not": [
+      "Say or imply the session is already logged, saved or stored",
+      "Give values for rest or finger pain, which the user didn't mention"
+    ]
+  }
+}

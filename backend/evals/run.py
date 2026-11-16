@@ -31,6 +31,8 @@ from pydantic import BaseModel
 import chat
 import db
 import env
+import grades
+import gyms
 import tools
 
 CASES_DIR = Path(__file__).parent / "cases"
@@ -82,10 +84,33 @@ def load_case(path: Path, today: date | None = None) -> dict:
 
 
 def seed(store: tools.Store, seed: dict, today: date) -> None:
-    """Log every seeded session through the real tool, dated relative to today."""
+    """Make the seeded gyms and templates, then log every seeded session through
+    the real tool, dated relative to today (#102). A session's "template" and a
+    climb's "gym" name a seeded template or gym; a gym's colours "my_gym" are
+    the seven colours everyone had before gyms. Climbs without a gym go to the
+    first seeded gym (or a new My gym)."""
+    gym_ids = {}
+    for g in seed.get("gyms", []):
+        colours = g["colours"]
+        if colours == "my_gym":
+            colours = [{"name": n, "colour": c, "range": [grades.label("v", lo), grades.label("v", hi)]}
+                       for n, c, lo, hi in grades.LEGACY_CIRCUIT]
+        gym_ids[g["name"]] = gyms.create_gym(store, g["name"], g.get("range_system", "v"), colours)["id"]
+    templates = {}
+    for t in seed.get("templates", []):
+        made = (tools.add_starters(store, [t["starter"]])[0] if "starter" in t
+                else tools.create_template(store, t["name"], t["sport"], t["fields"],
+                                           t.get("core_fields")))
+        templates[made["name"]] = made["id"]
     for sport in tools.SPORTS:
         for entry in seed.get(sport, []):
-            fields = {k: v for k, v in entry.items() if k != "days_ago"}
+            fields = {k: v for k, v in entry.items() if k not in ("days_ago", "template")}
+            if "template" in entry:
+                fields["template_id"] = templates[entry["template"]]
+            if "climbs" in fields:
+                fields["climbs"] = [{**{k: v for k, v in c.items() if k != "gym"},
+                                     **({"gym_id": gym_ids[c["gym"]]} if "gym" in c else {})}
+                                    for c in fields["climbs"]]
             day = (today - timedelta(days=entry["days_ago"])).isoformat()
             tools.log_session(store, sport, day, **fields)
 
@@ -178,6 +203,20 @@ class MemoryStore:
 
     def last_gym_id(self) -> int | None:
         return next((c["gym_id"] for c in reversed(self.climbs) if c.get("gym_id")), None)
+
+    # Session templates (#102), so --judge-check can run list_templates and
+    # templated drafts offline.
+    def templates(self) -> list[dict]:
+        return [json.loads(json.dumps(t)) for t in getattr(self, "_templates", [])]
+
+    def insert_template(self, row: dict) -> dict:
+        t = {"id": len(self.templates()) + 1, "archived_at": None, **row}
+        self._templates = [*self.templates(), t]
+        return json.loads(json.dumps(t))
+
+    def template_value_keys(self, template_id: int) -> set[str]:
+        return {k for r in self.rows if r.get("template_id") == template_id
+                for k in (r.get("custom_values") or {})}
 
     # Goals (N2), so --judge-check can run set_goal and get_goals offline.
     def goals(self) -> list[dict]:
