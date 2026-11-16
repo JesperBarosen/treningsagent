@@ -11,6 +11,7 @@ import psycopg
 import pytest
 
 import db
+import gyms
 
 URL = os.environ.get("TEST_DATABASE_URL")
 pytestmark = pytest.mark.skipif(not URL, reason="TEST_DATABASE_URL not set")
@@ -97,16 +98,24 @@ def test_model_calls_are_private_too(conn):
 
 
 CLIMBING = {"sport": "climbing", "date": "2026-11-10", "duration_min": 90, "effort": 7}
-CLIMBS = [
-    {"grade": "blue", "grade_ordinal": 3, "attempts": 2, "sent": True, "style": "boulder"},
-    {"grade": "red", "grade_ordinal": 5, "attempts": None, "sent": False, "style": "kilter",
-     "notes": "crimpy"},
-]
+
+
+def climbs_at_my_gym(store) -> list[dict]:
+    """Two climb rows at a new "My gym" of `store`'s user (needs the gym migrations)."""
+    gym = gyms.default_gym(store, store.gyms(), create=True)
+    by_name = {g["name"]: g for g in gym["grades"]}
+
+    def row(name, **rest):
+        g = by_name[name]
+        return {"grade": name, "grade_ordinal": g["position"], "grade_system": "gym",
+                "gym_id": gym["id"], "gym_grade_id": g["id"], **rest}
+    return [row("blue", attempts=2, sent=True, style="boulder"),
+            row("red", attempts=None, sent=False, style="kilter", notes="crimpy")]
 
 
 def test_session_with_climbs_round_trip(conn):
     store = make_store(conn)
-    session_id = store.insert_session(CLIMBING, CLIMBS)
+    session_id = store.insert_session(CLIMBING, climbs_at_my_gym(store))
     climbs = store.climbs_since("2026-11-10")
     assert [c["session_id"] for c in climbs] == [session_id, session_id]
     assert [(c["grade"], c["grade_ordinal"], c["sent"]) for c in climbs] == [
@@ -116,7 +125,7 @@ def test_session_with_climbs_round_trip(conn):
 
 def test_users_only_see_their_own_climbs(conn):
     alice, bob = make_store(conn), make_store(conn)
-    alice.insert_session(CLIMBING, CLIMBS)
+    alice.insert_session(CLIMBING, climbs_at_my_gym(alice))
     assert bob.climbs_since("2000-01-01") == []
     with bob._as_user() as c:  # not even through a direct query
         assert c.execute("select count(*) as n from public.climbs").fetchone()["n"] == 0
@@ -127,14 +136,16 @@ def test_cannot_add_climbs_to_another_users_session(conn):
     session_id = alice.insert_session(CLIMBING)
     with pytest.raises(psycopg.errors.InsufficientPrivilege):
         with bob._as_user() as c:
-            bob._insert(c, "climbs", {**CLIMBS[0], "session_id": session_id})
+            bob._insert(c, "climbs", {"grade": "V3", "grade_system": "v", "sent": True,
+                                      "style": "boulder", "session_id": session_id})
     assert alice.climbs_since("2000-01-01") == []
 
 
-def test_grade_ordinal_must_match_colour(conn):
+def test_a_gym_colour_climb_needs_its_colour(conn):
     store = make_store(conn)
+    [blue, _] = climbs_at_my_gym(store)
     with pytest.raises(ValueError):
-        store.insert_session(CLIMBING, [{**CLIMBS[0], "grade_ordinal": 4}])
+        store.insert_session(CLIMBING, [{**blue, "gym_grade_id": None}])
     # The session and its climbs are one transaction: nothing was stored.
     assert store.sessions_since("2000-01-01") == []
 

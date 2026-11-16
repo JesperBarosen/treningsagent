@@ -164,6 +164,21 @@ class MemoryStore:
     def log_model_call(self, call: dict) -> None:
         pass
 
+    # Gyms (#98): "My gym" is made on the first climb, as for a real user.
+    def gyms(self) -> list[dict]:
+        return [dict(g) for g in getattr(self, "_gyms", [])]
+
+    def insert_gym(self, row: dict, colours: list[dict]) -> dict:
+        gym_id = len(self.gyms()) + 1
+        grades = [{"id": gym_id * 100 + c["position"], "gym_id": gym_id, "archived_at": None,
+                   **{k: c[k] for k in ("position", "name", "colour", "range_low", "range_high")}}
+                  for c in colours]
+        self._gyms = [*self.gyms(), {"id": gym_id, **row, "archived_at": None, "grades": grades}]
+        return dict(self._gyms[-1])
+
+    def last_gym_id(self) -> int | None:
+        return next((c["gym_id"] for c in reversed(self.climbs) if c.get("gym_id")), None)
+
     # Goals (N2), so --judge-check can run set_goal and get_goals offline.
     def goals(self) -> list[dict]:
         return list(getattr(self, "_goals", []))
