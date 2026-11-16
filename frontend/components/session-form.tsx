@@ -1,15 +1,22 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { DateInput } from "@/components/date-input";
 import { climbLabel, GradeDot } from "@/components/grade";
-import { BoltIcon, CheckIcon, CloseIcon, SportBadge } from "@/components/icons";
+import { BoltIcon, CheckIcon, ChevronIcon, CloseIcon, PinIcon, PlusIcon, SportBadge } from "@/components/icons";
 import { Button, HIT_AREA_Y } from "@/components/states";
 import {
   ApiError,
+  climbInput,
+  FONT_GRADES,
+  getGyms,
   GRADES,
+  V_GRADES,
   type Climb,
   type Grade,
+  type GradeSystem,
+  type Gym,
   type Session,
   TAG_LABELS,
   TAGS,
@@ -17,10 +24,21 @@ import {
   type Sport,
   type Tag,
 } from "@/lib/api";
+import { SENSITIVE } from "@/lib/discreet";
 import { climbOutcome, formatPace } from "@/lib/format";
+import { activeColours, startGym } from "@/lib/grades";
 
 type Style = Climb["style"];
-type FormClimb = { grade: Grade; style: Style; sent: boolean; attempts: number | null };
+type FormClimb = {
+  grade: Grade;
+  style: Style;
+  sent: boolean;
+  attempts: number | null;
+  /** Unset for a "My gym" colour picked before the gyms loaded. */
+  grade_system?: GradeSystem;
+  gym_id?: number | null;
+  colour?: string | null;
+};
 
 const STYLES: { value: Style; label: string }[] = [
   { value: "boulder", label: "Boulder" },
@@ -94,13 +112,38 @@ export function SessionForm({
   const [tags, setTags] = useState<Tag[]>(session?.tags ?? []);
   const [style, setStyle] = useState<Style>(session?.climbs?.[0]?.style ?? "boulder");
   const [climbs, setClimbs] = useState<FormClimb[]>(
-    (session?.climbs ?? []).map(({ grade, style, sent, attempts }) => ({
+    (session?.climbs ?? []).map(({ grade, style, sent, attempts, grade_system, gym_id, colour }) => ({
       grade,
       style,
       sent,
       attempts: attempts ?? null,
+      grade_system,
+      gym_id,
+      colour,
     })),
   );
+  // Gyms (#99): the gym starts as the session's own, else the last one used.
+  const [gyms, setGyms] = useState<Gym[]>([]);
+  const [gymId, setGymId] = useState<number | null>(null);
+  const [outdoors, setOutdoors] = useState(false);
+  const firstSystem = session?.climbs?.find((c) => c.grade_system)?.grade_system ?? "gym";
+  const [system, setSystem] = useState<GradeSystem>(firstSystem);
+  useEffect(() => {
+    if (sport !== "climbing" || gyms.length) return;
+    const ctrl = new AbortController();
+    getGyms(ctrl.signal)
+      .then(({ gyms: all, last_gym_id }) => {
+        const live = all.filter((g) => !g.archived);
+        setGyms(live);
+        setGymId(startGym(live, last_gym_id, session?.climbs)?.id ?? null);
+        if (live.length && firstSystem !== "gym" && !session?.climbs?.some((c) => c.gym_id != null)) {
+          setOutdoors(true);
+        }
+      })
+      .catch(() => {}); // without gyms the form offers My gym's colours, as before
+    return () => ctrl.abort();
+  }, [sport, gyms.length, session?.climbs, firstSystem]);
+  const gym = gyms.find((g) => g.id === gymId) ?? null;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -130,7 +173,7 @@ export function SessionForm({
     if (sport === "running" && distance !== "") input.distance_km = km;
     // A chat draft's elevation survives "Review in Log form" (#84).
     if (sport === "running" && elevation !== "") input.elevation_m = metres;
-    if (sport === "climbing") input.climbs = climbs;
+    if (sport === "climbing") input.climbs = climbs.map(climbInput);
     // Only when used: [] is sent to clear tags a session already had.
     if (tags.length || session?.tags?.length) input.tags = tags;
     setBusy(true);
@@ -261,9 +304,33 @@ export function SessionForm({
               style={style}
               onStyle={setStyle}
               climbs={climbs}
-              onAdd={(grade) =>
-                setClimbs((cs) => [...cs, { grade, style, sent: false, attempts: 1 }])
+              onAdd={({ grade, colour }) =>
+                setClimbs((cs) => [
+                  ...cs,
+                  {
+                    grade,
+                    style,
+                    sent: false,
+                    attempts: 1,
+                    colour,
+                    // Before the gyms load, a colour goes to the backend's default gym.
+                    ...(system !== "gym" || gym
+                      ? { grade_system: system, gym_id: outdoors ? null : (gym?.id ?? null) }
+                      : {}),
+                  },
+                ])
               }
+              gyms={gyms}
+              gym={gym}
+              system={system}
+              outdoors={outdoors}
+              onGym={(g) => {
+                setOutdoors(g === null);
+                if (g) setGymId(g.id);
+                if (g === null && system === "gym") setSystem("v");
+                if (g !== null) setSystem("gym");
+              }}
+              onSystem={setSystem}
               onCycle={(i) => updateClimb(i, nextOutcome)}
               onAttempts={(i, delta) =>
                 updateClimb(i, (c) => ({ ...c, attempts: Math.max(1, (c.attempts ?? 1) + delta) }))
@@ -336,6 +403,126 @@ function TagsField({ tags, onToggle }: { tags: Tag[]; onToggle: (t: Tag) => void
   );
 }
 
+/** The grade chips to add a climb: the gym's colours with their approximate
+ *  range, or the V or Font scale. Before the gyms load (or without any),
+ *  "My gym"'s colours; the backend then uses the last gym or makes My gym. */
+function gradeChoices(system: GradeSystem, gym: Gym | null): GradeChoice[] {
+  if (system === "v") return V_GRADES.map((g) => ({ grade: g, colour: null, range: null }));
+  if (system === "font") return FONT_GRADES.map((g) => ({ grade: g, colour: null, range: null }));
+  if (!gym) return GRADES.map((g) => ({ grade: g, colour: null, range: null }));
+  return activeColours(gym).map((c) => ({ grade: c.name, colour: c.colour, range: c.range_text ?? null }));
+}
+
+type GradeChoice = { grade: Grade; colour: string | null; range: string | null };
+
+const SYSTEMS: { value: GradeSystem; label: string }[] = [
+  { value: "gym", label: "Gym colours" },
+  { value: "v", label: "V-scale" },
+  { value: "font", label: "Font" },
+];
+
+/** Where did you climb? A button with the gym's name (G1 variant A in
+ *  docs/custom-log-forms.md) that opens a sheet with the gyms and "Outdoors". */
+function GymPicker({
+  gyms,
+  gym,
+  outdoors,
+  onPick,
+}: {
+  gyms: Gym[];
+  gym: Gym | null;
+  outdoors: boolean;
+  onPick: (gym: Gym | null) => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const close = () => ref.current?.close();
+  const option = "flex min-h-14 w-full items-center gap-3 px-1 text-left";
+  return (
+    <div>
+      <span className={label} id="gym-label">
+        Gym
+      </span>
+      <button
+        type="button"
+        aria-labelledby="gym-label"
+        aria-haspopup="dialog"
+        onClick={() => ref.current?.showModal()}
+        className={`${field} flex items-center gap-2 text-left`}
+      >
+        <PinIcon size={18} className="shrink-0 text-climb" />
+        <span className="min-w-0 flex-1 truncate font-medium">
+          {outdoors ? "Outdoors or a board" : (gym?.name ?? "My gym")}
+        </span>
+        <ChevronIcon size={16} className="shrink-0 rotate-90 text-ink-muted" />
+      </button>
+      <dialog
+        ref={ref}
+        aria-labelledby="gym-sheet-title"
+        onClick={(e) => e.target === ref.current && close()}
+        className="m-0 mt-auto max-h-[80dvh] w-full max-w-none overflow-y-auto rounded-t-lg bg-elevated px-4 pt-3 pb-6 text-ink shadow-sheet backdrop:bg-ink/40 sm:m-auto sm:max-w-md sm:rounded-lg"
+      >
+        <div className="mb-2 flex items-center justify-between">
+          <h2 id="gym-sheet-title" className="font-display text-lg font-semibold">
+            Where did you climb?
+          </h2>
+          <button type="button" onClick={close} aria-label="Close" className="grid size-11 place-items-center rounded-full hover:bg-sunken">
+            <CloseIcon size={16} />
+          </button>
+        </div>
+        <ul className="divide-y divide-line">
+          {gyms.map((g) => (
+            <li key={g.id}>
+              <button
+                type="button"
+                aria-pressed={!outdoors && gym?.id === g.id}
+                onClick={() => {
+                  onPick(g);
+                  close();
+                }}
+                className={option}
+              >
+                <PinIcon size={18} className="shrink-0 text-climb" />
+                <span className="flex-1">
+                  <span className="block font-medium">{g.name}</span>
+                  <span className="flex items-center gap-1 text-xs text-ink-muted">
+                    {activeColours(g).map((c) => (
+                      <GradeDot key={c.name} grade={c.name} colour={c.colour} size={8} />
+                    ))}
+                    <span className="ml-1">{activeColours(g).length} colours</span>
+                  </span>
+                </span>
+                {!outdoors && gym?.id === g.id && <CheckIcon size={16} className="text-accent" />}
+              </button>
+            </li>
+          ))}
+          <li>
+            <button
+              type="button"
+              aria-pressed={outdoors}
+              onClick={() => {
+                onPick(null);
+                close();
+              }}
+              className={option}
+            >
+              <span className="flex-1">
+                <span className="block font-medium">Outdoors or a board</span>
+                <span className="block text-xs text-ink-muted">V or Font grades, no gym</span>
+              </span>
+              {outdoors && <CheckIcon size={16} className="text-accent" />}
+            </button>
+          </li>
+          <li>
+            <Link href="/gyms" className={`${option} font-medium text-accent`}>
+              <PlusIcon size={18} /> Add or edit gyms
+            </Link>
+          </li>
+        </ul>
+      </dialog>
+    </div>
+  );
+}
+
 function ClimbsField({
   style,
   onStyle,
@@ -344,18 +531,46 @@ function ClimbsField({
   onCycle,
   onAttempts,
   onRemove,
+  gyms,
+  gym,
+  system,
+  outdoors,
+  onGym,
+  onSystem,
 }: {
   style: Style;
   onStyle: (s: Style) => void;
   climbs: FormClimb[];
-  onAdd: (g: Grade) => void;
+  onAdd: (choice: GradeChoice) => void;
   onCycle: (i: number) => void;
   onAttempts: (i: number, delta: number) => void;
   onRemove: (i: number) => void;
+  gyms: Gym[];
+  gym: Gym | null;
+  system: GradeSystem;
+  outdoors: boolean;
+  onGym: (gym: Gym | null) => void;
+  onSystem: (s: GradeSystem) => void;
 }) {
+  const choices = gradeChoices(system, gym);
   return (
     <fieldset className="flex flex-col gap-3">
       <legend className={label}>Climbs</legend>
+      {gyms.length > 0 && <GymPicker gyms={gyms} gym={gym} outdoors={outdoors} onPick={onGym} />}
+      <div role="radiogroup" aria-label="Grades" className="flex rounded-full border border-control bg-surface p-1">
+        {SYSTEMS.filter((s) => !(outdoors && s.value === "gym")).map((s) => (
+          <button
+            key={s.value}
+            type="button"
+            role="radio"
+            aria-checked={system === s.value}
+            onClick={() => onSystem(s.value)}
+            className={`min-h-9 flex-1 rounded-full px-2 text-sm font-medium whitespace-nowrap text-ink-muted aria-checked:bg-accent-soft aria-checked:text-accent ${HIT_AREA_Y}`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
       <div role="radiogroup" aria-label="Default style" className="inline-flex self-start rounded-full border border-control bg-surface p-1">
         {STYLES.map((s) => (
           <button
@@ -371,17 +586,26 @@ function ClimbsField({
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {GRADES.map((g) => (
+      <div
+        className={system === "gym" ? "flex flex-wrap gap-2" : "-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"}
+        aria-label="Tap a grade to add a climb"
+        role="group"
+      >
+        {choices.map((c) => (
           <button
-            key={g}
+            key={c.grade}
             type="button"
-            onClick={() => onAdd(g)}
-            aria-label={`Add ${g}`}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-control bg-sunken px-3 text-sm font-medium capitalize"
+            onClick={() => onAdd(c)}
+            aria-label={`Add ${c.grade}${c.range ? `, about ${c.range}` : ""}`}
+            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-control bg-sunken px-3 text-sm font-medium capitalize"
           >
-            <GradeDot grade={g} size={12} />
-            {g}
+            <GradeDot grade={c.grade} colour={c.colour} size={12} />
+            {c.grade}
+            {c.range && (
+              <span {...SENSITIVE} className="text-xs font-normal text-ink-muted normal-case">
+                {c.range}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -398,7 +622,7 @@ function ClimbsField({
                   aria-label={`${climbLabel(c)}. Tap to change.`}
                   className="flex min-h-11 flex-1 items-center gap-3 text-left"
                 >
-                  <GradeDot grade={c.grade} size={14} />
+                  <GradeDot grade={c.grade} colour={c.colour} size={14} />
                   <span className="flex-1 text-sm font-medium capitalize">{c.grade}</span>
                   <span
                     className={`inline-flex items-center gap-1 text-xs font-medium ${
