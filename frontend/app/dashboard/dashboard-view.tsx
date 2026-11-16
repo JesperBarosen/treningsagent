@@ -39,6 +39,7 @@ import {
 import { readDensity, subscribeChartPrefs } from "@/lib/chart-prefs";
 import { SENSITIVE } from "@/lib/discreet";
 import { formatPace, formatRate, nf, shortDate } from "@/lib/format";
+import { gradeSwatch } from "@/lib/grades";
 import {
   GradeChart,
   LegendSwatch,
@@ -714,11 +715,16 @@ function PaceTrendLine({ trend }: { trend: Trend }) {
 
 // --- Climbing ------------------------------------------------------------------
 
-function GradeName({ grade }: { grade: Grade | null }) {
+/** The swatch of a grade on the main gym's scale (#98); null for V/Font. */
+function scaleColour(climbing: Progression["climbing"], grade: Grade | null): string | null {
+  return climbing.grade_scale_detail?.find((d) => d.name === grade)?.colour ?? null;
+}
+
+function GradeName({ grade, colour }: { grade: Grade | null; colour?: string | null }) {
   if (!grade) return <span className="text-ink-muted">–</span>;
   return (
     <span className="inline-flex items-center gap-1.5 capitalize">
-      <GradeDot grade={grade} />
+      <GradeDot grade={grade} colour={colour} />
       {grade}
     </span>
   );
@@ -757,9 +763,9 @@ function GradeCard({ climbing, className }: { climbing: Progression["climbing"];
               <div key={label}>
                 <dt className="text-meta text-ink-muted">{label}</dt>
                 <dd className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <GradeName grade={t.recent_grade} />
+                  <GradeName grade={t.recent_grade} colour={scaleColour(climbing, t.recent_grade)} />
                   <span className="text-meta text-ink-muted">last 2 wks, was</span>
-                  <GradeName grade={t.baseline_grade} />
+                  <GradeName grade={t.baseline_grade} colour={scaleColour(climbing, t.baseline_grade)} />
                   <TrendChip trend={t.trend} />
                 </dd>
               </div>
@@ -768,7 +774,11 @@ function GradeCard({ climbing, className }: { climbing: Progression["climbing"];
           <NumbersTable
             caption="Hardest send and flash per week"
             head={["Week of", "Hardest send", "Hardest flash"]}
-            rows={rows.map((r) => [r.label, <GradeName key="s" grade={r.sendGrade} />, <GradeName key="f" grade={r.flashGrade} />])}
+            rows={rows.map((r, i) => [
+              r.label,
+              <GradeName key="s" grade={r.sendGrade} colour={climbing.weekly[i].hardest_sent_colour ?? scaleColour(climbing, r.sendGrade)} />,
+              <GradeName key="f" grade={r.flashGrade} colour={climbing.weekly[i].flash_colour ?? scaleColour(climbing, r.flashGrade)} />,
+            ])}
           />
         </>
       )}
@@ -776,7 +786,17 @@ function GradeCard({ climbing, className }: { climbing: Progression["climbing"];
   );
 }
 
-function RateBar({ grade, rate, label }: { grade: Grade; rate: number | null; label: string }) {
+function RateBar({
+  grade,
+  colour,
+  rate,
+  label,
+}: {
+  grade: Grade;
+  colour: string | null;
+  rate: number | null;
+  label: string;
+}) {
   return (
     <div className="flex items-center gap-2">
       <span className="w-20 shrink-0 text-xs text-ink-muted">{label}</span>
@@ -784,7 +804,7 @@ function RateBar({ grade, rate, label }: { grade: Grade; rate: number | null; la
         {rate !== null && rate > 0 && (
           <div
             className="h-2 rounded-full ring-1 ring-grade-ring"
-            style={{ width: `${rate * 100}%`, background: `var(--color-grade-${grade})` }}
+            style={{ width: `${rate * 100}%`, background: gradeSwatch(grade, colour) ?? "var(--chart-climb)" }}
           />
         )}
       </div>
@@ -796,7 +816,13 @@ function RateBar({ grade, rate, label }: { grade: Grade; rate: number | null; la
 }
 
 function SendRateCard({ climbing }: { climbing: Progression["climbing"] }) {
-  const grades = climbing.grade_scale.filter((g) => climbing.trends.send_rate_by_grade[g]);
+  // The main gym's grades in order, then grades from elsewhere ("V4", "blue (Klatreverket)")
+  // in the backend's order, easiest first.
+  const rates = climbing.trends.send_rate_by_grade;
+  const grades = [
+    ...climbing.grade_scale.filter((g) => rates[g]),
+    ...Object.keys(rates).filter((g) => !climbing.grade_scale.includes(g)),
+  ];
   return (
     <Card labelledBy="send-title" title="Send rate per grade" subtitle="Last 2 weeks vs the 4 weeks before">
       {grades.length === 0 ? (
@@ -809,12 +835,12 @@ function SendRateCard({ climbing }: { climbing: Progression["climbing"] }) {
               <li key={g}>
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <span className="text-sm font-medium">
-                    <GradeName grade={g} />
+                    <GradeName grade={g} colour={scaleColour(climbing, g)} />
                   </span>
                   <TrendChip trend={t.trend} />
                 </div>
-                <RateBar grade={g} rate={t.recent} label="Last 2 wks" />
-                <RateBar grade={g} rate={t.baseline} label="4 wks before" />
+                <RateBar grade={g} colour={scaleColour(climbing, g)} rate={t.recent} label="Last 2 wks" />
+                <RateBar grade={g} colour={scaleColour(climbing, g)} rate={t.baseline} label="4 wks before" />
               </li>
             );
           })}

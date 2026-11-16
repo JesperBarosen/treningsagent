@@ -6,6 +6,7 @@ import { BoltIcon, CheckIcon, CloseIcon, SportBadge } from "@/components/icons";
 import { SessionForm } from "@/components/session-form";
 import { TagList } from "@/components/tag-list";
 import { SENSITIVE } from "@/lib/discreet";
+import { climbRank } from "@/lib/grades";
 import { Button } from "@/components/states";
 import {
   ApiError,
@@ -73,7 +74,10 @@ export function SessionSheet({
 }
 
 function withOrdinals(climbs: SessionInput["climbs"]): Climb[] | undefined {
-  return climbs?.map((c) => ({ ...c, grade_ordinal: GRADES.indexOf(c.grade) + 1 }));
+  return climbs?.map((c) => {
+    const legacy = (GRADES as readonly string[]).indexOf(c.grade);
+    return { ...c, grade_ordinal: c.grade_system && c.grade_system !== "gym" ? null : legacy + 1 || null };
+  });
 }
 
 function SheetBody({
@@ -248,7 +252,7 @@ function Details({
           </div>
           <ul {...SENSITIVE} className="divide-y divide-line rounded-md border border-line">
             {[...s.climbs]
-              .sort((a, b) => b.grade_ordinal - a.grade_ordinal)
+              .sort((a, b) => climbRank(b) - climbRank(a))
               .map((c, i) => (
                 <ClimbRow key={i} climb={c} />
               ))}
@@ -266,9 +270,12 @@ function ClimbRow({ climb: c }: { climb: Climb }) {
   const outcome = climbOutcome(c);
   return (
     <li className="flex min-h-11 items-center gap-3 px-3 py-2" aria-label={climbLabel(c)}>
-      <GradeDot grade={c.grade} size={14} />
+      <GradeDot grade={c.grade} colour={c.colour} size={14} />
       <div className="min-w-0 flex-1" aria-hidden="true">
-        <p className="text-sm font-medium capitalize">{c.grade}</p>
+        <p className="text-sm font-medium">
+          <span className="capitalize">{c.grade}</span>
+          {c.gym && <span className="font-normal text-ink-muted"> · {c.gym}</span>}
+        </p>
         <p className="text-xs text-ink-muted">
           {STYLE_NAMES[c.style]}
           {c.attempts ? ` · ${c.attempts} ${c.attempts === 1 ? "attempt" : "attempts"}` : ""}

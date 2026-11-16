@@ -10,8 +10,11 @@ import {
   deleteGoal,
   DISTANCE_BANDS,
   getGoals,
+  getGyms,
   GRADES,
+  V_GRADES,
   type DistanceBand,
+  type Gym,
   type Goal,
   type GoalInput,
   type Grade,
@@ -21,6 +24,7 @@ import {
 import { BAND_LABELS } from "@/lib/dashboard";
 import { SENSITIVE } from "@/lib/discreet";
 import { formatPace, shortDate } from "@/lib/format";
+import { activeColours, startGym } from "@/lib/grades";
 import type { SportFilter } from "@/lib/sport-filter";
 import { GradeDot } from "./grade";
 import { CheckIcon, ChevronIcon, PlusIcon } from "./icons";
@@ -59,7 +63,7 @@ export function timeLeft(target: string | null, today: Date = new Date()): strin
 /** What the goal is, without the date: "Send a red", "7–15 km at 5:00 /km". */
 function goalWhat(g: Goal): string {
   return g.kind === "climb_grade"
-    ? `${g.climb_mode === "flash" ? "Flash" : "Send"} a ${g.grade}`
+    ? `${g.climb_mode === "flash" ? "Flash" : "Send"} ${/^[aeiou8]/i.test(g.grade) ? "an" : "a"} ${g.grade}`
     : `${BAND_LABELS[g.band]} at ${formatPace(g.target_pace)} /km`;
 }
 
@@ -92,15 +96,30 @@ export function parsePace(text: string): number | null {
   return seconds < 60 ? Number(m[1]) + seconds / 60 : null;
 }
 
+/** "V5 outdoors, about V5" or "blue at Klatreverket, about V4": where a grade
+ *  goal was reached (#98, Q4: an equally hard climb anywhere counts). */
+export function reachedWith(goal: GradeGoal): string | null {
+  const w = goal.progress.reached_with;
+  if (!w) return null;
+  const where = w.gym ? `${w.grade} at ${w.gym}` : w.grade_system === "gym" ? w.grade : `${w.grade} outdoors or on a board`;
+  return w.about && w.about !== w.grade ? `${where}, about ${w.about}` : where;
+}
+
 function GradeSteps({ goal }: { goal: GradeGoal }) {
   const p = goal.progress;
-  const scale = GRADES.slice(0, p.of);
+  // My gym's colours have tokens; another gym's or V/Font steps are plain.
+  const legacy = (goal.grade_system ?? "gym") === "gym" && GRADES[p.of - 1] === goal.grade;
+  const where = reachedWith(goal);
   return (
     <>
       <div className="mt-3 flex items-center gap-1.5" aria-hidden="true">
-        {scale.map((g, i) => (
-          <span key={g} className={i < p.steps ? "" : "opacity-30"}>
-            <GradeDot grade={g} size={14} />
+        {Array.from({ length: p.of }, (_, i) => (
+          <span key={i} className={i < p.steps ? "" : "opacity-30"}>
+            {legacy ? (
+              <GradeDot grade={GRADES[i]} size={14} />
+            ) : (
+              <span className="inline-block size-3.5 rounded-full bg-chart-climb ring-1 ring-grade-ring" />
+            )}
           </span>
         ))}
       </div>
@@ -110,6 +129,11 @@ function GradeSteps({ goal }: { goal: GradeGoal }) {
           ? ` · ${p.best_grade} ${goal.climb_mode === "flash" ? "flashed" : "sent"} ${p.best_count_28d} ${p.best_count_28d === 1 ? "time" : "times"} this month`
           : ""}
       </p>
+      {where && (
+        <p {...SENSITIVE} className="mt-1 text-sm text-ink-muted">
+          Reached with {where}
+        </p>
+      )}
     </>
   );
 }
@@ -274,6 +298,28 @@ export function AddGoalForm({
 }) {
   const [kind, setKind] = useState<GoalKind>(initialKind);
   const [grade, setGrade] = useState<Grade>("red");
+  // Where the grade is: a gym's colours ("gym:<id>") or the V-scale (#99).
+  // Before the gyms load, "My gym"'s colours (the backend's default gym).
+  const [gymList, setGymList] = useState<Gym[]>([]);
+  const [where, setWhere] = useState<string>("default");
+  useEffect(() => {
+    const ctrl = new AbortController();
+    getGyms(ctrl.signal)
+      .then(({ gyms, last_gym_id }) => {
+        setGymList(gyms.filter((g) => !g.archived));
+        const start = startGym(gyms, last_gym_id);
+        if (start) {
+          setWhere(`gym:${start.id}`);
+          const names = activeColours(start).map((c) => c.name);
+          setGrade((g) => (names.includes(g) ? g : names[Math.floor(names.length / 2)] ?? g));
+        }
+      })
+      .catch(() => {}); // keep My gym's colours
+    return () => ctrl.abort();
+  }, []);
+  const gym = gymList.find((g) => `gym:${g.id}` === where);
+  const gradeOptions: string[] =
+    where === "v" ? V_GRADES : gym ? activeColours(gym).map((c) => c.name) : [...GRADES];
   const [mode, setMode] = useState<"send" | "flash">("send");
   const [band, setBand] = useState<DistanceBand>("7_to_15km");
   const [pace, setPace] = useState("");
@@ -288,7 +334,13 @@ export function AddGoalForm({
     e.preventDefault();
     const input: GoalInput | null =
       kind === "climb_grade"
-        ? { kind, grade, climb_mode: mode, target_date: date || null }
+        ? {
+            kind,
+            grade,
+            climb_mode: mode,
+            target_date: date || null,
+            ...(where === "v" ? { grade_system: "v" as const } : gym ? { grade_system: "gym" as const, gym_id: gym.id } : {}),
+          }
         : target !== null
           ? { kind, band, target_pace: Math.round(target * 100) / 100, target_date: date || null }
           : null;
@@ -328,10 +380,33 @@ export function AddGoalForm({
 
       {kind === "climb_grade" ? (
         <div className="grid grid-cols-2 gap-3">
+          {gymList.length > 0 && (
+            <label className="col-span-2 text-sm font-medium">
+              Grades from
+              <select
+                value={where}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setWhere(next);
+                  const g = gymList.find((x) => `gym:${x.id}` === next);
+                  const names = next === "v" ? V_GRADES : g ? activeColours(g).map((c) => c.name) : [];
+                  if (!names.includes(grade)) setGrade(names[Math.floor(names.length / 2)] ?? grade);
+                }}
+                className={field}
+              >
+                {gymList.map((g) => (
+                  <option key={g.id} value={`gym:${g.id}`}>
+                    {g.name}
+                  </option>
+                ))}
+                <option value="v">V-scale (any gym or outdoors)</option>
+              </select>
+            </label>
+          )}
           <label className="text-sm font-medium">
             Grade
-            <select value={grade} onChange={(e) => setGrade(e.target.value as Grade)} className={`${field} capitalize`}>
-              {GRADES.map((g) => (
+            <select value={grade} onChange={(e) => setGrade(e.target.value)} className={`${field} capitalize`}>
+              {gradeOptions.map((g) => (
                 <option key={g} value={g}>
                   {g}
                 </option>
