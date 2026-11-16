@@ -18,6 +18,7 @@ class FakeStore:
         self.goal_rows: list[dict] = []
         self.gym_rows: list[dict] = []
         self.gym_grades: list[dict] = []
+        self.template_rows: list[dict] = []
 
     def insert_session(self, row: dict, climbs: list[dict] = ()) -> int:
         session_id = len(self.rows) + 1
@@ -165,6 +166,36 @@ class FakeStore:
         dated = [(next(r["date"] for r in self.rows if r["id"] == c["session_id"]), c["id"], c["gym_id"])
                  for c in self.climbs if c.get("gym_id") is not None]
         return max(dated)[2] if dated else None
+
+    # --- Session templates (#100) ---
+    def templates(self) -> list[dict]:
+        return [json.loads(json.dumps(t)) for t in self.template_rows]
+
+    def insert_template(self, row: dict) -> dict:
+        t = {"id": len(self.template_rows) + 1, "archived_at": None, "position": 0, **row}
+        self.template_rows.append(t)
+        return json.loads(json.dumps(t))
+
+    def update_template(self, template_id: int, row: dict) -> dict | None:
+        t = next((t for t in self.template_rows if t["id"] == template_id), None)
+        if t is None:
+            return None
+        row = dict(row)
+        if "archived" in row:
+            t["archived_at"] = (t["archived_at"] or "2026-11-16T00:00:00Z") if row.pop("archived") else None
+        t.update(row)
+        return json.loads(json.dumps(t))
+
+    def delete_template(self, template_id: int) -> bool:
+        if any(r.get("template_id") == template_id for r in self.rows):
+            raise ValueError("a template that sessions use can't be deleted; archive it")
+        before = len(self.template_rows)
+        self.template_rows = [t for t in self.template_rows if t["id"] != template_id]
+        return len(self.template_rows) < before
+
+    def template_value_keys(self, template_id: int) -> set[str]:
+        return {k for r in self.rows if r.get("template_id") == template_id
+                for k in (r.get("custom_values") or {})}
 
     def claim_chat_request(self, daily_limit: int) -> bool:
         if self.chat_requests >= daily_limit:
