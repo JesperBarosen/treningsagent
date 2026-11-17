@@ -60,11 +60,12 @@ export type TemplateField = {
   required?: boolean;
   help?: string;
   archived?: boolean;
-  // number
+  // number: one unit, or 1 to 4 measures with their own unit (#111)
   unit?: string;
   min?: number;
   max?: number;
   decimals?: number;
+  measures?: Measure[];
   // select
   options?: SelectOption[];
   multiple?: boolean;
@@ -79,10 +80,25 @@ export type TemplateField = {
   default_style?: "boulder" | "kilter" | "rope";
 };
 
+/** One measure of a number field (#111): its name or unit ("kg", "reps", "s") and decimals. */
+export type Measure = { key: string; label: string; decimals?: number };
+/** A measures field's value: one number per measure that was filled in. */
+export type MeasureValues = Record<string, number>;
+/** The measure a plain number belongs to: a field made before measures keeps its old unit under this key. */
+export const PLAIN_MEASURE = "value";
+
 export type SetRow = { sets: number; reps: number; load?: number } & Record<string, number | undefined>;
-export type TemplateValue = number | string | boolean | string[] | SetRow[];
+export type TemplateValue = number | string | boolean | string[] | SetRow[] | MeasureValues;
 export type TemplateValues = Record<string, TemplateValue>;
-export type DescribedValue = { key: string; label: string; type: FieldType; value: TemplateValue; text: string };
+export type DescribedValue = {
+  key: string;
+  label: string;
+  type: FieldType;
+  value: TemplateValue;
+  text: string;
+  /** A number field with measures: the value is one number per measure. */
+  measures?: Pick<Measure, "key" | "label">[];
+};
 
 export type Template = {
   id: number;

@@ -12,6 +12,8 @@ import {
   updateTemplate,
   getTemplates,
   type FieldType,
+  type Measure,
+  PLAIN_MEASURE,
   type Sport,
   type Template,
   type TemplateField,
@@ -275,6 +277,8 @@ function toInput(d: Draft): TemplateInput {
         delete out.saved;
         if (!f.key) delete out.key;
         if (f.unit === "") delete out.unit;
+        // New measures get their key from their name on the server (#111).
+        if (f.measures) out.measures = f.measures.map((m) => (m.key ? m : { label: m.label.trim(), decimals: m.decimals }));
         if (f.options) out.options = f.options.map((o) => (o.value ? o : { label: o.label, archived: o.archived }));
         for (const k of Object.keys(out)) if (out[k] === undefined) delete out[k];
         return out as TemplateInput["fields"][number];
@@ -557,6 +561,123 @@ function FieldCard({
   );
 }
 
+/** Quick picks for a number field's measures (#111), and a custom one. */
+const MEASURE_PICKS: { name: string; label: string; decimals: number }[] = [
+  { name: "Weight (kg)", label: "kg", decimals: 1 },
+  { name: "Reps", label: "reps", decimals: 0 },
+  { name: "Seconds", label: "s", decimals: 0 },
+  { name: "Sets", label: "sets", decimals: 0 },
+];
+
+type MeasureDraft = Measure & { uid: string; saved: boolean };
+
+/** A number field's 1 to 4 measures (#111): name or unit and decimals each, added
+ *  from quick picks, moved and removed. A field with one unit keeps its old shape
+ *  (unit and decimals) until a second measure is added, so it looks and stores
+ *  exactly as before; a saved one then keeps its unit as the PLAIN_MEASURE
+ *  measure, where its old numbers belong. A saved measure's unit is fixed. */
+function MeasuresSettings({ f, onChange }: { f: FieldDraft; onChange: (patch: Partial<FieldDraft>) => void }) {
+  const [uids] = useState(() => new Map<string, string>());
+  const uidFor = (key: string, i: number) => {
+    const k = key || `new-${i}`;
+    if (!uids.has(k)) uids.set(k, uid());
+    return uids.get(k)!;
+  };
+  const list: MeasureDraft[] = f.measures
+    ? f.measures.map((m, i) => ({ ...m, uid: uidFor(m.key, i), saved: f.saved && Boolean(m.key) }))
+    : // A saved field without a unit may name its first measure; a saved unit is fixed.
+      [{ key: f.saved ? PLAIN_MEASURE : "", label: f.unit ?? "", decimals: f.decimals ?? 0, uid: uidFor("", 0), saved: f.saved && Boolean(f.unit) }];
+
+  function set(next: MeasureDraft[]) {
+    if (!f.measures && next.length === 1) {
+      onChange({ unit: next[0].label, decimals: next[0].decimals });
+      return;
+    }
+    onChange({
+      measures: next.map(({ key, label, decimals }) => ({ key, label, decimals })),
+      unit: undefined,
+      min: undefined,
+      max: undefined,
+      decimals: undefined,
+    });
+  }
+  const edit = (i: number, patch: Partial<Measure>) => set(list.map((m, j) => (j === i ? { ...m, ...patch } : m)));
+  const move = (i: number, by: number) => {
+    const next = [...list];
+    [next[i], next[i + by]] = [next[i + by], next[i]];
+    set(next);
+  };
+  const add = (label: string, decimals: number) =>
+    set([...list, { key: "", label, decimals, uid: uidFor("", list.length + uids.size), saved: false }]);
+  const taken = new Set(list.map((m) => m.label.trim().toLowerCase()));
+
+  return (
+    <fieldset className="flex min-w-0 flex-col gap-2">
+      <legend className={small}>Measures (up to 4)</legend>
+      {list.map((m, i) => (
+        <div key={m.uid} className="flex min-w-0 items-center gap-1">
+          <input
+            aria-label={`Measure ${i + 1} name or unit`}
+            value={m.label}
+            maxLength={12}
+            placeholder="kg, reps, s…"
+            disabled={m.saved}
+            onChange={(e) => edit(i, { label: e.target.value })}
+            className={`${input} flex-1`}
+          />
+          <select
+            aria-label={`Measure ${i + 1} decimals`}
+            value={m.decimals ?? 0}
+            onChange={(e) => edit(i, { decimals: Number(e.target.value) })}
+            className="min-h-11 w-14 shrink-0 rounded-md border border-control bg-surface px-1 text-base"
+          >
+            {[0, 1, 2].map((d) => (
+              <option key={d} value={d}>
+                {d === 0 ? "1" : d === 1 ? "0.1" : "0.01"}
+              </option>
+            ))}
+          </select>
+          {list.length > 1 && (
+            <>
+              <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move ${m.label || "measure"} up`} className={iconButton}>
+                <ArrowUpIcon size={18} />
+              </button>
+              <button type="button" onClick={() => move(i, 1)} disabled={i === list.length - 1} aria-label={`Move ${m.label || "measure"} down`} className={iconButton}>
+                <ArrowDownIcon size={18} />
+              </button>
+              <button type="button" onClick={() => set(list.filter((_, j) => j !== i))} aria-label={`Remove ${m.label || "measure"}`} className={iconButton}>
+                <CloseIcon size={16} />
+              </button>
+            </>
+          )}
+        </div>
+      ))}
+      {list.length < 4 && (
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Add a measure">
+          {MEASURE_PICKS.map((p) => (
+            <button
+              key={p.label}
+              type="button"
+              disabled={taken.has(p.label)}
+              onClick={() => add(p.label, p.decimals)}
+              className="inline-flex min-h-11 items-center gap-1 rounded-full border border-control px-3 text-sm font-medium disabled:opacity-40"
+            >
+              <PlusIcon size={14} /> {p.name}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => add("", 0)}
+            className="inline-flex min-h-11 items-center gap-1 rounded-full border border-dashed border-control px-3 text-sm font-medium text-accent"
+          >
+            <PlusIcon size={14} /> Custom
+          </button>
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
 /** The type's own settings. Units and the kind of reps are fixed once saved. */
 function FieldSettings({ f, onChange }: { f: FieldDraft; onChange: (patch: Partial<FieldDraft>) => void }) {
   const num = (v: string) => (v.trim() === "" ? undefined : Number(v.replace(",", ".")));
@@ -564,29 +685,21 @@ function FieldSettings({ f, onChange }: { f: FieldDraft; onChange: (patch: Parti
   switch (f.type) {
     case "number":
       return (
-        <div className="grid grid-cols-2 gap-2">
-          <label className="text-sm font-medium">
-            Unit
-            <input value={f.unit ?? ""} maxLength={8} disabled={f.saved} placeholder="kg, mm, s…" onChange={(e) => onChange({ unit: e.target.value })} className={`${input} mt-1`} />
-          </label>
-          <label className="text-sm font-medium">
-            Decimals
-            <select value={f.decimals ?? 0} onChange={(e) => onChange({ decimals: Number(e.target.value) })} className={`${input} mt-1`}>
-              {[0, 1, 2].map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm font-medium">
-            Lowest
-            <input inputMode="decimal" defaultValue={f.min ?? ""} onChange={(e) => onChange({ min: num(e.target.value) })} className={`${input} mt-1`} />
-          </label>
-          <label className="text-sm font-medium">
-            Highest
-            <input inputMode="decimal" defaultValue={f.max ?? ""} onChange={(e) => onChange({ max: num(e.target.value) })} className={`${input} mt-1`} />
-          </label>
+        <div className="flex flex-col gap-3">
+          <MeasuresSettings f={f} onChange={onChange} />
+          {!f.measures && (
+            // Limits belong to a field with one unit; with measures each value only has decimals.
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-sm font-medium">
+                Lowest
+                <input inputMode="decimal" defaultValue={f.min ?? ""} onChange={(e) => onChange({ min: num(e.target.value) })} className={`${input} mt-1`} />
+              </label>
+              <label className="text-sm font-medium">
+                Highest
+                <input inputMode="decimal" defaultValue={f.max ?? ""} onChange={(e) => onChange({ max: num(e.target.value) })} className={`${input} mt-1`} />
+              </label>
+            </div>
+          )}
         </div>
       );
     case "select":

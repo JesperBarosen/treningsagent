@@ -22,7 +22,12 @@
        "unit": "kg", "min": 30, "max": 150, "decimals": 1},
       {"key": "pain", "label": "Any finger pain?", "type": "boolean", "required": false, "archived": false},
       {"key": "board", "label": "Board", "type": "text", "required": false, "archived": false, "max_length": 20},
-      {"key": "old_note", "label": "Old note", "type": "text", "required": false, "archived": true, "max_length": 200}
+      {"key": "old_note", "label": "Old note", "type": "text", "required": false, "archived": true, "max_length": 200},
+      {"key": "pullups", "label": "Pull-ups", "type": "number", "required": false, "archived": false,
+       "measures": [{"key": "kg", "label": "kg", "decimals": 1}, {"key": "reps", "label": "reps", "decimals": 0},
+                    {"key": "sets", "label": "sets", "decimals": 0}]},
+      {"key": "hang", "label": "Hang", "type": "number", "required": false, "archived": false,
+       "measures": [{"key": "value", "label": "kg", "decimals": 1}, {"key": "s", "label": "s", "decimals": 0}]}
     ]
   },
   "valid": [
@@ -31,7 +36,11 @@
       "protocol": "max_hangs", "grip": ["half_crimp", "open_hand"],
       "hangs": [{"sets": 6, "reps": 10, "edge_mm": 20, "load": 10}, {"sets": 3, "reps": 7, "load": -5}],
       "rest_s": 180, "bodyweight": 71.5, "pain": false, "board": "Beastmaker"}},
-    {"name": "a null value is left out", "values": {"hangs": [{"sets": 1, "reps": 1}], "rest_s": null}}
+    {"name": "a null value is left out", "values": {"hangs": [{"sets": 1, "reps": 1}], "rest_s": null}},
+    {"name": "every measure (#111)", "values": {"hangs": [{"sets": 1, "reps": 1}], "pullups": {"kg": 10, "reps": 5, "sets": 3}}},
+    {"name": "some measures", "values": {"hangs": [{"sets": 1, "reps": 1}], "pullups": {"reps": 5, "kg": null}}},
+    {"name": "a plain number from before the field had measures", "values": {"hangs": [{"sets": 1, "reps": 1}], "hang": 5}},
+    {"name": "no measure filled in is left out", "values": {"hangs": [{"sets": 1, "reps": 1}], "pullups": {}}, "keys": ["hangs"]}
   ],
   "invalid": [
     {"name": "required field missing", "values": {"rest_s": 120}, "error": "Hangs is required"},
@@ -50,6 +59,10 @@
     {"name": "row without sets", "values": {"hangs": [{"reps": 10}]}, "error": "row 1: sets is missing"},
     {"name": "seconds out of range", "values": {"hangs": [{"sets": 1, "reps": 0}]}, "error": "seconds must be"},
     {"name": "extra column out of range", "values": {"hangs": [{"sets": 1, "reps": 10, "edge_mm": 200}]}, "error": "row 1: edge must be between 4 and 60 mm"},
-    {"name": "unknown column", "values": {"hangs": [{"sets": 1, "reps": 10, "angle": 5}]}, "error": "unknown columns"}
+    {"name": "unknown column", "values": {"hangs": [{"sets": 1, "reps": 10, "angle": 5}]}, "error": "unknown columns"},
+    {"name": "unknown measure", "values": {"hangs": [{"sets": 1, "reps": 1}], "pullups": {"lb": 20}}, "error": "no such measures"},
+    {"name": "plain number for a field born with measures", "values": {"hangs": [{"sets": 1, "reps": 1}], "pullups": 10}, "error": "takes a value per measure"},
+    {"name": "measure decimals", "values": {"hangs": [{"sets": 1, "reps": 1}], "pullups": {"reps": 5.5}}, "error": "Pull-ups, reps takes whole numbers"},
+    {"name": "measure value not a number", "values": {"hangs": [{"sets": 1, "reps": 1}], "pullups": {"kg": "ten"}}, "error": "Pull-ups, kg must be a number"}
   ]
 }

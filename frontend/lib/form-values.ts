@@ -3,7 +3,7 @@
 // form can say what is wrong before saving. backend/tests/fixtures/forms.json
 // is run by both test suites so the two can't drift.
 
-import type { SetRow, Template, TemplateField, TemplateValue, TemplateValues } from "./api";
+import { PLAIN_MEASURE, type SetRow, type Template, type TemplateField, type TemplateValue, type TemplateValues } from "./api";
 
 const isNumber = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
@@ -22,6 +22,30 @@ function numberError(v: unknown, f: { label: string; unit?: string; min?: number
     return (f.decimals ?? 0) === 0 ? `${f.label} takes whole numbers` : `${f.label} takes up to ${f.decimals} decimals`;
   }
   return null;
+}
+
+/** A measures field (#111): one optional number per measure, or a plain number
+ *  for the PLAIN_MEASURE measure (a session from before the field had measures). */
+function measuresError(value: unknown, f: TemplateField): string | null {
+  const measures = new Map((f.measures ?? []).map((m) => [m.key, m]));
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    if (!measures.has(PLAIN_MEASURE)) return `${f.label} takes a value per measure`;
+    value = { [PLAIN_MEASURE]: value };
+  }
+  for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+    const m = measures.get(key);
+    if (!m) return `${f.label}: no such measures ${key}`;
+    if (v == null) continue;
+    const e = numberError(v, { label: `${f.label}, ${m.label}`, decimals: m.decimals ?? 0 });
+    if (e) return e;
+  }
+  return null;
+}
+
+/** Whether a value holds nothing to save: a measures field with every measure empty. */
+export function isEmptyValue(v: unknown): boolean {
+  if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) return true;
+  return typeof v === "object" && !Array.isArray(v) && Object.values(v as object).every((x) => x == null);
 }
 
 function rowsError(value: unknown, f: TemplateField): string | null {
@@ -59,7 +83,7 @@ function rowsError(value: unknown, f: TemplateField): string | null {
 function valueError(v: TemplateValue, f: TemplateField, previous?: TemplateValue): string | null {
   switch (f.type) {
     case "number":
-      return numberError(v, f);
+      return f.measures?.length ? measuresError(v, f) : numberError(v, f);
     case "boolean":
       return typeof v === "boolean" ? null : `${f.label} must be yes or no`;
     case "text":
@@ -99,16 +123,21 @@ export function checkValues(template: Pick<Template, "name" | "fields">, values:
     if (e) return e;
   }
   for (const f of fields.values()) {
-    if (f.required && !f.archived && values[f.key] == null) return `${f.label} is required`;
+    if (f.required && !f.archived && isEmptyValue(values[f.key])) return `${f.label} is required`;
   }
   return null;
 }
 
 /** The values with empty answers left out, as the backend expects them. */
 export function cleanValues(values: Record<string, TemplateValue | null | undefined>): TemplateValues {
-  return Object.fromEntries(
-    Object.entries(values).filter(
-      ([, v]) => v != null && v !== "" && !(Array.isArray(v) && v.length === 0),
-    ),
-  ) as TemplateValues;
+  // Empty answers go, and so do the empty measures inside a measures field (#111).
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(values)) {
+    if (isEmptyValue(v)) continue;
+    out[k] =
+      typeof v === "object" && !Array.isArray(v)
+        ? Object.fromEntries(Object.entries(v as object).filter(([, x]) => x != null))
+        : v;
+  }
+  return out as TemplateValues;
 }

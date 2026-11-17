@@ -10,11 +10,36 @@ import {
   formatPace,
   sessionSummary,
   sportName,
-  valueLines,
+  valueParts,
 } from "@/lib/format";
 import { ClimbChips } from "./grade";
 import { CheckIcon, SportBadge } from "./icons";
 import { Button } from "./states";
+
+/** One template value line: "Hangboard 5 kg · 10 s · 6 sets" (#111). In discreet
+ *  mode the values blur and the field's name stays readable. */
+export function ValueLine({
+  part,
+  as: Tag = "p",
+  className = "",
+}: {
+  part: { name: string | null; text: string };
+  as?: "p" | "li";
+  className?: string;
+}) {
+  if (!part.name) {
+    return (
+      <Tag {...SENSITIVE} className={className}>
+        {part.text}
+      </Tag>
+    );
+  }
+  return (
+    <Tag className={className}>
+      <span className="font-medium">{part.name}</span> <span {...SENSITIVE}>{part.text}</span>
+    </Tag>
+  );
+}
 
 /** In-chat confirmation that the agent stored a session, with Edit and Undo so
  *  a misread session can be fixed where it happened (design-research.md, item 3).
@@ -76,6 +101,14 @@ export function LoggedSessionCard({
           </p>
         </div>
       </div>
+      {valueParts(session).length > 0 && (
+        // A templated session's values, as in Sessions (#111).
+        <ul aria-label={`${session.template ?? "Template"} values`} className="mt-1.5 pl-11">
+          {valueParts(session).map((part, i) => (
+            <ValueLine key={i} part={part} as="li" className="text-sm text-ink tabular-nums" />
+          ))}
+        </ul>
+      )}
       {session.climbs && session.climbs.length > 0 && (
         <div className="mt-2.5 pl-11">
           <ClimbChips climbs={session.climbs} max={6} />
@@ -143,11 +176,9 @@ export function SessionRow({ session, onOpen }: { session: Session; onOpen: () =
         <p {...SENSITIVE} className="mt-0.5 text-sm text-ink-muted tabular-nums">
           {stats(session).join(" · ")}
         </p>
-        {valueLines(session).slice(0, 2).map((line, i) => (
+        {valueParts(session).slice(0, 2).map((part, i) => (
           // A template's values (#101), e.g. "6 × 10 s · 20 mm · +10 kg".
-          <p key={i} {...SENSITIVE} className="truncate text-sm text-ink tabular-nums">
-            {line}
-          </p>
+          <ValueLine key={i} part={part} as="p" className="truncate text-sm text-ink tabular-nums" />
         ))}
         {session.climbs && session.climbs.length > 0 && (
           <div className="mt-2">

@@ -20,7 +20,8 @@ TEMPLATE = FIXTURE["template"]
 @pytest.mark.parametrize("case", FIXTURE["valid"], ids=lambda c: c["name"])
 def test_valid_values(case):
     out = forms.validate_values(TEMPLATE, case["values"], "other")
-    assert set(out) == {k for k, v in case["values"].items() if v is not None}
+    expected = case.get("keys") or [k for k, v in case["values"].items() if v is not None]
+    assert set(out) == set(expected)
 
 
 @pytest.mark.parametrize("case", FIXTURE["invalid"], ids=lambda c: c["name"])

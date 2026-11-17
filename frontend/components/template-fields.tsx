@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import type { SetRow, Template, TemplateField, TemplateValue } from "@/lib/api";
+import { PLAIN_MEASURE, type MeasureValues, type SetRow, type Template, type TemplateField, type TemplateValue } from "@/lib/api";
 import { SENSITIVE } from "@/lib/discreet";
 import { CloseIcon, PlusIcon } from "./icons";
 
@@ -30,6 +30,58 @@ function parseNumber(text: string): number | null | string {
   if (t === "") return null;
   const n = Number(t);
   return Number.isFinite(n) ? n : text;
+}
+
+/** A number field with several measures (#111): one small box per measure on a
+ *  row, each with its unit inside ("5 kg", "10 s", "6 sets"), wrapping to a
+ *  second row when needed. Every measure is optional; a required field needs one. */
+function MeasuresField({ f, value, onChange }: { f: TemplateField; value: TemplateValue | null; onChange: (v: TemplateValue | null) => void }) {
+  const measures = f.measures ?? [];
+  // A plain number is a session from before the field had measures: it belongs to PLAIN_MEASURE.
+  const start: Record<string, number> =
+    value == null ? {} : typeof value === "object" && !Array.isArray(value) ? (value as MeasureValues) : { [PLAIN_MEASURE]: value as number };
+  const [texts, setTexts] = useState<Record<string, string>>(
+    Object.fromEntries(measures.map((m) => [m.key, start[m.key] == null ? "" : String(start[m.key])])),
+  );
+  function change(key: string, text: string) {
+    const next = { ...texts, [key]: text };
+    setTexts(next);
+    const out: Record<string, unknown> = {};
+    for (const m of measures) {
+      const n = parseNumber(next[m.key] ?? "");
+      if (n !== null) out[m.key] = n; // a string stays, for the check to report
+    }
+    onChange(Object.keys(out).length ? (out as MeasureValues) : null);
+  }
+  return (
+    <fieldset className="min-w-0">
+      <legend className={label}>
+        {f.label} <Optional f={f} />
+      </legend>
+      <div className="flex flex-wrap gap-2">
+        {measures.map((m) => (
+          <label
+            key={m.key}
+            className="flex min-h-11 w-[4.75rem] min-w-0 items-center rounded-md border border-control bg-surface pr-2 focus-within:border-accent"
+          >
+            <input
+              aria-label={`${f.label}, ${m.label}`}
+              inputMode={m.decimals ? "decimal" : "numeric"}
+              value={texts[m.key] ?? ""}
+              onChange={(e) => change(m.key, e.target.value)}
+              className="w-full min-w-0 bg-transparent py-2 pl-2 text-base tabular-nums text-ink focus:outline-none"
+              {...SENSITIVE}
+            />
+            {/* The unit is a name, not a value: it stays visible in discreet mode. */}
+            <span aria-hidden="true" className="shrink-0 text-xs text-ink-muted">
+              {m.label}
+            </span>
+          </label>
+        ))}
+      </div>
+      <Help f={f} />
+    </fieldset>
+  );
 }
 
 function NumberField({ f, value, onChange }: { f: TemplateField; value: TemplateValue | null; onChange: (v: TemplateValue | null) => void }) {
@@ -285,7 +337,7 @@ export function TemplateFields({
           const props = { f, value: values[f.key] ?? null, onChange: (v: TemplateValue | null) => onChange(f.key, v) };
           switch (f.type) {
             case "number":
-              return <NumberField key={f.key} {...props} />;
+              return f.measures?.length ? <MeasuresField key={f.key} {...props} /> : <NumberField key={f.key} {...props} />;
             case "select":
               return <SelectField key={f.key} {...props} />;
             case "boolean":

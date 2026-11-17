@@ -31,7 +31,7 @@ NUMBER_LIMIT = 1_000_000
 
 COMMON = {"key", "label", "type", "required", "help", "archived"}
 EXTRA_PROPS = {
-    "number": {"unit", "min", "max", "decimals"},
+    "number": {"unit", "min", "max", "decimals", "measures"},
     "select": {"options", "multiple"},
     "boolean": set(),
     "text": {"max_length"},
@@ -64,6 +64,63 @@ def slug(label: str) -> str:
     if not key or not key[0].isalpha():
         key = f"f_{key}" if key else "field"
     return key[:32]
+
+
+MAX_MEASURES = 4
+# A number field made before measures (#111) stores plain numbers. When it gets
+# measures, the measure that holds those numbers has this key, so old values
+# stay readable whatever the order of the measures.
+PLAIN_KEY = "value"
+
+
+def _measures(measures, what: str) -> list[dict]:
+    """1 to 4 measures {key, label, decimals}: the label is the name or unit
+    shown next to the value ("kg", "reps", "s"), short and unique in the field."""
+    if not isinstance(measures, list) or not 1 <= len(measures) <= MAX_MEASURES:
+        raise ValueError(f"{what}: a number field has 1 to {MAX_MEASURES} measures")
+    out, keys, labels = [], set(), set()
+    for m in measures:
+        if not isinstance(m, dict) or set(m) - {"key", "label", "decimals"}:
+            raise ValueError(f"{what}: each measure is {{key, label, decimals}}")
+        label = _text(m.get("label"), f"{what}: a measure's name", 12)
+        if label.lower() in labels:
+            raise ValueError(f"{what}: two measures are called {label!r}")
+        key = m.get("key") or slug(label)
+        if not isinstance(key, str) or not KEY.match(key) or key in keys:
+            raise ValueError(f"{what}: measure keys must be unique lower-case keys")
+        decimals = m.get("decimals", 0)
+        if isinstance(decimals, bool) or decimals not in (0, 1, 2):
+            raise ValueError(f"{what}: a measure's decimals must be 0, 1 or 2")
+        keys.add(key)
+        labels.add(label.lower())
+        out.append({"key": key, "label": label, "decimals": decimals})
+    return out
+
+
+def _check_measure_edit(old: dict, new: dict, used: bool) -> None:
+    """Edit rules for a number field's measures (#111): a used field keeps its
+    measures (adding more is fine) and a measure keeps its unit. A used plain
+    field that gets measures keeps its old unit as the measure keyed PLAIN_KEY."""
+    what = f"field {old['label']!r}"
+    if old.get("measures") and not new.get("measures"):
+        raise ValueError(f"{what}: a field with measures keeps them")
+    if old.get("measures"):
+        old_ms = old["measures"]
+    elif used:
+        old_ms = [{"key": PLAIN_KEY, "label": old.get("unit")}]
+    else:
+        return
+    new_ms = {m["key"]: m for m in new["measures"]}
+    for m in old_ms:
+        n = new_ms.get(m["key"])
+        if n is None:
+            if used:
+                raise ValueError(f"{what}: the measure {m['label'] or 'value'!r} has logged values; "
+                                 "it can't be removed")
+            continue
+        if m.get("label") and n["label"].lower() != m["label"].lower():
+            raise ValueError(f"{what}: a measure's unit can't change ({m['label']!r}); "
+                             "add a new measure instead")
 
 
 def _limits(f: dict, what: str) -> dict:
@@ -99,7 +156,12 @@ def _field(f: dict, sport: str) -> dict:
     if f.get("help") is not None:
         out["help"] = _text(f["help"], f"{what} help", 80)
 
-    if kind == "number":
+    if kind == "number" and f.get("measures") is not None:
+        # Several measures (#111): each value has its own unit and decimals.
+        if any(f.get(k) is not None for k in ("unit", "min", "max")):
+            raise ValueError(f"{what}: with measures, each measure has its own unit")
+        out["measures"] = _measures(f["measures"], what)
+    elif kind == "number":
         unit = f.get("unit")
         if unit is not None:
             out["unit"] = _text(unit, f"{what} unit", 8)
@@ -195,7 +257,11 @@ def validate_template(name: str, sport: str, fields: list, core_fields: list | N
                 if old["key"] in used:
                     raise ValueError(f"field {old['label']!r} has logged values; archive it instead")
                 continue
-            for prop in FIXED:
+            fixed = FIXED
+            if old["type"] == new["type"] == "number" and (old.get("measures") or new.get("measures")):
+                _check_measure_edit(old, new, old["key"] in used)
+                fixed = tuple(p for p in FIXED if p != "unit")  # units now live on the measures
+            for prop in fixed:
                 if old.get(prop) != new.get(prop):
                     raise ValueError(f"field {old['label']!r}: {prop} can't change once saved; "
                                      "add a new field and archive this one")
@@ -229,6 +295,39 @@ def _check_number(value, f: dict, what: str):
         d = f.get("decimals", 0)
         raise ValueError(f"{what} takes {'whole numbers' if d == 0 else f'up to {d} decimals'}")
     return int(value) if f.get("decimals", 0) == 0 else value
+
+
+def measure_values(value, f: dict) -> dict:
+    """A measures field's value as {measure key: number}. A plain number (a
+    session from before the field had measures) belongs to the PLAIN_KEY
+    measure, else to the first one."""
+    if isinstance(value, dict):
+        return value
+    keys = [m["key"] for m in f["measures"]]
+    return {PLAIN_KEY if PLAIN_KEY in keys else keys[0]: value}
+
+
+def _check_measures(value, f: dict) -> dict | None:
+    """One number per measure, each optional ({"kg": 5, "s": 10, "sets": 6}).
+    A plain number is accepted for the PLAIN_KEY measure (old values on edit).
+    None when every measure is empty."""
+    label = f["label"]
+    measures = {m["key"]: m for m in f["measures"]}
+    if not isinstance(value, dict):
+        if PLAIN_KEY not in measures:
+            example = ", ".join(f'"{k}": 1' for k in measures)
+            raise ValueError(f"{label} takes a value per measure, e.g. {{{example}}}")
+        value = {PLAIN_KEY: value}
+    unknown = sorted(set(value) - set(measures))
+    if unknown:
+        raise ValueError(f"{label}: no such measures {unknown}; measures: {list(measures)}")
+    out = {}
+    for m in f["measures"]:  # in the field's order
+        v = value.get(m["key"])
+        if v is None:
+            continue
+        out[m["key"]] = _check_number(v, {"decimals": m["decimals"]}, f"{label}, {m['label']}")
+    return out or None
 
 
 def _check_rows(value, f: dict) -> list[dict]:
@@ -292,7 +391,9 @@ def validate_values(template: dict, values: dict | None, sport: str,
             continue
         if f.get("archived") and previous.get(key) != value:
             raise ValueError(f"{f['label']} is archived and can't get new values")
-        out[key] = _value(value, f, previous.get(key))
+        checked = _value(value, f, previous.get(key))
+        if checked is not None:  # a measures field with every measure left empty
+            out[key] = checked
     for f in fields.values():
         if f.get("required") and not f.get("archived") and f["key"] not in out:
             raise ValueError(f"{f['label']} is required")
@@ -304,6 +405,8 @@ def validate_values(template: dict, values: dict | None, sport: str,
 def _value(value, f: dict, previous):
     label = f["label"]
     kind = f["type"]
+    if kind == "number" and f.get("measures"):
+        return _check_measures(value, f)
     if kind == "number":
         return _check_number(value, f, label)
     if kind == "boolean":
@@ -355,6 +458,11 @@ def sets_text(row: dict, f: dict) -> str:
 
 def value_text(value, f: dict) -> str:
     kind = f["type"]
+    if kind == "number" and f.get("measures"):
+        # "5 kg · 10 s · 6 sets", in the field's order (#111).
+        given = measure_values(value, f)
+        return " · ".join(f"{_fmt(given[m['key']])} {m['label']}" for m in f["measures"]
+                          if given.get(m["key"]) is not None)
     if kind == "number":
         return f"{_fmt(value)}{' ' + f['unit'] if f.get('unit') else ''}"
     if kind == "boolean":
@@ -380,6 +488,9 @@ def described(template: dict, values: dict) -> list[dict]:
         for prop in ("unit", "reps_unit", "load_unit"):
             if f.get(prop):
                 item[prop] = f[prop]
+        if f.get("measures"):
+            item["measures"] = [{"key": m["key"], "label": m["label"]} for m in f["measures"]]
+            item["value"] = measure_values(values[f["key"]], f)
         out.append(item)
     return out
 

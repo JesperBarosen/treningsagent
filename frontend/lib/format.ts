@@ -27,7 +27,17 @@ export function sportNoun(sport: Session["sport"]): string {
 
 /** One line per template value, e.g. "6 × 10 s · 20 mm · +10 kg" (#101). */
 export function valueLines(session: Pick<Session, "fields">): string[] {
-  return (session.fields ?? []).map((f) => f.text);
+  return valueParts(session).map((p) => (p.name ? `${p.name} ${p.text}` : p.text));
+}
+
+/** The same lines with the field's name apart from its values, so discreet mode
+ *  can blur the values and keep the name. A field with several measures (#111)
+ *  is named ("Hangboard" + "5 kg · 10 s · 6 sets"); other values read on their own. */
+export function valueParts(session: Pick<Session, "fields">): { name: string | null; text: string }[] {
+  return (session.fields ?? []).map((f) => ({
+    name: (f.measures?.length ?? 0) > 1 ? f.label : null,
+    text: f.text,
+  }));
 }
 
 /** 5.25 min/km -> "5:15". */

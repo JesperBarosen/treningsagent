@@ -73,10 +73,13 @@ function useToday(): string {
 export function nextOutcome(c: FormClimb): FormClimb {
   switch (climbOutcome(c)) {
     case "tried":
+      // A send that isn't a flash took at least 2 attempts (1 would be a flash), so
+      // the count starts there instead of going blank (#111: it showed "–", and −
+      // then made it a flash).
       return {
         ...c,
         sent: true,
-        attempts: c.attempts && c.attempts > 1 ? c.attempts : null,
+        attempts: c.attempts && c.attempts > 1 ? c.attempts : 2,
       };
     case "sent":
       return { ...c, sent: true, attempts: 1 };
@@ -272,7 +275,8 @@ export function SessionForm({
       onAttempts={(i, delta) =>
         updateClimb(i, (c) => ({
           ...c,
-          attempts: Math.max(1, (c.attempts ?? 1) + delta),
+          // A send keeps at least 2 attempts: − never turns it into a flash silently.
+          attempts: Math.max(climbOutcome(c) === "sent" ? 2 : 1, (c.attempts ?? (c.sent ? 2 : 1)) + delta),
         }))
       }
       onRemove={(i) => setClimbs((cs) => cs.filter((_, j) => j !== i))}
