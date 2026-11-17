@@ -39,7 +39,7 @@ import {
 } from "@/lib/sport-filter";
 import { readDensity, subscribeChartPrefs } from "@/lib/chart-prefs";
 import { SENSITIVE } from "@/lib/discreet";
-import { formatPace, formatRate, nf, shortDate } from "@/lib/format";
+import { formatPace, formatRate, nf, noneYetTitle, shortDate, sportNoun } from "@/lib/format";
 import { gradeSwatch } from "@/lib/grades";
 import {
   GradeChart,
@@ -65,7 +65,7 @@ export function SportFilterControl({ value }: { value: SportFilter }) {
       role="radiogroup"
       aria-label="Show sport"
       // Five sports since #100: on a phone the row scrolls sideways instead of wrapping.
-      className="inline-flex max-w-full overflow-x-auto rounded-full border border-control bg-surface p-0.5"
+      className="scrollbar-none inline-flex max-w-full overflow-x-auto rounded-full border border-control bg-surface p-0.5"
     >
       {SPORT_FILTERS.map((f) => (
         <button
@@ -219,7 +219,7 @@ export function Dashboard({
     return (
       <EmptyState
         icon={<ChartIcon size={26} />}
-        title={sport === "running" ? "No runs yet" : "No climbing yet"}
+        title={noneYetTitle(sport)}
         action={
           <Link
             href="/log"
@@ -229,7 +229,7 @@ export function Dashboard({
           </Link>
         }
       >
-        {`Nothing logged for ${sport} in the last ${WEEKS} weeks. Choose All to see everything.`}
+        {`Nothing logged for ${sportNoun(sport)} in the last ${WEEKS} weeks. Choose All to see everything.`}
       </EmptyState>
     );
   }

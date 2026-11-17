@@ -343,7 +343,7 @@ function TemplateEditor({ start, onCancel, onSaved }: { start: Draft; onCancel: 
         </label>
         <input id="template-name" value={draft.name} maxLength={40} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className={input} />
       </div>
-      <fieldset>
+      <fieldset className="min-w-0">
         <legend className={small}>Sport</legend>
         <div role="radiogroup" aria-label="Sport" className="grid grid-cols-2 gap-2">
           {SPORTS.map((s) => (
@@ -369,7 +369,7 @@ function TemplateEditor({ start, onCancel, onSaved }: { start: Draft; onCancel: 
         </div>
       </fieldset>
       {draft.sport === "running" && (
-        <fieldset className="flex flex-col gap-1">
+        <fieldset className="flex min-w-0 flex-col gap-1">
           <legend className={small}>Running fields to show</legend>
           {(
             [
@@ -591,7 +591,7 @@ function FieldSettings({ f, onChange }: { f: FieldDraft; onChange: (patch: Parti
       );
     case "select":
       return (
-        <fieldset className="flex flex-col gap-2">
+        <fieldset className="flex min-w-0 flex-col gap-2">
           <legend className={small}>Options</legend>
           {(f.options ?? []).map((o, i) =>
             o.archived ? null : (
@@ -668,7 +668,7 @@ function FieldSettings({ f, onChange }: { f: FieldDraft; onChange: (patch: Parti
               <input type="checkbox" checked={Boolean(f.load_signed)} onChange={(e) => onChange({ load_signed: e.target.checked })} className="size-5 accent-accent" />
             </label>
           )}
-          <fieldset className="flex flex-col gap-2">
+          <fieldset className="flex min-w-0 flex-col gap-2">
             <legend className={small}>Extra columns (up to 2)</legend>
             {(f.extras ?? []).map((c, i) => (
               <div key={i} className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] items-center gap-1">

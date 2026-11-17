@@ -175,10 +175,19 @@ describe("the Dashboard per sport", () => {
     expect(cards()).not.toContain("Running pace");
   });
 
-  it("says so when the chosen sport has nothing logged", () => {
+  it.each([
+    ["running", "No runs yet", "runs"],
+    ["climbing", "No climbing yet", "climbing"],
+    ["strength", "No strength training yet", "strength training"],
+    ["other", "No other training yet", "other training"],
+  ] as const)("says so, naming %s, when the chosen sport has nothing logged (#110)", (sport, title, noun) => {
     const empty = load({ weekly: load().weekly.map((w) => ({ ...w, load: 0, sessions: 0, load_by_sport: {} })) });
-    render(<Dashboard load={empty} progression={progression(6, 0)} sport="climbing" />);
-    expect(screen.getByText("No climbing yet")).toBeInTheDocument();
+    // Nothing of the chosen sport; the other sport's sessions don't count.
+    const other = sport === "running" ? progression(0, 6) : progression(6, 0);
+    render(<Dashboard load={empty} progression={other} sport={sport} />);
+    // The title and the text below name the same sport.
+    expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Nothing logged for ${noun} in the last`))).toBeInTheDocument();
     expect(screen.getByText(/Choose All to see everything/)).toBeInTheDocument();
   });
 

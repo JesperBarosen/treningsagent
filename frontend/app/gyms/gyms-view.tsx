@@ -237,7 +237,7 @@ function GymEditor({ draft: start, onCancel, onSaved }: { draft: Draft; onCancel
         </div>
       </div>
 
-      <fieldset className="flex flex-col gap-2">
+      <fieldset className="flex min-w-0 flex-col gap-2">
         <legend className="mb-1 text-xs font-semibold tracking-wide text-ink-muted uppercase">Colours, easiest first</legend>
         {active.map((c, i) => (
           <div key={c.id ?? `new-${i}`} className="rounded-lg border border-line bg-surface p-2">

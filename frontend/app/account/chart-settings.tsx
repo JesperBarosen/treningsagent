@@ -73,7 +73,7 @@ export function ChartSettings() {
 
   return (
     <div className="space-y-5">
-      <fieldset>
+      <fieldset className="min-w-0">
         <legend className="mb-2 text-sm font-semibold">Chart colours</legend>
         <div className="space-y-2">
           {(Object.keys(PALETTE_LABELS) as ChartPalette[]).map((p) => (
@@ -83,7 +83,7 @@ export function ChartSettings() {
           ))}
         </div>
       </fieldset>
-      <fieldset>
+      <fieldset className="min-w-0">
         <legend className="mb-2 text-sm font-semibold">Dashboard on a phone</legend>
         <div className="space-y-2">
           {(Object.keys(DENSITY_LABELS) as DashboardDensity[]).map((d) => (

@@ -1,0 +1,4304 @@
+{
+ "sessions": [
+  {
+   "id": 1,
+   "sport": "running",
+   "date": "2026-09-28",
+   "duration_min": 39,
+   "effort": 4,
+   "notes": "Easy, conversational pace",
+   "distance_km": 6.5,
+   "elevation_m": 40,
+   "load": 156,
+   "pace_min_per_km": 6.0
+  },
+  {
+   "id": 2,
+   "sport": "climbing",
+   "date": "2026-09-29",
+   "duration_min": 90,
+   "effort": 7,
+   "climbs": [
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 3,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 2,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 5,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 2,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 3,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 4,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 4,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    }
+   ],
+   "load": 630,
+   "climbs_sent": 5,
+   "hardest_sent_grade": "purple"
+  },
+  {
+   "id": 3,
+   "sport": "running",
+   "date": "2026-10-01",
+   "duration_min": 47,
+   "effort": 7,
+   "notes": "Tempo in the middle 5 km",
+   "distance_km": 9.0,
+   "elevation_m": 40,
+   "load": 329,
+   "pace_min_per_km": 5.22
+  },
+  {
+   "id": 4,
+   "sport": "climbing",
+   "date": "2026-10-02",
+   "duration_min": 75,
+   "effort": 8,
+   "notes": "Worked on crimps",
+   "climbs": [
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 4,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 5,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 5,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 4,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 4,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 4,
+     "sent": false,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    }
+   ],
+   "load": 600,
+   "climbs_sent": 6,
+   "hardest_sent_grade": "blue"
+  },
+  {
+   "id": 5,
+   "sport": "running",
+   "date": "2026-10-04",
+   "duration_min": 81,
+   "effort": 6,
+   "notes": "Long and steady",
+   "distance_km": 14.0,
+   "elevation_m": 40,
+   "load": 486,
+   "pace_min_per_km": 5.79
+  },
+  {
+   "id": 6,
+   "sport": "running",
+   "date": "2026-10-05",
+   "duration_min": 36,
+   "effort": 4,
+   "notes": "Easy, conversational pace",
+   "distance_km": 6.0,
+   "elevation_m": 60,
+   "load": 144,
+   "pace_min_per_km": 6.0
+  },
+  {
+   "id": 7,
+   "sport": "climbing",
+   "date": "2026-10-06",
+   "duration_min": 105,
+   "effort": 6,
+   "notes": "Board night with friends",
+   "climbs": [
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 2,
+     "sent": false,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 5,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 3,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 2,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 4,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    }
+   ],
+   "load": 630,
+   "climbs_sent": 4,
+   "hardest_sent_grade": "blue"
+  },
+  {
+   "id": 8,
+   "sport": "running",
+   "date": "2026-10-08",
+   "duration_min": 41,
+   "effort": 7,
+   "notes": "Tempo in the middle 5 km",
+   "distance_km": 8.0,
+   "elevation_m": 40,
+   "load": 287,
+   "pace_min_per_km": 5.12
+  },
+  {
+   "id": 9,
+   "sport": "climbing",
+   "date": "2026-10-09",
+   "duration_min": 105,
+   "effort": 6,
+   "notes": "Bouldering session",
+   "climbs": [
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 5,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 2,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 2,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    }
+   ],
+   "load": 630,
+   "climbs_sent": 5,
+   "hardest_sent_grade": "blue"
+  },
+  {
+   "id": 10,
+   "sport": "running",
+   "date": "2026-10-11",
+   "duration_min": 92,
+   "effort": 6,
+   "notes": "Long and steady",
+   "distance_km": 16.0,
+   "elevation_m": 40,
+   "load": 552,
+   "pace_min_per_km": 5.75
+  },
+  {
+   "id": 11,
+   "sport": "running",
+   "date": "2026-10-12",
+   "duration_min": 35,
+   "effort": 4,
+   "notes": "Easy, conversational pace",
+   "distance_km": 6.0,
+   "elevation_m": 120,
+   "load": 140,
+   "pace_min_per_km": 5.83
+  },
+  {
+   "id": 12,
+   "sport": "climbing",
+   "date": "2026-10-13",
+   "duration_min": 75,
+   "effort": 7,
+   "notes": "Worked on crimps",
+   "climbs": [
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 3,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 2,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 3,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 2,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    }
+   ],
+   "load": 525,
+   "climbs_sent": 8,
+   "hardest_sent_grade": "purple"
+  },
+  {
+   "id": 13,
+   "sport": "running",
+   "date": "2026-10-15",
+   "duration_min": 50,
+   "effort": 7,
+   "notes": "Tempo in the middle 5 km",
+   "distance_km": 10.0,
+   "elevation_m": 60,
+   "load": 350,
+   "pace_min_per_km": 5.0
+  },
+  {
+   "id": 14,
+   "sport": "climbing",
+   "date": "2026-10-16",
+   "duration_min": 75,
+   "effort": 7,
+   "notes": "Board night with friends",
+   "climbs": [
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 4,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 5,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    }
+   ],
+   "load": 525,
+   "climbs_sent": 6,
+   "hardest_sent_grade": "purple"
+  },
+  {
+   "id": 15,
+   "sport": "running",
+   "date": "2026-10-18",
+   "duration_min": 102,
+   "effort": 6,
+   "notes": "Long and steady",
+   "distance_km": 18.0,
+   "elevation_m": 120,
+   "load": 612,
+   "pace_min_per_km": 5.67
+  },
+  {
+   "id": 16,
+   "sport": "running",
+   "date": "2026-10-19",
+   "duration_min": 39,
+   "effort": 4,
+   "notes": "Easy, conversational pace",
+   "distance_km": 6.5,
+   "elevation_m": 40,
+   "load": 156,
+   "pace_min_per_km": 6.0
+  },
+  {
+   "id": 17,
+   "sport": "climbing",
+   "date": "2026-10-20",
+   "duration_min": 105,
+   "effort": 6,
+   "notes": "Worked on crimps",
+   "climbs": [
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 5,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 3,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    }
+   ],
+   "load": 630,
+   "climbs_sent": 6,
+   "hardest_sent_grade": "blue"
+  },
+  {
+   "id": 18,
+   "sport": "running",
+   "date": "2026-10-22",
+   "duration_min": 50,
+   "effort": 7,
+   "notes": "Tempo in the middle 5 km",
+   "distance_km": 10.0,
+   "elevation_m": 40,
+   "load": 350,
+   "pace_min_per_km": 5.0
+  },
+  {
+   "id": 19,
+   "sport": "climbing",
+   "date": "2026-10-23",
+   "duration_min": 90,
+   "effort": 7,
+   "climbs": [
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 1,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 3,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 4,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 4,
+     "sent": false,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 4,
+     "sent": false,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    }
+   ],
+   "load": 630,
+   "climbs_sent": 6,
+   "hardest_sent_grade": "red"
+  },
+  {
+   "id": 20,
+   "sport": "running",
+   "date": "2026-10-25",
+   "duration_min": 103,
+   "effort": 6,
+   "notes": "Long and steady",
+   "distance_km": 18.0,
+   "elevation_m": 20,
+   "load": 618,
+   "pace_min_per_km": 5.72
+  },
+  {
+   "id": 21,
+   "sport": "climbing",
+   "date": "2026-10-27",
+   "duration_min": 60,
+   "effort": 5,
+   "notes": "Bouldering session",
+   "climbs": [
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 5,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 5,
+     "sent": false,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 5,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 5,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    }
+   ],
+   "load": 300,
+   "climbs_sent": 2,
+   "hardest_sent_grade": "green"
+  },
+  {
+   "id": 22,
+   "sport": "running",
+   "date": "2026-10-31",
+   "duration_min": 29,
+   "effort": 3,
+   "notes": "Easy, conversational pace",
+   "distance_km": 5.0,
+   "elevation_m": 60,
+   "load": 87,
+   "pace_min_per_km": 5.8
+  },
+  {
+   "id": 23,
+   "sport": "running",
+   "date": "2026-11-02",
+   "duration_min": 37,
+   "effort": 4,
+   "notes": "Easy, conversational pace",
+   "distance_km": 6.5,
+   "elevation_m": 120,
+   "load": 148,
+   "pace_min_per_km": 5.69
+  },
+  {
+   "id": 24,
+   "sport": "climbing",
+   "date": "2026-11-03",
+   "duration_min": 90,
+   "effort": 7,
+   "notes": "Bouldering session",
+   "climbs": [
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 2,
+     "sent": false,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 1,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 5,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 1,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 5,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 2,
+     "sent": false,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 4,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    }
+   ],
+   "load": 630,
+   "climbs_sent": 6,
+   "hardest_sent_grade": "red"
+  },
+  {
+   "id": 25,
+   "sport": "running",
+   "date": "2026-11-05",
+   "duration_min": 40,
+   "effort": 7,
+   "notes": "Tempo in the middle 5 km",
+   "distance_km": 8.0,
+   "elevation_m": 60,
+   "load": 280,
+   "pace_min_per_km": 5.0
+  },
+  {
+   "id": 26,
+   "sport": "climbing",
+   "date": "2026-11-06",
+   "duration_min": 90,
+   "effort": 6,
+   "climbs": [
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 4,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 4,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 3,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 3,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 2,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    }
+   ],
+   "load": 540,
+   "climbs_sent": 6,
+   "hardest_sent_grade": "red"
+  },
+  {
+   "id": 27,
+   "sport": "running",
+   "date": "2026-11-08",
+   "duration_min": 90,
+   "effort": 6,
+   "notes": "Long and steady",
+   "distance_km": 16.0,
+   "elevation_m": 120,
+   "load": 540,
+   "pace_min_per_km": 5.62
+  },
+  {
+   "id": 28,
+   "sport": "running",
+   "date": "2026-11-09",
+   "duration_min": 29,
+   "effort": 4,
+   "notes": "Easy, conversational pace",
+   "distance_km": 5.0,
+   "elevation_m": 60,
+   "load": 116,
+   "pace_min_per_km": 5.8
+  },
+  {
+   "id": 29,
+   "sport": "climbing",
+   "date": "2026-11-10",
+   "duration_min": 90,
+   "effort": 7,
+   "notes": "Worked on crimps",
+   "climbs": [
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1002,
+     "attempts": 5,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#2f6fd6"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 4,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 1,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 4,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 3,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    }
+   ],
+   "load": 630,
+   "climbs_sent": 9,
+   "hardest_sent_grade": "red"
+  },
+  {
+   "id": 38,
+   "sport": "other",
+   "date": "2026-11-11",
+   "duration_min": 30,
+   "effort": 3,
+   "notes": "Yoga",
+   "load": 90
+  },
+  {
+   "id": 30,
+   "sport": "running",
+   "date": "2026-11-12",
+   "duration_min": 39,
+   "effort": 7,
+   "notes": "Tempo in the middle 5 km",
+   "distance_km": 8.0,
+   "elevation_m": 40,
+   "load": 273,
+   "pace_min_per_km": 4.88
+  },
+  {
+   "id": 37,
+   "sport": "strength",
+   "date": "2026-11-12",
+   "duration_min": 60,
+   "effort": 7,
+   "notes": "Squats and pull-ups",
+   "load": 420
+  },
+  {
+   "id": 31,
+   "sport": "climbing",
+   "date": "2026-11-13",
+   "duration_min": 90,
+   "effort": 8,
+   "notes": "Bouldering session",
+   "climbs": [
+    {
+     "grade": "green",
+     "grade_ordinal": 2,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1001,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#3fae5f"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 1,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "purple",
+     "grade_ordinal": 4,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1003,
+     "attempts": 2,
+     "sent": true,
+     "style": "kilter",
+     "gym": "My gym",
+     "colour": "#9440b8"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "sent": true,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 2,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 2,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 5,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    },
+    {
+     "grade": "red",
+     "grade_ordinal": 5,
+     "grade_system": "gym",
+     "gym_id": 1,
+     "gym_grade_id": 1004,
+     "attempts": 2,
+     "sent": false,
+     "style": "boulder",
+     "gym": "My gym",
+     "colour": "#c0302f"
+    }
+   ],
+   "load": 720,
+   "climbs_sent": 4,
+   "hardest_sent_grade": "red"
+  },
+  {
+   "id": 36,
+   "sport": "other",
+   "date": "2026-11-13",
+   "duration_min": 40,
+   "effort": 7,
+   "template_id": 1,
+   "custom_values": {
+    "protocol": "max_hangs",
+    "grip": [
+     "half_crimp",
+     "open_hand"
+    ],
+    "hangs": [
+     {
+      "sets": 6,
+      "reps": 10,
+      "load": 10,
+      "edge_mm": 20
+     },
+     {
+      "sets": 3,
+      "reps": 7,
+      "load": -5,
+      "edge_mm": 15
+     }
+    ],
+    "rest_s": 180,
+    "finger_pain": false
+   },
+   "template": "Fingerboard",
+   "fields": [
+    {
+     "key": "protocol",
+     "label": "Protocol",
+     "type": "select",
+     "value": "max_hangs",
+     "text": "Max hangs"
+    },
+    {
+     "key": "grip",
+     "label": "Grip",
+     "type": "select",
+     "value": [
+      "half_crimp",
+      "open_hand"
+     ],
+     "text": "Half crimp, Open hand"
+    },
+    {
+     "key": "hangs",
+     "label": "Hangs",
+     "type": "sets",
+     "value": [
+      {
+       "sets": 6,
+       "reps": 10,
+       "load": 10,
+       "edge_mm": 20
+      },
+      {
+       "sets": 3,
+       "reps": 7,
+       "load": -5,
+       "edge_mm": 15
+      }
+     ],
+     "text": "6 × 10 s · 20 mm · +10 kg; 3 × 7 s · 15 mm · -5 kg",
+     "reps_unit": "s",
+     "load_unit": "kg"
+    },
+    {
+     "key": "rest_s",
+     "label": "Rest between sets",
+     "type": "number",
+     "value": 180,
+     "text": "180 s",
+     "unit": "s"
+    },
+    {
+     "key": "finger_pain",
+     "label": "Any finger pain?",
+     "type": "boolean",
+     "value": false,
+     "text": "No"
+    }
+   ],
+   "load": 280
+  },
+  {
+   "id": 35,
+   "sport": "climbing",
+   "date": "2026-11-14",
+   "duration_min": 90,
+   "effort": 7,
+   "climbs": [
+    {
+     "grade": "blue",
+     "grade_ordinal": 3,
+     "grade_system": "gym",
+     "gym_id": 2,
+     "gym_grade_id": 1009,
+     "attempts": 1,
+     "sent": true,
+     "style": "boulder",
+     "gym": "Fontainebleau Boulders Centre",
+     "colour": "#2f6fd6"
+    }
+   ],
+   "load": 630,
+   "climbs_sent": 1,
+   "hardest_sent_grade": "blue"
+  },
+  {
+   "id": 32,
+   "sport": "running",
+   "date": "2026-11-15",
+   "duration_min": 78,
+   "effort": 6,
+   "notes": "Long and steady",
+   "distance_km": 14.0,
+   "elevation_m": 40,
+   "load": 468,
+   "pace_min_per_km": 5.57
+  },
+  {
+   "id": 34,
+   "sport": "climbing",
+   "date": "2026-11-15",
+   "duration_min": 120,
+   "effort": 8,
+   "climbs": [
+    {
+     "grade": "6A+",
+     "grade_system": "font",
+     "sent": true,
+     "style": "boulder"
+    },
+    {
+     "grade": "6B",
+     "grade_system": "font",
+     "sent": false,
+     "style": "boulder"
+    },
+    {
+     "grade": "6B+",
+     "grade_system": "font",
+     "sent": true,
+     "style": "boulder"
+    },
+    {
+     "grade": "6C",
+     "grade_system": "font",
+     "sent": false,
+     "style": "boulder"
+    },
+    {
+     "grade": "6C+",
+     "grade_system": "font",
+     "sent": true,
+     "style": "boulder"
+    },
+    {
+     "grade": "7A",
+     "grade_system": "font",
+     "sent": false,
+     "style": "boulder"
+    },
+    {
+     "grade": "7A+",
+     "grade_system": "font",
+     "sent": true,
+     "style": "boulder"
+    }
+   ],
+   "load": 960,
+   "climbs_sent": 4,
+   "hardest_sent_grade": "7A+"
+  },
+  {
+   "id": 33,
+   "sport": "running",
+   "date": "2026-11-16",
+   "duration_min": 29,
+   "effort": 4,
+   "notes": "Easy, conversational pace",
+   "distance_km": 5.0,
+   "elevation_m": 120,
+   "load": 116,
+   "pace_min_per_km": 5.8
+  }
+ ],
+ "training_load": {
+  "daily": [
+   {
+    "date": "2026-09-28",
+    "load": 156
+   },
+   {
+    "date": "2026-09-29",
+    "load": 630
+   },
+   {
+    "date": "2026-09-30",
+    "load": 0
+   },
+   {
+    "date": "2026-10-01",
+    "load": 329
+   },
+   {
+    "date": "2026-10-02",
+    "load": 600
+   },
+   {
+    "date": "2026-10-03",
+    "load": 0
+   },
+   {
+    "date": "2026-10-04",
+    "load": 486
+   },
+   {
+    "date": "2026-10-05",
+    "load": 144
+   },
+   {
+    "date": "2026-10-06",
+    "load": 630
+   },
+   {
+    "date": "2026-10-07",
+    "load": 0
+   },
+   {
+    "date": "2026-10-08",
+    "load": 287
+   },
+   {
+    "date": "2026-10-09",
+    "load": 630
+   },
+   {
+    "date": "2026-10-10",
+    "load": 0
+   },
+   {
+    "date": "2026-10-11",
+    "load": 552
+   },
+   {
+    "date": "2026-10-12",
+    "load": 140
+   },
+   {
+    "date": "2026-10-13",
+    "load": 525
+   },
+   {
+    "date": "2026-10-14",
+    "load": 0
+   },
+   {
+    "date": "2026-10-15",
+    "load": 350
+   },
+   {
+    "date": "2026-10-16",
+    "load": 525
+   },
+   {
+    "date": "2026-10-17",
+    "load": 0
+   },
+   {
+    "date": "2026-10-18",
+    "load": 612
+   },
+   {
+    "date": "2026-10-19",
+    "load": 156
+   },
+   {
+    "date": "2026-10-20",
+    "load": 630
+   },
+   {
+    "date": "2026-10-21",
+    "load": 0
+   },
+   {
+    "date": "2026-10-22",
+    "load": 350
+   },
+   {
+    "date": "2026-10-23",
+    "load": 630
+   },
+   {
+    "date": "2026-10-24",
+    "load": 0
+   },
+   {
+    "date": "2026-10-25",
+    "load": 618
+   },
+   {
+    "date": "2026-10-26",
+    "load": 0
+   },
+   {
+    "date": "2026-10-27",
+    "load": 300
+   },
+   {
+    "date": "2026-10-28",
+    "load": 0
+   },
+   {
+    "date": "2026-10-29",
+    "load": 0
+   },
+   {
+    "date": "2026-10-30",
+    "load": 0
+   },
+   {
+    "date": "2026-10-31",
+    "load": 87
+   },
+   {
+    "date": "2026-11-01",
+    "load": 0
+   },
+   {
+    "date": "2026-11-02",
+    "load": 148
+   },
+   {
+    "date": "2026-11-03",
+    "load": 630
+   },
+   {
+    "date": "2026-11-04",
+    "load": 0
+   },
+   {
+    "date": "2026-11-05",
+    "load": 280
+   },
+   {
+    "date": "2026-11-06",
+    "load": 540
+   },
+   {
+    "date": "2026-11-07",
+    "load": 0
+   },
+   {
+    "date": "2026-11-08",
+    "load": 540
+   },
+   {
+    "date": "2026-11-09",
+    "load": 116
+   },
+   {
+    "date": "2026-11-10",
+    "load": 630
+   },
+   {
+    "date": "2026-11-11",
+    "load": 90
+   },
+   {
+    "date": "2026-11-12",
+    "load": 693
+   },
+   {
+    "date": "2026-11-13",
+    "load": 1000
+   },
+   {
+    "date": "2026-11-14",
+    "load": 630
+   },
+   {
+    "date": "2026-11-15",
+    "load": 1428
+   },
+   {
+    "date": "2026-11-16",
+    "load": 116
+   }
+  ],
+  "weekly": [
+   {
+    "week_start": "2026-09-28",
+    "load": 2201,
+    "sessions": 5,
+    "load_by_sport": {
+     "running": 971,
+     "climbing": 1230
+    }
+   },
+   {
+    "week_start": "2026-10-05",
+    "load": 2243,
+    "sessions": 5,
+    "load_by_sport": {
+     "running": 983,
+     "climbing": 1260
+    }
+   },
+   {
+    "week_start": "2026-10-12",
+    "load": 2152,
+    "sessions": 5,
+    "load_by_sport": {
+     "running": 1102,
+     "climbing": 1050
+    }
+   },
+   {
+    "week_start": "2026-10-19",
+    "load": 2384,
+    "sessions": 5,
+    "load_by_sport": {
+     "running": 1124,
+     "climbing": 1260
+    }
+   },
+   {
+    "week_start": "2026-10-26",
+    "load": 387,
+    "sessions": 2,
+    "load_by_sport": {
+     "climbing": 300,
+     "running": 87
+    }
+   },
+   {
+    "week_start": "2026-11-02",
+    "load": 2138,
+    "sessions": 5,
+    "load_by_sport": {
+     "running": 968,
+     "climbing": 1170
+    }
+   },
+   {
+    "week_start": "2026-11-09",
+    "load": 4587,
+    "sessions": 10,
+    "load_by_sport": {
+     "running": 857,
+     "climbing": 2940,
+     "other": 370,
+     "strength": 420
+    }
+   },
+   {
+    "week_start": "2026-11-16",
+    "load": 116,
+    "sessions": 1,
+    "load_by_sport": {
+     "running": 116
+    }
+   }
+  ],
+  "acute_7d_avg": 655.3,
+  "chronic_28d_avg": 337.7,
+  "acute_chronic_ratio": 1.94,
+  "ratio_status": "ok",
+  "history_days": 50,
+  "paused_days": 0,
+  "pause": null,
+  "by_sport": {
+   "running": {
+    "daily": [
+     {
+      "date": "2026-09-28",
+      "load": 156
+     },
+     {
+      "date": "2026-09-29",
+      "load": 0
+     },
+     {
+      "date": "2026-09-30",
+      "load": 0
+     },
+     {
+      "date": "2026-10-01",
+      "load": 329
+     },
+     {
+      "date": "2026-10-02",
+      "load": 0
+     },
+     {
+      "date": "2026-10-03",
+      "load": 0
+     },
+     {
+      "date": "2026-10-04",
+      "load": 486
+     },
+     {
+      "date": "2026-10-05",
+      "load": 144
+     },
+     {
+      "date": "2026-10-06",
+      "load": 0
+     },
+     {
+      "date": "2026-10-07",
+      "load": 0
+     },
+     {
+      "date": "2026-10-08",
+      "load": 287
+     },
+     {
+      "date": "2026-10-09",
+      "load": 0
+     },
+     {
+      "date": "2026-10-10",
+      "load": 0
+     },
+     {
+      "date": "2026-10-11",
+      "load": 552
+     },
+     {
+      "date": "2026-10-12",
+      "load": 140
+     },
+     {
+      "date": "2026-10-13",
+      "load": 0
+     },
+     {
+      "date": "2026-10-14",
+      "load": 0
+     },
+     {
+      "date": "2026-10-15",
+      "load": 350
+     },
+     {
+      "date": "2026-10-16",
+      "load": 0
+     },
+     {
+      "date": "2026-10-17",
+      "load": 0
+     },
+     {
+      "date": "2026-10-18",
+      "load": 612
+     },
+     {
+      "date": "2026-10-19",
+      "load": 156
+     },
+     {
+      "date": "2026-10-20",
+      "load": 0
+     },
+     {
+      "date": "2026-10-21",
+      "load": 0
+     },
+     {
+      "date": "2026-10-22",
+      "load": 350
+     },
+     {
+      "date": "2026-10-23",
+      "load": 0
+     },
+     {
+      "date": "2026-10-24",
+      "load": 0
+     },
+     {
+      "date": "2026-10-25",
+      "load": 618
+     },
+     {
+      "date": "2026-10-26",
+      "load": 0
+     },
+     {
+      "date": "2026-10-27",
+      "load": 0
+     },
+     {
+      "date": "2026-10-28",
+      "load": 0
+     },
+     {
+      "date": "2026-10-29",
+      "load": 0
+     },
+     {
+      "date": "2026-10-30",
+      "load": 0
+     },
+     {
+      "date": "2026-10-31",
+      "load": 87
+     },
+     {
+      "date": "2026-11-01",
+      "load": 0
+     },
+     {
+      "date": "2026-11-02",
+      "load": 148
+     },
+     {
+      "date": "2026-11-03",
+      "load": 0
+     },
+     {
+      "date": "2026-11-04",
+      "load": 0
+     },
+     {
+      "date": "2026-11-05",
+      "load": 280
+     },
+     {
+      "date": "2026-11-06",
+      "load": 0
+     },
+     {
+      "date": "2026-11-07",
+      "load": 0
+     },
+     {
+      "date": "2026-11-08",
+      "load": 540
+     },
+     {
+      "date": "2026-11-09",
+      "load": 116
+     },
+     {
+      "date": "2026-11-10",
+      "load": 0
+     },
+     {
+      "date": "2026-11-11",
+      "load": 0
+     },
+     {
+      "date": "2026-11-12",
+      "load": 273
+     },
+     {
+      "date": "2026-11-13",
+      "load": 0
+     },
+     {
+      "date": "2026-11-14",
+      "load": 0
+     },
+     {
+      "date": "2026-11-15",
+      "load": 468
+     },
+     {
+      "date": "2026-11-16",
+      "load": 116
+     }
+    ],
+    "weekly": [
+     {
+      "week_start": "2026-09-28",
+      "load": 971,
+      "sessions": 3,
+      "load_by_sport": {
+       "running": 971
+      }
+     },
+     {
+      "week_start": "2026-10-05",
+      "load": 983,
+      "sessions": 3,
+      "load_by_sport": {
+       "running": 983
+      }
+     },
+     {
+      "week_start": "2026-10-12",
+      "load": 1102,
+      "sessions": 3,
+      "load_by_sport": {
+       "running": 1102
+      }
+     },
+     {
+      "week_start": "2026-10-19",
+      "load": 1124,
+      "sessions": 3,
+      "load_by_sport": {
+       "running": 1124
+      }
+     },
+     {
+      "week_start": "2026-10-26",
+      "load": 87,
+      "sessions": 1,
+      "load_by_sport": {
+       "running": 87
+      }
+     },
+     {
+      "week_start": "2026-11-02",
+      "load": 968,
+      "sessions": 3,
+      "load_by_sport": {
+       "running": 968
+      }
+     },
+     {
+      "week_start": "2026-11-09",
+      "load": 857,
+      "sessions": 3,
+      "load_by_sport": {
+       "running": 857
+      }
+     },
+     {
+      "week_start": "2026-11-16",
+      "load": 116,
+      "sessions": 1,
+      "load_by_sport": {
+       "running": 116
+      }
+     }
+    ],
+    "acute_7d_avg": 122.4,
+    "chronic_28d_avg": 107.0,
+    "acute_chronic_ratio": 1.14,
+    "ratio_status": "ok",
+    "history_days": 50,
+    "paused_days": 0,
+    "pause": null
+   },
+   "climbing": {
+    "daily": [
+     {
+      "date": "2026-09-28",
+      "load": 0
+     },
+     {
+      "date": "2026-09-29",
+      "load": 630
+     },
+     {
+      "date": "2026-09-30",
+      "load": 0
+     },
+     {
+      "date": "2026-10-01",
+      "load": 0
+     },
+     {
+      "date": "2026-10-02",
+      "load": 600
+     },
+     {
+      "date": "2026-10-03",
+      "load": 0
+     },
+     {
+      "date": "2026-10-04",
+      "load": 0
+     },
+     {
+      "date": "2026-10-05",
+      "load": 0
+     },
+     {
+      "date": "2026-10-06",
+      "load": 630
+     },
+     {
+      "date": "2026-10-07",
+      "load": 0
+     },
+     {
+      "date": "2026-10-08",
+      "load": 0
+     },
+     {
+      "date": "2026-10-09",
+      "load": 630
+     },
+     {
+      "date": "2026-10-10",
+      "load": 0
+     },
+     {
+      "date": "2026-10-11",
+      "load": 0
+     },
+     {
+      "date": "2026-10-12",
+      "load": 0
+     },
+     {
+      "date": "2026-10-13",
+      "load": 525
+     },
+     {
+      "date": "2026-10-14",
+      "load": 0
+     },
+     {
+      "date": "2026-10-15",
+      "load": 0
+     },
+     {
+      "date": "2026-10-16",
+      "load": 525
+     },
+     {
+      "date": "2026-10-17",
+      "load": 0
+     },
+     {
+      "date": "2026-10-18",
+      "load": 0
+     },
+     {
+      "date": "2026-10-19",
+      "load": 0
+     },
+     {
+      "date": "2026-10-20",
+      "load": 630
+     },
+     {
+      "date": "2026-10-21",
+      "load": 0
+     },
+     {
+      "date": "2026-10-22",
+      "load": 0
+     },
+     {
+      "date": "2026-10-23",
+      "load": 630
+     },
+     {
+      "date": "2026-10-24",
+      "load": 0
+     },
+     {
+      "date": "2026-10-25",
+      "load": 0
+     },
+     {
+      "date": "2026-10-26",
+      "load": 0
+     },
+     {
+      "date": "2026-10-27",
+      "load": 300
+     },
+     {
+      "date": "2026-10-28",
+      "load": 0
+     },
+     {
+      "date": "2026-10-29",
+      "load": 0
+     },
+     {
+      "date": "2026-10-30",
+      "load": 0
+     },
+     {
+      "date": "2026-10-31",
+      "load": 0
+     },
+     {
+      "date": "2026-11-01",
+      "load": 0
+     },
+     {
+      "date": "2026-11-02",
+      "load": 0
+     },
+     {
+      "date": "2026-11-03",
+      "load": 630
+     },
+     {
+      "date": "2026-11-04",
+      "load": 0
+     },
+     {
+      "date": "2026-11-05",
+      "load": 0
+     },
+     {
+      "date": "2026-11-06",
+      "load": 540
+     },
+     {
+      "date": "2026-11-07",
+      "load": 0
+     },
+     {
+      "date": "2026-11-08",
+      "load": 0
+     },
+     {
+      "date": "2026-11-09",
+      "load": 0
+     },
+     {
+      "date": "2026-11-10",
+      "load": 630
+     },
+     {
+      "date": "2026-11-11",
+      "load": 0
+     },
+     {
+      "date": "2026-11-12",
+      "load": 0
+     },
+     {
+      "date": "2026-11-13",
+      "load": 720
+     },
+     {
+      "date": "2026-11-14",
+      "load": 630
+     },
+     {
+      "date": "2026-11-15",
+      "load": 960
+     },
+     {
+      "date": "2026-11-16",
+      "load": 0
+     }
+    ],
+    "weekly": [
+     {
+      "week_start": "2026-09-28",
+      "load": 1230,
+      "sessions": 2,
+      "load_by_sport": {
+       "climbing": 1230
+      }
+     },
+     {
+      "week_start": "2026-10-05",
+      "load": 1260,
+      "sessions": 2,
+      "load_by_sport": {
+       "climbing": 1260
+      }
+     },
+     {
+      "week_start": "2026-10-12",
+      "load": 1050,
+      "sessions": 2,
+      "load_by_sport": {
+       "climbing": 1050
+      }
+     },
+     {
+      "week_start": "2026-10-19",
+      "load": 1260,
+      "sessions": 2,
+      "load_by_sport": {
+       "climbing": 1260
+      }
+     },
+     {
+      "week_start": "2026-10-26",
+      "load": 300,
+      "sessions": 1,
+      "load_by_sport": {
+       "climbing": 300
+      }
+     },
+     {
+      "week_start": "2026-11-02",
+      "load": 1170,
+      "sessions": 2,
+      "load_by_sport": {
+       "climbing": 1170
+      }
+     },
+     {
+      "week_start": "2026-11-09",
+      "load": 2940,
+      "sessions": 4,
+      "load_by_sport": {
+       "climbing": 2940
+      }
+     },
+     {
+      "week_start": "2026-11-16",
+      "load": 0,
+      "sessions": 0,
+      "load_by_sport": {}
+     }
+    ],
+    "acute_7d_avg": 420.0,
+    "chronic_28d_avg": 202.5,
+    "acute_chronic_ratio": 2.07,
+    "ratio_status": "ok",
+    "history_days": 49,
+    "paused_days": 0,
+    "pause": null
+   },
+   "strength": {
+    "daily": [
+     {
+      "date": "2026-09-28",
+      "load": 0
+     },
+     {
+      "date": "2026-09-29",
+      "load": 0
+     },
+     {
+      "date": "2026-09-30",
+      "load": 0
+     },
+     {
+      "date": "2026-10-01",
+      "load": 0
+     },
+     {
+      "date": "2026-10-02",
+      "load": 0
+     },
+     {
+      "date": "2026-10-03",
+      "load": 0
+     },
+     {
+      "date": "2026-10-04",
+      "load": 0
+     },
+     {
+      "date": "2026-10-05",
+      "load": 0
+     },
+     {
+      "date": "2026-10-06",
+      "load": 0
+     },
+     {
+      "date": "2026-10-07",
+      "load": 0
+     },
+     {
+      "date": "2026-10-08",
+      "load": 0
+     },
+     {
+      "date": "2026-10-09",
+      "load": 0
+     },
+     {
+      "date": "2026-10-10",
+      "load": 0
+     },
+     {
+      "date": "2026-10-11",
+      "load": 0
+     },
+     {
+      "date": "2026-10-12",
+      "load": 0
+     },
+     {
+      "date": "2026-10-13",
+      "load": 0
+     },
+     {
+      "date": "2026-10-14",
+      "load": 0
+     },
+     {
+      "date": "2026-10-15",
+      "load": 0
+     },
+     {
+      "date": "2026-10-16",
+      "load": 0
+     },
+     {
+      "date": "2026-10-17",
+      "load": 0
+     },
+     {
+      "date": "2026-10-18",
+      "load": 0
+     },
+     {
+      "date": "2026-10-19",
+      "load": 0
+     },
+     {
+      "date": "2026-10-20",
+      "load": 0
+     },
+     {
+      "date": "2026-10-21",
+      "load": 0
+     },
+     {
+      "date": "2026-10-22",
+      "load": 0
+     },
+     {
+      "date": "2026-10-23",
+      "load": 0
+     },
+     {
+      "date": "2026-10-24",
+      "load": 0
+     },
+     {
+      "date": "2026-10-25",
+      "load": 0
+     },
+     {
+      "date": "2026-10-26",
+      "load": 0
+     },
+     {
+      "date": "2026-10-27",
+      "load": 0
+     },
+     {
+      "date": "2026-10-28",
+      "load": 0
+     },
+     {
+      "date": "2026-10-29",
+      "load": 0
+     },
+     {
+      "date": "2026-10-30",
+      "load": 0
+     },
+     {
+      "date": "2026-10-31",
+      "load": 0
+     },
+     {
+      "date": "2026-11-01",
+      "load": 0
+     },
+     {
+      "date": "2026-11-02",
+      "load": 0
+     },
+     {
+      "date": "2026-11-03",
+      "load": 0
+     },
+     {
+      "date": "2026-11-04",
+      "load": 0
+     },
+     {
+      "date": "2026-11-05",
+      "load": 0
+     },
+     {
+      "date": "2026-11-06",
+      "load": 0
+     },
+     {
+      "date": "2026-11-07",
+      "load": 0
+     },
+     {
+      "date": "2026-11-08",
+      "load": 0
+     },
+     {
+      "date": "2026-11-09",
+      "load": 0
+     },
+     {
+      "date": "2026-11-10",
+      "load": 0
+     },
+     {
+      "date": "2026-11-11",
+      "load": 0
+     },
+     {
+      "date": "2026-11-12",
+      "load": 420
+     },
+     {
+      "date": "2026-11-13",
+      "load": 0
+     },
+     {
+      "date": "2026-11-14",
+      "load": 0
+     },
+     {
+      "date": "2026-11-15",
+      "load": 0
+     },
+     {
+      "date": "2026-11-16",
+      "load": 0
+     }
+    ],
+    "weekly": [
+     {
+      "week_start": "2026-09-28",
+      "load": 0,
+      "sessions": 0,
+      "load_by_sport": {}
+     },
+     {
+      "week_start": "2026-10-05",
+      "load": 0,
+      "sessions": 0,
+      "load_by_sport": {}
+     },
+     {
+      "week_start": "2026-10-12",
+      "load": 0,
+      "sessions": 0,
+      "load_by_sport": {}
+     },
+     {
+      "week_start": "2026-10-19",
+      "load": 0,
+      "sessions": 0,
+      "load_by_sport": {}
+     },
+     {
+      "week_start": "2026-10-26",
+      "load": 0,
+      "sessions": 0,
+      "load_by_sport": {}
+     },
+     {
+      "week_start": "2026-11-02",
+      "load": 0,
+      "sessions": 0,
+      "load_by_sport": {}
+     },
+     {
+      "week_start": "2026-11-09",
+      "load": 420,
+      "sessions": 1,
+      "load_by_sport": {
+       "strength": 420
+      }
+     },
+     {
+      "week_start": "2026-11-16",
+      "load": 0,
+      "sessions": 0,
+      "load_by_sport": {}
+     }
+    ],
+    "acute_7d_avg": 60.0,
+    "chronic_28d_avg": 15.0,
+    "acute_chronic_ratio": 4.0,
+    "ratio_status": "not_enough_data",
+    "history_days": 5,
+    "paused_days": 0,
+    "pause": null
+   },
+   "other": {
+    "daily": [
+     {
+      "date": "2026-09-28",
+      "load": 0
+     },
+     {
+      "date": "2026-09-29",
+      "load": 0
+     },
+     {
+      "date": "2026-09-30",
+      "load": 0
+     },
+     {
+      "date": "2026-10-01",
+      "load": 0
+     },
+     {
+      "date": "2026-10-02",
+      "load": 0
+     },
+     {
+      "date": "2026-10-03",
+      "load": 0
+     },
+     {
+      "date": "2026-10-04",
+      "load": 0
+     },
+     {
+      "date": "2026-10-05",
+      "load": 0
+     },
+     {
+      "date": "2026-10-06",
+      "load": 0
+     },
+     {
+      "date": "2026-10-07",
+      "load": 0
+     },
+     {
+      "date": "2026-10-08",
+      "load": 0
+     },
+     {
+      "date": "2026-10-09",
+      "load": 0
+     },
+     {
+      "date": "2026-10-10",
+      "load": 0
+     },
+     {
+      "date": "2026-10-11",
+      "load": 0
+     },
+     {
+      "date": "2026-10-12",
+      "load": 0
+     },
+     {
+      "date": "2026-10-13",
+      "load": 0
+     },
+     {
+      "date": "2026-10-14",
+      "load": 0
+     },
+     {
+      "date": "2026-10-15",
+      "load": 0
+     },
+     {
+      "date": "2026-10-16",
+      "load": 0
+     },
+     {
+      "date": "2026-10-17",
+      "load": 0
+     },
+     {
+      "date": "2026-10-18",
+      "load": 0
+     },
+     {
+      "date": "2026-10-19",
+      "load": 0
+     },
+     {
+      "date": "2026-10-20",
+      "load": 0
+     },
+     {
+      "date": "2026-10-21",
+      "load": 0
+     },
+     {
+      "date": "2026-10-22",
+      "load": 0
+     },
+     {
+      "date": "2026-10-23",
+      "load": 0
+     },
+     {
+      "date": "2026-10-24",
+      "load": 0
+     },
+     {
+      "date": "2026-10-25",
+      "load": 0
+     },
+     {
+      "date": "2026-10-26",
+      "load": 0
+     },
+     {
+      "date": "2026-10-27",
+      "load": 0
+     },
+     {
+      "date": "2026-10-28",
+      "load": 0
+     },
+     {
+      "date": "2026-10-29",
+      "load": 0
+     },
+     {
+      "date": "2026-10-30",
+      "load": 0
+     },
+     {
+      "date": "2026-10-31",
+      "load": 0
+     },
+     {
+      "date": "2026-11-01",
+      "load": 0
+     },
+     {
+      "date": "2026-11-02",
+      "load": 0
+     },
+     {
+      "date": "2026-11-03",
+      "load": 0
+     },
+     {
+      "date": "2026-11-04",
+      "load": 0
+     },
+     {
+      "date": "2026-11-05",
+      "load": 0
+     },
+     {
+      "date": "2026-11-06",
+      "load": 0
+     },
+     {
+      "date": "2026-11-07",
+      "load": 0
+     },
+     {
+      "date": "2026-11-08",
+      "load": 0
+     },
+     {
+      "date": "2026-11-09",
+      "load": 0
+     },
+     {
+      "date": "2026-11-10",
+      "load": 0
+     },
+     {
+      "date": "2026-11-11",
+      "load": 90
+     },
+     {
+      "date": "2026-11-12",
+      "load": 0
+     },
+     {
+      "date": "2026-11-13",
+      "load": 280
+     },
+     {
+      "date": "2026-11-14",
+      "load": 0
+     },
+     {
+      "date": "2026-11-15",
+      "load": 0
+     },
+     {
+      "date": "2026-11-16",
+      "load": 0
+     }
+    ],
+    "weekly": [
+     {
+      "week_start": "2026-09-28",
+      "load": 0,
+      "sessions": 0,
+      "load_by_sport": {}
+     },
+     {
+      "week_start": "2026-10-05",
+      "load": 0,
+      "sessions": 0,
+      "load_by_sport": {}
+     },
+     {
+      "week_start": "2026-10-12",
+      "load": 0,
+      "sessions": 0,
+      "load_by_sport": {}
+     },
+     {
+      "week_start": "2026-10-19",
+      "load": 0,
+      "sessions": 0,
+      "load_by_sport": {}
+     },
+     {
+      "week_start": "2026-10-26",
+      "load": 0,
+      "sessions": 0,
+      "load_by_sport": {}
+     },
+     {
+      "week_start": "2026-11-02",
+      "load": 0,
+      "sessions": 0,
+      "load_by_sport": {}
+     },
+     {
+      "week_start": "2026-11-09",
+      "load": 370,
+      "sessions": 2,
+      "load_by_sport": {
+       "other": 370
+      }
+     },
+     {
+      "week_start": "2026-11-16",
+      "load": 0,
+      "sessions": 0,
+      "load_by_sport": {}
+     }
+    ],
+    "acute_7d_avg": 52.9,
+    "chronic_28d_avg": 13.2,
+    "acute_chronic_ratio": 4.0,
+    "ratio_status": "not_enough_data",
+    "history_days": 6,
+    "paused_days": 0,
+    "pause": null
+   }
+  }
+ },
+ "progression": {
+  "weeks": 8,
+  "today": "2026-11-16",
+  "trend_rule": "Trends compare the last 14 days (today included) with the 28 days before. Each side needs at least 3 sessions with the metric, else 'not enough data'. 'flat' means the change is under: 10% for weekly volume, 2% for pace, half a grade for grade averages, 10 percentage points for send rate. Volumes are weekly averages; for volume, 'improving' just means more.",
+  "running": {
+   "last_session": "2026-11-16",
+   "days_since_last_session": 0,
+   "sessions": 20,
+   "weekly": [
+    {
+     "week_start": "2026-09-28",
+     "runs": 3,
+     "distance_km": 29.5,
+     "duration_min": 167,
+     "pace_min_per_km": 5.66,
+     "pace_by_distance": {
+      "under_7km": {
+       "runs": 1,
+       "pace_min_per_km": 6.0
+      },
+      "7_to_15km": {
+       "runs": 2,
+       "pace_min_per_km": 5.57
+      }
+     }
+    },
+    {
+     "week_start": "2026-10-05",
+     "runs": 3,
+     "distance_km": 30.0,
+     "duration_min": 169,
+     "pace_min_per_km": 5.63,
+     "pace_by_distance": {
+      "under_7km": {
+       "runs": 1,
+       "pace_min_per_km": 6.0
+      },
+      "7_to_15km": {
+       "runs": 1,
+       "pace_min_per_km": 5.12
+      },
+      "over_15km": {
+       "runs": 1,
+       "pace_min_per_km": 5.75
+      }
+     }
+    },
+    {
+     "week_start": "2026-10-12",
+     "runs": 3,
+     "distance_km": 34.0,
+     "duration_min": 187,
+     "pace_min_per_km": 5.5,
+     "pace_by_distance": {
+      "under_7km": {
+       "runs": 1,
+       "pace_min_per_km": 5.83
+      },
+      "7_to_15km": {
+       "runs": 1,
+       "pace_min_per_km": 5.0
+      },
+      "over_15km": {
+       "runs": 1,
+       "pace_min_per_km": 5.67
+      }
+     }
+    },
+    {
+     "week_start": "2026-10-19",
+     "runs": 3,
+     "distance_km": 34.5,
+     "duration_min": 192,
+     "pace_min_per_km": 5.57,
+     "pace_by_distance": {
+      "under_7km": {
+       "runs": 1,
+       "pace_min_per_km": 6.0
+      },
+      "7_to_15km": {
+       "runs": 1,
+       "pace_min_per_km": 5.0
+      },
+      "over_15km": {
+       "runs": 1,
+       "pace_min_per_km": 5.72
+      }
+     }
+    },
+    {
+     "week_start": "2026-10-26",
+     "runs": 1,
+     "distance_km": 5.0,
+     "duration_min": 29,
+     "pace_min_per_km": 5.8,
+     "pace_by_distance": {
+      "under_7km": {
+       "runs": 1,
+       "pace_min_per_km": 5.8
+      }
+     }
+    },
+    {
+     "week_start": "2026-11-02",
+     "runs": 3,
+     "distance_km": 30.5,
+     "duration_min": 167,
+     "pace_min_per_km": 5.48,
+     "pace_by_distance": {
+      "under_7km": {
+       "runs": 1,
+       "pace_min_per_km": 5.69
+      },
+      "7_to_15km": {
+       "runs": 1,
+       "pace_min_per_km": 5.0
+      },
+      "over_15km": {
+       "runs": 1,
+       "pace_min_per_km": 5.62
+      }
+     }
+    },
+    {
+     "week_start": "2026-11-09",
+     "runs": 3,
+     "distance_km": 27.0,
+     "duration_min": 146,
+     "pace_min_per_km": 5.41,
+     "pace_by_distance": {
+      "under_7km": {
+       "runs": 1,
+       "pace_min_per_km": 5.8
+      },
+      "7_to_15km": {
+       "runs": 2,
+       "pace_min_per_km": 5.32
+      }
+     }
+    },
+    {
+     "week_start": "2026-11-16",
+     "runs": 1,
+     "distance_km": 5.0,
+     "duration_min": 29,
+     "pace_min_per_km": 5.8,
+     "pace_by_distance": {
+      "under_7km": {
+       "runs": 1,
+       "pace_min_per_km": 5.8
+      }
+     }
+    }
+   ],
+   "trends": {
+    "distance_km_per_week": {
+     "recent": 28.0,
+     "baseline": 26.0,
+     "recent_sessions": 6,
+     "baseline_sessions": 10,
+     "trend": "flat"
+    },
+    "duration_min_per_week": {
+     "recent": 152,
+     "baseline": 144,
+     "recent_sessions": 6,
+     "baseline_sessions": 10,
+     "trend": "flat"
+    },
+    "pace_min_per_km": {
+     "recent": 5.45,
+     "baseline": 5.56,
+     "recent_sessions": 6,
+     "baseline_sessions": 10,
+     "trend": "improving"
+    },
+    "pace_by_distance": {
+     "under_7km": {
+      "recent": 5.8,
+      "baseline": 5.83,
+      "recent_sessions": 2,
+      "baseline_sessions": 4,
+      "trend": "not enough data"
+     },
+     "7_to_15km": {
+      "recent": 5.23,
+      "baseline": 5.04,
+      "recent_sessions": 3,
+      "baseline_sessions": 3,
+      "trend": "declining"
+     },
+     "over_15km": {
+      "recent": 5.62,
+      "baseline": 5.71,
+      "recent_sessions": 1,
+      "baseline_sessions": 3,
+      "trend": "not enough data"
+     }
+    }
+   }
+  },
+  "climbing": {
+   "last_session": "2026-11-15",
+   "days_since_last_session": 1,
+   "sessions": 15,
+   "weekly": [
+    {
+     "week_start": "2026-09-28",
+     "sessions": 2,
+     "climbs": 17,
+     "hardest_sent": "purple",
+     "flash_grade": "purple",
+     "hardest_sent_level": 4.0,
+     "flash_level": 4.0,
+     "hardest_sent_colour": "#9440b8",
+     "flash_colour": "#9440b8",
+     "send_rate_by_grade": {
+      "green": {
+       "sent": 4,
+       "tried": 4,
+       "rate": 1.0
+      },
+      "blue": {
+       "sent": 3,
+       "tried": 6,
+       "rate": 0.5
+      },
+      "purple": {
+       "sent": 4,
+       "tried": 7,
+       "rate": 0.57
+      }
+     }
+    },
+    {
+     "week_start": "2026-10-05",
+     "sessions": 2,
+     "climbs": 15,
+     "hardest_sent": "blue",
+     "flash_grade": "blue",
+     "hardest_sent_level": 3.0,
+     "flash_level": 3.0,
+     "hardest_sent_colour": "#2f6fd6",
+     "flash_colour": "#2f6fd6",
+     "send_rate_by_grade": {
+      "green": {
+       "sent": 5,
+       "tried": 6,
+       "rate": 0.83
+      },
+      "blue": {
+       "sent": 4,
+       "tried": 5,
+       "rate": 0.8
+      },
+      "purple": {
+       "sent": 0,
+       "tried": 4,
+       "rate": 0.0
+      }
+     }
+    },
+    {
+     "week_start": "2026-10-12",
+     "sessions": 2,
+     "climbs": 16,
+     "hardest_sent": "purple",
+     "flash_grade": "blue",
+     "hardest_sent_level": 4.0,
+     "flash_level": 3.0,
+     "hardest_sent_colour": "#9440b8",
+     "flash_colour": "#2f6fd6",
+     "send_rate_by_grade": {
+      "green": {
+       "sent": 6,
+       "tried": 6,
+       "rate": 1.0
+      },
+      "blue": {
+       "sent": 5,
+       "tried": 5,
+       "rate": 1.0
+      },
+      "purple": {
+       "sent": 3,
+       "tried": 5,
+       "rate": 0.6
+      }
+     }
+    },
+    {
+     "week_start": "2026-10-19",
+     "sessions": 2,
+     "climbs": 17,
+     "hardest_sent": "red",
+     "flash_grade": "blue",
+     "hardest_sent_level": 5.0,
+     "flash_level": 3.0,
+     "hardest_sent_colour": "#c0302f",
+     "flash_colour": "#2f6fd6",
+     "send_rate_by_grade": {
+      "green": {
+       "sent": 5,
+       "tried": 5,
+       "rate": 1.0
+      },
+      "blue": {
+       "sent": 6,
+       "tried": 6,
+       "rate": 1.0
+      },
+      "purple": {
+       "sent": 0,
+       "tried": 1,
+       "rate": 0.0
+      },
+      "red": {
+       "sent": 1,
+       "tried": 5,
+       "rate": 0.2
+      }
+     }
+    },
+    {
+     "week_start": "2026-10-26",
+     "sessions": 1,
+     "climbs": 5,
+     "hardest_sent": "green",
+     "flash_grade": "green",
+     "hardest_sent_level": 2.0,
+     "flash_level": 2.0,
+     "hardest_sent_colour": "#3fae5f",
+     "flash_colour": "#3fae5f",
+     "send_rate_by_grade": {
+      "green": {
+       "sent": 2,
+       "tried": 2,
+       "rate": 1.0
+      },
+      "purple": {
+       "sent": 0,
+       "tried": 1,
+       "rate": 0.0
+      },
+      "red": {
+       "sent": 0,
+       "tried": 2,
+       "rate": 0.0
+      }
+     }
+    },
+    {
+     "week_start": "2026-11-02",
+     "sessions": 2,
+     "climbs": 16,
+     "hardest_sent": "red",
+     "flash_grade": "blue",
+     "hardest_sent_level": 5.0,
+     "flash_level": 3.0,
+     "hardest_sent_colour": "#c0302f",
+     "flash_colour": "#2f6fd6",
+     "send_rate_by_grade": {
+      "green": {
+       "sent": 2,
+       "tried": 3,
+       "rate": 0.67
+      },
+      "blue": {
+       "sent": 4,
+       "tried": 4,
+       "rate": 1.0
+      },
+      "purple": {
+       "sent": 3,
+       "tried": 3,
+       "rate": 1.0
+      },
+      "red": {
+       "sent": 3,
+       "tried": 6,
+       "rate": 0.5
+      }
+     }
+    },
+    {
+     "week_start": "2026-11-09",
+     "sessions": 4,
+     "climbs": 27,
+     "hardest_sent": "7A+",
+     "flash_grade": "blue (Fontainebleau Boulders Centre)",
+     "hardest_sent_level": 6.0,
+     "flash_level": 4.33,
+     "hardest_sent_colour": null,
+     "flash_colour": "#2f6fd6",
+     "send_rate_by_grade": {
+      "green": {
+       "sent": 3,
+       "tried": 3,
+       "rate": 1.0
+      },
+      "blue": {
+       "sent": 2,
+       "tried": 2,
+       "rate": 1.0
+      },
+      "purple": {
+       "sent": 5,
+       "tried": 6,
+       "rate": 0.83
+      },
+      "6A+": {
+       "sent": 1,
+       "tried": 1,
+       "rate": 1.0
+      },
+      "blue (Fontainebleau Boulders Centre)": {
+       "sent": 1,
+       "tried": 1,
+       "rate": 1.0
+      },
+      "6B": {
+       "sent": 0,
+       "tried": 1,
+       "rate": 0.0
+      },
+      "6B+": {
+       "sent": 1,
+       "tried": 1,
+       "rate": 1.0
+      },
+      "red": {
+       "sent": 3,
+       "tried": 8,
+       "rate": 0.38
+      },
+      "6C": {
+       "sent": 0,
+       "tried": 1,
+       "rate": 0.0
+      },
+      "6C+": {
+       "sent": 1,
+       "tried": 1,
+       "rate": 1.0
+      },
+      "7A": {
+       "sent": 0,
+       "tried": 1,
+       "rate": 0.0
+      },
+      "7A+": {
+       "sent": 1,
+       "tried": 1,
+       "rate": 1.0
+      }
+     }
+    },
+    {
+     "week_start": "2026-11-16",
+     "sessions": 0,
+     "climbs": 0,
+     "hardest_sent": null,
+     "flash_grade": null,
+     "hardest_sent_level": null,
+     "flash_level": null,
+     "hardest_sent_colour": null,
+     "flash_colour": null,
+     "send_rate_by_grade": {}
+    }
+   ],
+   "trends": {
+    "climbs_per_week": {
+     "recent": 21.5,
+     "baseline": 13.2,
+     "recent_sessions": 6,
+     "baseline_sessions": 7,
+     "trend": "improving"
+    },
+    "avg_session_hardest_sent": {
+     "recent": 5.06,
+     "baseline": 3.43,
+     "recent_sessions": 6,
+     "baseline_sessions": 7,
+     "trend": "improving",
+     "recent_grade": "red",
+     "baseline_grade": "blue"
+    },
+    "avg_session_flash_grade": {
+     "recent": 3.83,
+     "baseline": 2.57,
+     "recent_sessions": 4,
+     "baseline_sessions": 7,
+     "trend": "improving",
+     "recent_grade": "purple",
+     "baseline_grade": "blue"
+    },
+    "send_rate_by_grade": {
+     "green": {
+      "recent": 0.83,
+      "baseline": 0.95,
+      "recent_sessions": 4,
+      "baseline_sessions": 7,
+      "trend": "declining"
+     },
+     "blue": {
+      "recent": 1.0,
+      "baseline": 0.94,
+      "recent_sessions": 3,
+      "baseline_sessions": 6,
+      "trend": "flat"
+     },
+     "6A+": {
+      "recent": 1.0,
+      "baseline": null,
+      "recent_sessions": 1,
+      "baseline_sessions": 0,
+      "trend": "not enough data"
+     },
+     "purple": {
+      "recent": 0.89,
+      "baseline": 0.27,
+      "recent_sessions": 4,
+      "baseline_sessions": 6,
+      "trend": "improving"
+     },
+     "6B": {
+      "recent": 0.0,
+      "baseline": null,
+      "recent_sessions": 1,
+      "baseline_sessions": 0,
+      "trend": "not enough data"
+     },
+     "blue (Fontainebleau Boulders Centre)": {
+      "recent": 1.0,
+      "baseline": null,
+      "recent_sessions": 1,
+      "baseline_sessions": 0,
+      "trend": "not enough data"
+     },
+     "6B+": {
+      "recent": 1.0,
+      "baseline": null,
+      "recent_sessions": 1,
+      "baseline_sessions": 0,
+      "trend": "not enough data"
+     },
+     "6C": {
+      "recent": 0.0,
+      "baseline": null,
+      "recent_sessions": 1,
+      "baseline_sessions": 0,
+      "trend": "not enough data"
+     },
+     "red": {
+      "recent": 0.43,
+      "baseline": 0.14,
+      "recent_sessions": 4,
+      "baseline_sessions": 3,
+      "trend": "improving"
+     },
+     "6C+": {
+      "recent": 1.0,
+      "baseline": null,
+      "recent_sessions": 1,
+      "baseline_sessions": 0,
+      "trend": "not enough data"
+     },
+     "7A": {
+      "recent": 0.0,
+      "baseline": null,
+      "recent_sessions": 1,
+      "baseline_sessions": 0,
+      "trend": "not enough data"
+     },
+     "7A+": {
+      "recent": 1.0,
+      "baseline": null,
+      "recent_sessions": 1,
+      "baseline_sessions": 0,
+      "trend": "not enough data"
+     }
+    }
+   },
+   "grade_scale": [
+    "yellow",
+    "green",
+    "blue",
+    "purple",
+    "red",
+    "black",
+    "white"
+   ],
+   "grade_scale_detail": [
+    {
+     "name": "yellow",
+     "colour": "#f2c230",
+     "range": "VB–V0"
+    },
+    {
+     "name": "green",
+     "colour": "#3fae5f",
+     "range": "V0–V1"
+    },
+    {
+     "name": "blue",
+     "colour": "#2f6fd6",
+     "range": "V1–V3"
+    },
+    {
+     "name": "purple",
+     "colour": "#9440b8",
+     "range": "V3–V4"
+    },
+    {
+     "name": "red",
+     "colour": "#c0302f",
+     "range": "V4–V6"
+    },
+    {
+     "name": "black",
+     "colour": "#1a1a1a",
+     "range": "V6–V8"
+    },
+    {
+     "name": "white",
+     "colour": "#ffffff",
+     "range": "V8–V10"
+    }
+   ],
+   "grade_scale_gym": "My gym"
+  },
+  "paused_days": 0
+ },
+ "gyms": {
+  "gyms": [
+   {
+    "id": 1,
+    "name": "My gym",
+    "range_system": "v",
+    "archived": false,
+    "colours": [
+     {
+      "id": 1000,
+      "name": "yellow",
+      "colour": "#f2c230",
+      "range": [
+       "VB",
+       "V0"
+      ],
+      "range_text": "VB–V0",
+      "archived": false
+     },
+     {
+      "id": 1001,
+      "name": "green",
+      "colour": "#3fae5f",
+      "range": [
+       "V0",
+       "V1"
+      ],
+      "range_text": "V0–V1",
+      "archived": false
+     },
+     {
+      "id": 1002,
+      "name": "blue",
+      "colour": "#2f6fd6",
+      "range": [
+       "V1",
+       "V3"
+      ],
+      "range_text": "V1–V3",
+      "archived": false
+     },
+     {
+      "id": 1003,
+      "name": "purple",
+      "colour": "#9440b8",
+      "range": [
+       "V3",
+       "V4"
+      ],
+      "range_text": "V3–V4",
+      "archived": false
+     },
+     {
+      "id": 1004,
+      "name": "red",
+      "colour": "#c0302f",
+      "range": [
+       "V4",
+       "V6"
+      ],
+      "range_text": "V4–V6",
+      "archived": false
+     },
+     {
+      "id": 1005,
+      "name": "black",
+      "colour": "#1a1a1a",
+      "range": [
+       "V6",
+       "V8"
+      ],
+      "range_text": "V6–V8",
+      "archived": false
+     },
+     {
+      "id": 1006,
+      "name": "white",
+      "colour": "#ffffff",
+      "range": [
+       "V8",
+       "V10"
+      ],
+      "range_text": "V8–V10",
+      "archived": false
+     }
+    ]
+   },
+   {
+    "id": 2,
+    "name": "Fontainebleau Boulders Centre",
+    "range_system": "font",
+    "archived": false,
+    "colours": [
+     {
+      "id": 1007,
+      "name": "yellow",
+      "colour": "#f2c230",
+      "range": [
+       "4",
+       "5"
+      ],
+      "range_text": "4–5",
+      "archived": false
+     },
+     {
+      "id": 1008,
+      "name": "green",
+      "colour": "#3fae5f",
+      "range": [
+       "5+",
+       "6A"
+      ],
+      "range_text": "5+–6A",
+      "archived": false
+     },
+     {
+      "id": 1009,
+      "name": "blue",
+      "colour": "#2f6fd6",
+      "range": [
+       "6A+",
+       "6B+"
+      ],
+      "range_text": "6A+–6B+",
+      "archived": false
+     },
+     {
+      "id": 1010,
+      "name": "purple",
+      "colour": "#9440b8",
+      "range": [
+       "6C",
+       "7A"
+      ],
+      "range_text": "6C–7A",
+      "archived": false
+     },
+     {
+      "id": 1011,
+      "name": "red",
+      "colour": "#c0302f",
+      "range": [
+       "7A+",
+       "7B+"
+      ],
+      "range_text": "7A+–7B+",
+      "archived": false
+     },
+     {
+      "id": 1012,
+      "name": "black",
+      "colour": "#1a1a1a",
+      "range": [
+       "7C",
+       "8A"
+      ],
+      "range_text": "7C–8A",
+      "archived": false
+     }
+    ]
+   }
+  ],
+  "last_gym_id": 2
+ },
+ "templates": {
+  "templates": [
+   {
+    "id": 1,
+    "name": "Fingerboard",
+    "sport": "other",
+    "core_fields": [],
+    "fields": [
+     {
+      "key": "protocol",
+      "label": "Protocol",
+      "type": "select",
+      "required": false,
+      "archived": false,
+      "options": [
+       {
+        "value": "max_hangs",
+        "label": "Max hangs",
+        "archived": false
+       },
+       {
+        "value": "repeaters",
+        "label": "Repeaters",
+        "archived": false
+       },
+       {
+        "value": "density_hangs",
+        "label": "Density hangs",
+        "archived": false
+       }
+      ],
+      "multiple": false
+     },
+     {
+      "key": "grip",
+      "label": "Grip",
+      "type": "select",
+      "required": false,
+      "archived": false,
+      "options": [
+       {
+        "value": "half_crimp",
+        "label": "Half crimp",
+        "archived": false
+       },
+       {
+        "value": "open_hand",
+        "label": "Open hand",
+        "archived": false
+       },
+       {
+        "value": "full_crimp",
+        "label": "Full crimp",
+        "archived": false
+       }
+      ],
+      "multiple": true
+     },
+     {
+      "key": "hangs",
+      "label": "Hangs",
+      "type": "sets",
+      "required": true,
+      "archived": false,
+      "reps_unit": "s",
+      "load_unit": "kg",
+      "load_signed": true,
+      "extras": [
+       {
+        "key": "edge_mm",
+        "label": "Edge",
+        "min": 4,
+        "max": 60,
+        "decimals": 0,
+        "unit": "mm"
+       }
+      ]
+     },
+     {
+      "key": "rest_s",
+      "label": "Rest between sets",
+      "type": "number",
+      "required": false,
+      "archived": false,
+      "unit": "s",
+      "min": 0,
+      "max": 600,
+      "decimals": 0
+     },
+     {
+      "key": "finger_pain",
+      "label": "Any finger pain?",
+      "type": "boolean",
+      "required": false,
+      "archived": false
+     }
+    ],
+    "archived": false,
+    "position": 0
+   },
+   {
+    "id": 2,
+    "name": "Strength",
+    "sport": "strength",
+    "core_fields": [],
+    "fields": [
+     {
+      "key": "exercise",
+      "label": "Exercise",
+      "type": "select",
+      "required": false,
+      "archived": false,
+      "options": [
+       {
+        "value": "squat",
+        "label": "Squat",
+        "archived": false
+       },
+       {
+        "value": "deadlift",
+        "label": "Deadlift",
+        "archived": false
+       },
+       {
+        "value": "bench_press",
+        "label": "Bench press",
+        "archived": false
+       },
+       {
+        "value": "pull_up",
+        "label": "Pull-up",
+        "archived": false
+       },
+       {
+        "value": "overhead_press",
+        "label": "Overhead press",
+        "archived": false
+       },
+       {
+        "value": "row",
+        "label": "Row",
+        "archived": false
+       }
+      ],
+      "multiple": false
+     },
+     {
+      "key": "sets",
+      "label": "Sets",
+      "type": "sets",
+      "required": true,
+      "archived": false,
+      "reps_unit": "reps",
+      "load_unit": "kg",
+      "load_signed": true,
+      "extras": []
+     }
+    ],
+    "archived": false,
+    "position": 1
+   },
+   {
+    "id": 3,
+    "name": "Intervals",
+    "sport": "running",
+    "core_fields": [
+     "distance_km"
+    ],
+    "fields": [
+     {
+      "key": "workout",
+      "label": "Workout",
+      "type": "select",
+      "required": false,
+      "archived": false,
+      "options": [
+       {
+        "value": "track_repeats",
+        "label": "Track repeats",
+        "archived": false
+       },
+       {
+        "value": "hill_repeats",
+        "label": "Hill repeats",
+        "archived": false
+       },
+       {
+        "value": "tempo_blocks",
+        "label": "Tempo blocks",
+        "archived": false
+       },
+       {
+        "value": "fartlek",
+        "label": "Fartlek",
+        "archived": false
+       }
+      ],
+      "multiple": false
+     },
+     {
+      "key": "reps",
+      "label": "Reps",
+      "type": "number",
+      "required": false,
+      "archived": false,
+      "min": 1,
+      "max": 50,
+      "decimals": 0
+     },
+     {
+      "key": "rep_m",
+      "label": "Rep distance",
+      "type": "number",
+      "required": false,
+      "archived": false,
+      "unit": "m",
+      "min": 50,
+      "max": 10000,
+      "decimals": 0
+     }
+    ],
+    "archived": false,
+    "position": 2
+   },
+   {
+    "id": 4,
+    "name": "Mobility",
+    "sport": "other",
+    "core_fields": [],
+    "fields": [
+     {
+      "key": "focus",
+      "label": "Focus",
+      "type": "select",
+      "required": false,
+      "archived": false,
+      "options": [
+       {
+        "value": "hips",
+        "label": "Hips",
+        "archived": false
+       },
+       {
+        "value": "shoulders",
+        "label": "Shoulders",
+        "archived": false
+       },
+       {
+        "value": "ankles",
+        "label": "Ankles",
+        "archived": false
+       },
+       {
+        "value": "spine",
+        "label": "Spine",
+        "archived": false
+       },
+       {
+        "value": "full_body",
+        "label": "Full body",
+        "archived": false
+       }
+      ],
+      "multiple": true
+     },
+     {
+      "key": "routine",
+      "label": "Routine",
+      "type": "text",
+      "required": false,
+      "archived": false,
+      "max_length": 200
+     }
+    ],
+    "archived": false,
+    "position": 3
+   }
+  ],
+  "starters": [
+   {
+    "name": "Fingerboard",
+    "sport": "other"
+   },
+   {
+    "name": "Strength",
+    "sport": "strength"
+   },
+   {
+    "name": "Intervals",
+    "sport": "running"
+   },
+   {
+    "name": "Mobility",
+    "sport": "other"
+   }
+  ]
+ },
+ "goals": [],
+ "made_on": "2026-11-16"
+}

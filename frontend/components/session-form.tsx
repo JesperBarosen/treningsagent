@@ -281,7 +281,7 @@ export function SessionForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
-      <fieldset>
+      <fieldset className="min-w-0">
         <legend className={label}>What did you do?</legend>
         <div role="radiogroup" aria-label="Sport" className="grid grid-cols-2 gap-2">
           {SPORTS.map((s) => (
@@ -501,7 +501,7 @@ export function SessionForm({
 /** "How did it feel?": optional context tags (N6), off by default, one tap each. */
 function TagsField({ tags, onToggle }: { tags: Tag[]; onToggle: (t: Tag) => void }) {
   return (
-    <fieldset>
+    <fieldset className="min-w-0">
       <legend className="mb-1.5 text-sm font-medium">
         How did it feel? <span className="font-normal text-ink-muted">(optional)</span>
       </legend>
@@ -686,7 +686,9 @@ function ClimbsField({
 }) {
   const choices = gradeChoices(system, gym);
   return (
-    <fieldset className="flex flex-col gap-3">
+    // min-w-0: a fieldset's default min width is its content's, so a long row inside
+    // (the gym button, grade chips) would widen the whole page (#110).
+    <fieldset className="flex min-w-0 flex-col gap-3">
       <legend className={label}>Climbs</legend>
       {gyms.length > 0 && <GymPicker gyms={gyms} gym={gym} outdoors={outdoors} onPick={onGym} />}
       <div role="radiogroup" aria-label="Grades" className="flex rounded-full border border-control bg-surface p-1">
@@ -697,7 +699,8 @@ function ClimbsField({
             role="radio"
             aria-checked={system === s.value}
             onClick={() => onSystem(s.value)}
-            className={`min-h-9 flex-1 rounded-full px-2 text-sm font-medium whitespace-nowrap text-ink-muted aria-checked:bg-accent-soft aria-checked:text-accent ${HIT_AREA_Y}`}
+            // min-w-0 + truncate: the three tabs share the pill's width and never push past it (#110).
+            className={`min-h-9 min-w-0 flex-1 truncate rounded-full px-2 text-sm font-medium text-ink-muted aria-checked:bg-accent-soft aria-checked:text-accent ${HIT_AREA_Y}`}
           >
             {s.label}
           </button>
@@ -723,7 +726,9 @@ function ClimbsField({
       </div>
 
       <div
-        className={system === "gym" ? "flex flex-wrap gap-2" : "-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"}
+        // Every grade system wraps onto several rows; V and Font used to sit in one
+        // long row, which (inside a fieldset) widened the page (#110).
+        className="flex flex-wrap gap-2"
         aria-label="Tap a grade to add a climb"
         role="group"
       >

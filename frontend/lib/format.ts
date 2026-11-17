@@ -7,6 +7,24 @@ export function sportName(session: Pick<Session, "sport"> & { template?: string 
   return session.template ?? SPORT_NAMES[session.sport];
 }
 
+const SPORT_NOUNS: Record<Session["sport"], string> = {
+  running: "runs",
+  climbing: "climbing",
+  strength: "strength training",
+  other: "other training",
+};
+
+/** The title of an empty state filtered to one sport, e.g. "No strength training
+ *  yet" (#110). One place, so every filter names its own sport. */
+export function noneYetTitle(sport: Session["sport"]): string {
+  return `No ${SPORT_NOUNS[sport]} yet`;
+}
+
+/** "strength training", for sentences about one sport. */
+export function sportNoun(sport: Session["sport"]): string {
+  return SPORT_NOUNS[sport];
+}
+
 /** One line per template value, e.g. "6 × 10 s · 20 mm · +10 kg" (#101). */
 export function valueLines(session: Pick<Session, "fields">): string[] {
   return (session.fields ?? []).map((f) => f.text);
