@@ -214,6 +214,8 @@ def _coach_field(f: dict) -> dict:
                           for o in f["options"] if not o.get("archived")]
     if f.get("extras"):
         out["extras"] = [{k: c[k] for k in ("key", "label", "unit") if c.get(k)} for c in f["extras"]]
+    if f.get("measures"):  # #111: one value per measure
+        out["measures"] = [{"key": m["key"], "label": m["label"]} for m in f["measures"]]
     return out
 
 
@@ -760,7 +762,10 @@ TOOLS = [
                                                "invent one."},
                 "values": {"type": "object",
                            "description": "The template's fields by key, only what the user "
-                                          "stated: number, option value (a list when the field "
+                                          "stated: number (for a number field with measures, an "
+                                          "object of measure key to number, only the measures "
+                                          "the user gave: 'pull-ups +10 kg, 5 reps, 3 sets' -> "
+                                          "{kg: 10, reps: 5, sets: 3}), option value (a list when the field "
                                           "is multiple), true/false, text, or for sets a list of "
                                           "{sets, reps, load, <extra keys>} rows, one per group "
                                           "of identical sets ('6 x 10 s on 20 mm with +10 kg' -> "
