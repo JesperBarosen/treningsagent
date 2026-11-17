@@ -57,7 +57,14 @@ describe("SessionForm", () => {
     const row = () => within(list).getByRole("button", { name: /^blue kilter/ });
     expect(row().getAttribute("aria-label")).toMatch(/not sent/);
     fireEvent.click(row());
+    // A send starts at 2 attempts (1 would be a flash), never blank (#111).
+    expect(row().getAttribute("aria-label")).toMatch(/sent, 2 attempts/);
+    expect(within(list).getByLabelText("attempts")).toHaveTextContent("2");
     fireEvent.click(screen.getByRole("button", { name: "More attempts on blue" }));
+    expect(row().getAttribute("aria-label")).toMatch(/sent, 3 attempts/);
+    // − stops at 2: it never turns the send into a flash.
+    fireEvent.click(screen.getByRole("button", { name: "Fewer attempts on blue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Fewer attempts on blue" }));
     expect(row().getAttribute("aria-label")).toMatch(/sent, 2 attempts/);
     fireEvent.click(row());
     expect(row().getAttribute("aria-label")).toMatch(/flashed/);
@@ -122,7 +129,8 @@ describe("nextOutcome", () => {
   it("cycles not sent -> sent -> flash -> not sent", () => {
     const tried = { grade: "red" as const, style: "boulder" as const, sent: false, attempts: 1 };
     const sent = nextOutcome(tried);
-    expect(sent).toMatchObject({ sent: true, attempts: null });
+    expect(sent).toMatchObject({ sent: true, attempts: 2 }); // #111: was null, shown as "–"
+    expect(nextOutcome({ ...tried, attempts: 4 })).toMatchObject({ sent: true, attempts: 4 });
     const flash = nextOutcome(sent);
     expect(flash).toMatchObject({ sent: true, attempts: 1 });
     expect(nextOutcome(flash)).toMatchObject({ sent: false, attempts: 1 });
