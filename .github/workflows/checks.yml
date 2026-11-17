@@ -21,6 +21,10 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      # Not a secret and never contacted: the auth dependency only needs a URL to
+      # build its key client, and the tests that use it send no token (401).
+      SUPABASE_URL: http://localhost:54321
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
