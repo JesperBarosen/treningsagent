@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { ApiError, type Draft, type Session } from "@/lib/api";
 import { SENSITIVE } from "@/lib/discreet";
-import { dayLabel, sessionSummary, valueLines } from "@/lib/format";
+import { dayLabel, sessionSummary, valueParts } from "@/lib/format";
 import { ClimbChips } from "./grade";
+import { ValueLine } from "./session-card";
 import { CloseIcon, SportBadge } from "./icons";
 import { Button } from "./states";
 import { TagList } from "./tag-list";
@@ -67,14 +68,12 @@ export function DraftCard({
           <CloseIcon size={18} />
         </button>
       </div>
-      {valueLines(session).length > 0 && (
+      {valueParts(session).length > 0 && (
         // A template's values, one compact line each (#102, A2 variant A); the
         // template's name is the title above. Review shows the whole form.
         <ul aria-label={`${draft.template ?? "Template"} values`} className="mt-1.5 pl-11">
-          {valueLines(session).map((line, i) => (
-            <li key={i} {...SENSITIVE} className="text-sm text-ink tabular-nums">
-              {line}
-            </li>
+          {valueParts(session).map((part, i) => (
+            <ValueLine key={i} part={part} as="li" className="text-sm text-ink tabular-nums" />
           ))}
         </ul>
       )}
