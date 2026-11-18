@@ -105,6 +105,42 @@ describe("a number field with several measures in the Log form", () => {
     expect(onSubmit.mock.calls[0][0].values).toEqual({ hangboard: { sets: 6 } });
   });
 
+  it("puts a long unit above its box so the number stays visible and typeable (#123)", async () => {
+    const hangboard = {
+      ...BOARD.fields[0],
+      measures: [
+        { key: "kg", label: "kg", decimals: 1 },
+        { key: "s", label: "s", decimals: 0 },
+        { key: "rest", label: "Rest (min)", decimals: 1 },
+        { key: "sets", label: "sets", decimals: 0 },
+      ],
+    };
+    api.getTemplates.mockResolvedValue({ templates: [{ ...BOARD, fields: [hangboard] }], starters: [] });
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<SessionForm onSubmit={onSubmit} />);
+    fireEvent.click(await screen.findByRole("radio", { name: "Board and bar" }));
+    type("Duration (min)", "40");
+
+    const rest = screen.getByLabelText("Hangboard, Rest (min)") as HTMLInputElement;
+    const box = rest.parentElement!;
+    // The long unit is outside the box, truncated; the input keeps a minimum width.
+    const unit = within(screen.getByRole("group", { name: /^Hangboard/ })).getByText("Rest (min)");
+    expect(box.contains(unit)).toBe(false);
+    expect(unit).toHaveClass("truncate");
+    expect(rest).toHaveClass("min-w-8");
+    // A short unit stays inside its box.
+    const kg = screen.getByLabelText("Hangboard, kg");
+    expect(kg.parentElement).toHaveTextContent("kg");
+    // Decimals give the decimal keyboard, whole numbers the numeric one.
+    expect(rest).toHaveAttribute("inputmode", "decimal");
+    expect(screen.getByLabelText("Hangboard, sets")).toHaveAttribute("inputmode", "numeric");
+
+    type("Hangboard, Rest (min)", "2.5");
+    expect(rest).toHaveValue("2.5");
+    fireEvent.click(screen.getByRole("button", { name: "Log session" }));
+    expect(onSubmit.mock.calls[0][0].values).toEqual({ hangboard: { rest: 2.5 } });
+  });
+
   it("reads an old plain number into the measure it belongs to", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const session = {
