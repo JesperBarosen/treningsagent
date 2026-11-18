@@ -14,12 +14,14 @@ import {
   createPlan,
   createSession,
   draftInput,
+  LimitError,
   sendChat,
   type Draft,
   type Plan,
   type PlanProposal,
   type Session,
 } from "@/lib/api";
+import { limitMessage, SUPPORT_LABEL, type LimitBody } from "@/lib/limits";
 import {
   clearDraftForForm,
   handDraftToForm,
@@ -50,7 +52,7 @@ type ProposalItem = { key: string; proposal: PlanProposal; status: "open" | "acc
 type Item =
   | { id: string; role: "user"; text: string }
   | { id: string; role: "agent"; text: string; logged: Logged[]; drafts?: DraftItem[]; proposals?: ProposalItem[] }
-  | { id: string; role: "error"; text: string; offline: boolean; retry: string };
+  | { id: string; role: "error"; text: string; offline: boolean; retry: string; limit?: LimitBody };
 
 type Conversation = { items: Item[]; history: unknown[]; conversationId: string | null };
 
@@ -156,12 +158,14 @@ export function Chat() {
       }));
     } catch (e) {
       const err = e instanceof ApiError ? e : new ApiError(String(e), 0);
+      // A usage limit (#129, #130): the coach wasn't called; say which limit, kindly.
+      const limit = err instanceof LimitError ? err.limit : undefined;
       setConvo((c) => ({
         ...c,
         // Drop the unanswered message; the error bubble offers to send it again.
         items: [
           ...c.items.slice(0, -1),
-          { id: newId(), role: "error", text: err.message, offline: err.status === null, retry: message },
+          { id: newId(), role: "error", text: err.message, offline: err.status === null, retry: message, limit },
         ],
       }));
     } finally {
@@ -458,6 +462,9 @@ function Message({
       </div>
     );
   }
+  if (item.role === "error" && item.limit) {
+    return <LimitNotice limit={item.limit} message={item.retry} />;
+  }
   if (item.role === "error") {
     return (
       <div role="alert" className="rounded-lg border border-danger/30 bg-danger-soft p-4 text-sm">
@@ -515,6 +522,39 @@ function Message({
       <div {...SENSITIVE} className="max-w-[92%] leading-relaxed">
         <span className="sr-only">Coach: </span>
         <Markdown text={item.text} />
+      </div>
+    </div>
+  );
+}
+
+/** A usage limit stopped the coach (#129, #130). Not an error and never blame:
+ *  what happened, when it's back, that logging still works, and for the
+ *  monthly budget an optional "Support the app" link (SUPPORT_URL). The words
+ *  live in lib/limits.ts. */
+function LimitNotice({ limit, message }: { limit: LimitBody; message: string }) {
+  const { title, text } = limitMessage(limit);
+  return (
+    <div role="status" className="rounded-lg border border-line bg-surface p-4 text-sm">
+      <p className="font-semibold">{title}</p>
+      <p className="mt-1 text-ink-muted">{text}</p>
+      <p {...SENSITIVE} className="mt-2 truncate text-ink">&ldquo;{message}&rdquo;</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Link
+          href="/log"
+          className="inline-flex min-h-11 items-center justify-center rounded-full border border-control px-5 text-sm font-semibold text-ink transition hover:bg-sunken"
+        >
+          Log a session
+        </Link>
+        {limit.limit === "global_month" && limit.support_url && (
+          <a
+            href={limit.support_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-5 text-sm font-semibold text-on-accent transition hover:opacity-90"
+          >
+            {SUPPORT_LABEL}
+          </a>
+        )}
       </div>
     </div>
   );

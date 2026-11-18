@@ -574,19 +574,52 @@ class PostgresStore:
                 " where c.gym_id is not null order by s.date desc, c.id desc limit 1").fetchone()
         return row["gym_id"] if row else None
 
-    def claim_chat_request(self, daily_limit: int) -> bool:
-        """Record one /chat request unless the user already made `daily_limit`
-        in the last 24 hours. True if it was recorded (the request may go ahead)."""
+    # --- Usage limits (#129, #130; limits.py) ------------------------------------------
+    # Need migration 20261118130000_beta_invites_and_usage_indexes.sql.
+
+    def is_invited(self, email: str) -> bool:
+        """Whether `email` (lower-case) is on the closed-beta list. Read with the
+        connection's own role: beta_invites has no client access at all."""
+        with self.conn.transaction():
+            return self.conn.execute("select exists (select 1 from public.beta_invites"
+                                     " where email = %s) as invited", (email,)).fetchone()["invited"]
+
+    def global_usage(self, month_start: datetime, day_start: datetime) -> list[dict]:
+        """Every user's token sums per model since the start of the month and of
+        the day: the global budget. One indexed query (model_calls_created_at_idx),
+        with the connection's own role, since RLS would limit it to this user."""
+        cols = ("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+        query = ("select model, "
+                 + ", ".join(f"coalesce(sum({c}), 0) as month_{c}" for c in cols) + ", "
+                 + ", ".join(f"coalesce(sum({c}) filter (where created_at >= %(day)s), 0) as day_{c}"
+                             for c in cols)
+                 + " from public.model_calls where created_at >= %(month)s group by model")
+        with self.conn.transaction():
+            rows = self.conn.execute(query, {"month": month_start, "day": day_start}).fetchall()
+        return [{"model": r["model"], "month": {c: int(r[f"month_{c}"]) for c in cols},
+                 "day": {c: int(r[f"day_{c}"]) for c in cols}} for r in rows]
+
+    def tokens_since(self, since: datetime) -> int:
+        """This user's input + output tokens since `since` (model_calls_user_id_created_at_idx)."""
+        with self._as_user() as conn:
+            return int(conn.execute(
+                "select coalesce(sum(input_tokens + output_tokens), 0) as n from public.model_calls"
+                " where created_at >= %s", (since,)).fetchone()["n"])
+
+    def claim_chat_request(self, limit: int, since: datetime) -> datetime | None:
+        """Record one /chat request unless the user already made `limit` since
+        `since`. None if it was recorded (the request may go ahead); otherwise
+        the oldest request in the window, so the caller can say when a slot frees."""
         with self._as_user() as conn:
             # Serialise one user's concurrent requests so two can't both pass the count.
             conn.execute("select pg_advisory_xact_lock(hashtext(%s))", (self.user_id,))
-            used = conn.execute(
-                "select count(*) as n from public.chat_requests"
-                " where created_at > now() - interval '24 hours'").fetchone()["n"]
-            if used >= daily_limit:
-                return False
+            row = conn.execute(
+                "select count(*) as n, min(created_at) as oldest from public.chat_requests"
+                " where created_at > %s", (since,)).fetchone()
+            if row["n"] >= limit:
+                return row["oldest"]
             conn.execute("insert into public.chat_requests default values")
-            return True
+            return None
 
     def log_model_call(self, call: dict) -> None:
         with self._as_user() as conn:

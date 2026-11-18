@@ -38,8 +38,15 @@ Sign-in is by email magic link (Supabase Auth), invite only. The frontend
 (`proxy.ts`) sends signed-out visitors to `/sign-in`. The backend (`auth.py`)
 checks the `Authorization: Bearer` token on every request against the
 project's public signing keys (JWKS), so it needs only `SUPABASE_URL` and no
-shared secret, and runs queries as that user. `/chat` is limited to
-`CHAT_DAILY_LIMIT` requests (default 50) per user in any 24 hours.
+shared secret, and runs queries as that user.
+
+Closed beta and usage limits (`backend/limits.py`, #129, #130): only emails in
+`public.beta_invites` may use the API (add one with `insert into
+public.beta_invites (email) values ('name@example.com');` in the SQL editor).
+Before `/chat` calls Claude it checks the global budget for all users (9 USD a
+month, 1 USD a day, priced from `model_calls`) and each user's limits (30
+messages an hour, 50,000 tokens a day). Days and months are in Europe/Oslo.
+Logging by hand always works. The env vars are in `.env.example`.
 
 In the Supabase dashboard:
 

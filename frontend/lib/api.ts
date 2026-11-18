@@ -2,6 +2,7 @@
 // pace come from the backend's tool functions; the frontend only formats them.
 
 import { clearSavedChats } from "./chat-storage";
+import { LIMITS, limitMessage, type LimitBody } from "./limits";
 import { accessToken, supabaseBrowser } from "./supabase/client";
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(
@@ -372,6 +373,22 @@ export class ApiError extends Error {
   }
 }
 
+/** A usage limit stopped the request (#129, #130): `limit` says which, and
+ *  lib/limits.ts has the words to show. The coach wasn't called. */
+export class LimitError extends ApiError {
+  constructor(
+    readonly limit: LimitBody,
+    status: number,
+  ) {
+    super(limitMessage(limit).text, status);
+  }
+}
+
+function asLimit(body: unknown): LimitBody | null {
+  const limit = (body as { limit?: unknown } | null)?.limit;
+  return typeof limit === "string" && (LIMITS as readonly string[]).includes(limit) ? (body as LimitBody) : null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await accessToken();
   let res: Response;
@@ -397,12 +414,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   if (!res.ok) {
     let detail = `Request failed (${res.status}).`;
+    let body: unknown = null;
     try {
-      const body = await res.json();
-      if (typeof body.detail === "string") detail = body.detail;
+      body = await res.json();
+      const d = (body as { detail?: unknown })?.detail;
+      if (typeof d === "string") detail = d;
     } catch {
       // keep the generic message
     }
+    const limit = asLimit(body);
+    if (limit?.limit === "closed_beta") {
+      // Not invited (#130): no endpoint works, so show the closed-beta page.
+      window.location.replace(`${window.location.origin}/closed-beta`);
+    }
+    if (limit) throw new LimitError(limit, res.status);
     throw new ApiError(detail, res.status);
   }
   if (res.status === 204) return undefined as T;

@@ -4,4 +4,4 @@ export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 export const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "";
 
 /** Pages anyone may open. Everything else needs a signed-in user (proxy.ts). */
-export const PUBLIC_PATHS = ["/sign-in", "/auth/confirm"];
+export const PUBLIC_PATHS = ["/sign-in", "/auth/confirm", "/closed-beta"];

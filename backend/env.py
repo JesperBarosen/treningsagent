@@ -1,7 +1,7 @@
 """Load settings from the .env at the repo root (next to .env.example).
 
-ANTHROPIC_API_KEY, DATABASE_URL, SUPABASE_URL, CHAT_DAILY_LIMIT and
-ALLOWED_ORIGINS all live there locally; in production they are set on the host
+ANTHROPIC_API_KEY, DATABASE_URL, SUPABASE_URL, ALLOWED_ORIGINS and the
+usage limits (limits.py) all live there locally; in production they are set on the host
 (see docs/deploy.md). On Vercel there is no .env file, so load() does nothing. The path is fixed, so a stray backend/.env or the working directory
 can't change which file is read. Variables already set in the environment win.
 """
