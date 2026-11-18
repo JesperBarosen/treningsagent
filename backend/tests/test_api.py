@@ -207,12 +207,13 @@ def test_cors_allows_only_the_local_frontend(make_app):
     assert "access-control-allow-origin" not in other.headers
 
 
-def test_chat_stops_at_the_daily_limit_without_calling_claude(make_app, store, monkeypatch):
-    monkeypatch.setattr(api, "CHAT_DAILY_LIMIT", 1)
+def test_chat_stops_at_the_hourly_limit_without_calling_claude(make_app, store, monkeypatch):
+    monkeypatch.setenv("CHAT_MESSAGES_PER_HOUR", "1")
     http, fake = make_app(make_message("end_turn", [{"type": "text", "text": "Hi!"}]))
 
     assert http.post("/chat", json={"message": "Hello"}).status_code == 200
     res = http.post("/chat", json={"message": "Again"})
 
     assert res.status_code == 429
+    assert res.json() == {"limit": "hourly", "retry_after_minutes": 60}
     assert len(fake.requests) == 1

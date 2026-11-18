@@ -68,7 +68,9 @@ but it caps how many connections can be open at once.
    - `DATABASE_URL` (the transaction pooler string, see above)
    - `SUPABASE_URL`
    - `ALLOWED_ORIGINS`: leave it out for now and set it in step 3
-   - `CHAT_DAILY_LIMIT` (optional, default 50)
+   - Optional usage limits (defaults in `backend/limits.py`): `GLOBAL_BUDGET_USD_PER_MONTH` (9),
+     `GLOBAL_BUDGET_USD_PER_DAY` (1), `CHAT_MESSAGES_PER_HOUR` (30), `CHAT_TOKENS_PER_DAY` (50000),
+     and `SUPPORT_URL` for a "Support the app" link when the monthly budget is used up
 5. **Deploy.**
 6. Open `https://<backend-domain>/health`. It should return `{"status":"ok"}`.
    Note the domain; the frontend needs it.
@@ -162,8 +164,8 @@ on Vercel.
 3. **Build Command:** `pip install uv && uv sync --frozen --no-dev`
 4. **Start Command:** `uv run --no-dev uvicorn api:app --host 0.0.0.0 --port $PORT`
 5. **Environment:** the same names as in step 1 (`ANTHROPIC_API_KEY`,
-   `DATABASE_URL`, `SUPABASE_URL`, `ALLOWED_ORIGINS`, optional
-   `CHAT_DAILY_LIMIT`), plus `PYTHON_VERSION` = `3.12`.
+   `DATABASE_URL`, `SUPABASE_URL`, `ALLOWED_ORIGINS`, and the optional usage
+   limits), plus `PYTHON_VERSION` = `3.12`.
 6. **Health Check Path:** `/health`.
 7. Set the frontend's `NEXT_PUBLIC_API_URL` to the `onrender.com` URL and redeploy the frontend.
 

@@ -5,7 +5,6 @@ pyproject.toml, limits in vercel.json); see docs/deploy.md.
 """
 
 import json
-import os
 import uuid
 from datetime import date, timedelta
 from typing import Literal
@@ -13,8 +12,9 @@ from collections.abc import Iterator
 from functools import cache
 
 import anthropic
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 import auth
@@ -23,16 +23,21 @@ import db
 import env
 import forms
 import gyms
+import limits
 import pauses
 import plans
 import tools
 
-env.load()  # ANTHROPIC_API_KEY, DATABASE_URL, SUPABASE_URL, CHAT_DAILY_LIMIT from the root .env
-
-# /chat requests per user in any 24 hours, to cap what one account can spend.
-CHAT_DAILY_LIMIT = int(os.environ.get("CHAT_DAILY_LIMIT", "50"))
+env.load()  # ANTHROPIC_API_KEY, DATABASE_URL, SUPABASE_URL and the limits (limits.py) from the root .env
 
 app = FastAPI(title="treningsagent")
+
+
+@app.exception_handler(limits.LimitHit)
+def limit_hit(_request: Request, e: limits.LimitHit) -> JSONResponse:
+    """A usage limit (#129, #130): its JSON as is, e.g. 429 {"limit": "hourly",
+    "retry_after_minutes": 12}. The app keeps the words in frontend/lib/limits.ts."""
+    return JSONResponse(status_code=e.status, content=e.body)
 
 # Only these origins may call the API from a browser: the frontend's URL(s)
 # from ALLOWED_ORIGINS, or the Next.js dev server when it is unset.
@@ -74,11 +79,15 @@ def get_client() -> anthropic.Anthropic:
     return anthropic.Anthropic()  # one client (and connection pool) for the process
 
 
-def get_store(user_id: str = Depends(auth.get_user_id)) -> Iterator[db.PostgresStore]:
-    """A store for the signed-in user: RLS limits every query to their rows."""
+def get_store(user: dict = Depends(auth.get_user)) -> Iterator[db.PostgresStore]:
+    """A store for the signed-in user: RLS limits every query to their rows.
+    Closed beta (#130): only invited emails get one, so an unlisted user can't
+    use any endpoint (403 {"limit": "closed_beta"})."""
     conn = db.connect()
     try:
-        yield db.PostgresStore(conn, user_id)
+        store = db.PostgresStore(conn, user["id"])
+        limits.check_invite(store, user.get("email"))
+        yield store
     finally:
         conn.close()
 
@@ -89,9 +98,8 @@ def post_chat(
     client: anthropic.Anthropic = Depends(get_client),
     store: db.PostgresStore = Depends(get_store),
 ) -> ChatResponse:
-    if not store.claim_chat_request(CHAT_DAILY_LIMIT):
-        raise HTTPException(429, f"You've reached the limit of {CHAT_DAILY_LIMIT} messages "
-                                 "in 24 hours. Try again later.")
+    # Global budget, then the user's own limits, before Claude is called (limits.py).
+    limits.check_chat(store)
     conversation_id = req.conversation_id or uuid.uuid4()
     messages = [*req.history, {"role": "user", "content": req.message}]
     turn_start = len(req.history)
