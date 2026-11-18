@@ -22,7 +22,10 @@ Principles are numbered P1–P20 across all four papers, so the audit and the
 change table can refer to them. Two newer papers were added later (sections 1.5
 and 1.6, principles P22–P24). They update Li 2010 and Epstein 2015 and bear on
 proposals N1 and N5 in [design-proposals-2.md](design-proposals-2.md), which
-defines P21. The visual-design papers are in [design-visual.md](design-visual.md).
+defines P21. Nine training-load papers were added on 2026-11-18 (section 1.7,
+principles P25–P33) to back the load rules in
+[training-plans.md](training-plans.md). The visual-design papers are in
+[design-visual.md](design-visual.md).
 
 ## 1. The papers
 
@@ -317,6 +320,212 @@ decreasing intrinsic tracking motivation." (p. 228)
   also suggests letting "I've built the habit" be a legitimate reason to pause
   or stop.
 
+### 1.7 Training load papers (added 2026-11-18)
+
+Nine sports-science papers, added to back the load rules in
+[training-plans.md](training-plans.md) (section 5). Unlike 1.1–1.6 they are not
+about interface design, so sections 2–4 (limits against UI guidelines, audit,
+changes) don't cover them. Their limits are stated with each principle instead.
+Everything below is paraphrase; the numbers are the papers' own.
+
+**Evidence scale** (interpretation): *strong* = a large prospective study or a
+consistent review; *moderate* = a smaller prospective study, or a review whose
+studies are mostly consistent; *weak* = a review finding conflicting or very
+few studies, expert consensus, or commentary. None of these papers is a
+randomised trial, so none shows that changing load *causes* or *prevents*
+injury.
+
+#### P25. Session-RPE is a valid, cheap load measure [Haddad 2017]
+
+- **Paper.** Haddad, Stylianides, Djaoui, Dellal and Chamari. 2017.
+  *Session-RPE Method for Training Load Monitoring: Validity, Ecological
+  Usefulness, and Influencing Factors.* Frontiers in Neuroscience 11:612.
+- **Summary.** Load as minutes × perceived effort (the CR-10 scale), the method
+  this app already uses, holds up as a load measure across many sports, ages,
+  sexes and levels, and can be used on its own. Perceived effort is also
+  shifted by mood, environment, fitness and experience, and a coach's
+  *intended* effort agrees only weakly with the athlete's *felt* effort,
+  especially in team sports.
+- **Key result.** 36 studies tested validity or reliability; most found
+  moderate to strong correlations with heart-rate-based load and good
+  reliability.
+- **Study type and size.** Narrative mini-review of 36 validation studies
+  (out of about 950 citing the original method).
+- **Evidence.** Moderate to strong for validity; not a systematic review, and
+  few studies of running or climbing specifically.
+- **Principle.** Measure load as minutes × effort reported *after* the session.
+  Treat a plan's planned effort as an estimate, and compare planned and done
+  load loosely, never as a pass/fail test.
+
+#### P26. The acute:chronic ratio is a soft signal, not an injury predictor [Impellizzeri 2020]
+
+- **Paper.** Impellizzeri, McCall, Ward, Bornn and Coutts. 2020. *Training Load
+  and Its Role in Injury Prevention, Part 2: Conceptual and Methodologic
+  Pitfalls.* Journal of Athletic Training 55(9):893–901.
+- **Summary.** The research behind the acute:chronic workload ratio has no
+  causal model, tests many variants (one study computed 350 hazard ratios), and
+  the ratio itself is statistically flawed: it doesn't separate the effect of
+  the recent week from the longer baseline. A simulation in which the ratio had
+  no effect still "found" one with the usual methods. The often-cited
+  0.8–1.3 "sweet spot" wasn't shown in the original data. Load measures are
+  still useful to check whether planned training was done.
+- **Key result.** No sound basis for using the ratio, or thresholds on it, to
+  reduce injury risk; the authors advise traditional principles (gradual
+  overload, adjusting to the athlete's response).
+- **Study type and size.** Methodological commentary with a simulation; no new
+  cohort.
+- **Evidence.** Moderate as a critique (it lists concrete flaws); it doesn't
+  show the ratio is useless, only that the evidence for it is unreliable.
+- **Principle.** Show the ratio only as a rough comparison of this week with
+  the last four. Never block a proposal on it, never call it an injury risk,
+  and don't quote a "safe band" as fact.
+
+#### P27. Plan lighter weeks, and allow one when tired [Bell 2023]
+
+- **Paper.** Bell, Strafford, Coleman, Androulakis Korakakis and Nolan. 2023.
+  *Integrating Deloading into Strength and Physique Sports Training
+  Programmes: An International Delphi Consensus Approach.* Sports Medicine –
+  Open 9:87.
+- **Summary.** Expert coaches agreed that a deload is a short period of
+  reduced training stress for recovery and readiness. It can cut volume,
+  intensity or frequency; it can be planned into each training block or taken
+  when the athlete feels physically or mentally fatigued; and how often depends
+  on the athlete's response and their other sports. The panel set no fixed
+  frequency or size. The paper's background reports that coaches commonly
+  deload every 4–6 weeks for about a week.
+- **Key result.** Consensus on principles (planned and on demand, lower
+  volume), not on numbers.
+- **Study type and size.** Delphi consensus, three rounds: 34, 29 and 21 coaches.
+- **Evidence.** Weak: expert opinion from strength and physique sports, not
+  running or climbing; the 4–6 weeks figure is cited background, not a finding.
+- **Principle.** Put a lighter week in every plan block, at the shorter end of
+  common practice, and let the user turn any week into a lighter one.
+
+#### P28. Little evidence links load changes to running injury [Damsted 2018]
+
+- **Paper.** Damsted, Glad, Nielsen, Sørensen and Malisoux. 2018. *Is there
+  evidence for an association between changes in training load and
+  running-related injuries? A systematic review.* International Journal of
+  Sports Physical Therapy 13(6):931–942.
+- **Summary.** Only four studies met the criteria. Three found that recent
+  increases in distance, speed or frequency went with more injuries; one found
+  no difference between about 10% and about 24% weekly increases.
+- **Key result.** Runners increasing weekly distance by more than 30% had a
+  higher injury rate than those under 10% (hazard ratio about 1.6, with a
+  confidence interval that includes no effect). The authors call the evidence
+  very limited.
+- **Study type and size.** Systematic review of four studies.
+- **Evidence.** Weak: very few studies, mixed results.
+- **Principle.** Large jumps in running volume are the thing to avoid; the
+  exact safe step isn't known.
+
+#### P29. Weekly running increases of 20% or more went with more injuries early on [Damsted 2019]
+
+- **Paper.** Damsted, Parner, Sørensen, Malisoux, Hulme and Nielsen. 2019. *The
+  Association Between Changes in Weekly Running Distance and Running-Related
+  Injury: Preparing for a Half Marathon.* Journal of Orthopaedic & Sports
+  Physical Therapy 49(4):230–238.
+- **Summary.** Runners preparing for a half marathon were followed with GPS
+  data for 14 weeks. Those who increased their weekly distance by 20–60% were
+  injured more often in the first three weeks than those who changed it by less
+  than 20%; the difference was no longer significant at 8 and 14 weeks.
+- **Key result.** Risk difference about 23 percentage points at 21 days, with a
+  wide confidence interval (about 1 to 44).
+- **Study type and size.** Prospective cohort, 261 runners, 56 injured (21.5%).
+- **Evidence.** Moderate: prospective with objective data, but small, with a
+  wide interval and an effect only early in the study.
+- **Principle.** Keep weekly running increases clearly under 20%.
+
+#### P30. No training parameter consistently predicts running injury [Fredette 2022]
+
+- **Paper.** Fredette, Roy, Perreault, Dupuis, Napier and Esculier. 2022. *The
+  Association Between Running Injuries and Training Parameters: A Systematic
+  Review.* Journal of Athletic Training 57(7):650–671.
+- **Summary.** Across studies, weekly distance, duration, frequency, intensity
+  and recent changes in them were linked to injury inconsistently. About a
+  quarter of runners got injured, competitive runners far more often than
+  novices. The authors say the popular "10% rule" isn't justified by the
+  evidence, and that no universal progression can be recommended.
+- **Key result.** 36 studies, 23,047 runners, 26% injured; conflicting
+  associations for every parameter.
+- **Study type and size.** Systematic review of 36 prospective studies.
+- **Evidence.** Strong that the evidence is conflicting; it gives no safe
+  number.
+- **Principle.** Any progression number is a cautious default, not a
+  scientific limit, and the app must say so.
+
+#### P31. A single run much longer than recent long runs is the clearer risk [Frandsen 2025]
+
+- **Paper.** Schuster Brandt Frandsen, Hulme, Parner, Møller, Lindman,
+  Abrahamson, Simonsen, Jacobsen, Ramskov, Skejø, Malisoux, Bertelsen and
+  Nielsen. 2025. *How much running is too much? Identifying high-risk running
+  sessions in a 5200-person cohort study.* British Journal of Sports Medicine.
+- **Summary.** Using watch data from adult runners over 18 months, a single
+  run more than 10% longer than the longest run in the previous 30 days went
+  with a higher rate of overuse injury, and more so above 100%. A weekly
+  acute:chronic ratio showed the opposite direction (higher ratio, lower
+  rate), and the week-to-week change in distance showed no relationship.
+- **Key result.** Hazard rate ratios about 1.6 (10–30% longer), 1.5 (30–100%)
+  and 2.3 (over 100%) against runs at most 10% longer.
+- **Study type and size.** Prospective cohort, 5,205 runners, 1,820 injured,
+  588,071 sessions.
+- **Evidence.** Strong for an association (large, objective, adjusted for
+  confounders); still observational, with self-reported injuries.
+- **Principle.** Cap each planned run at 10% longer than the user's longest
+  run in the last 30 days; this matters more than the weekly total.
+
+#### P32. Half-marathon preparation: more volume went with faster times, not more injuries [Fokkema 2020]
+
+- **Paper.** Fokkema, van Damme, Fornerod, de Vos, Bierma-Zeinstra and van
+  Middelkoop. 2020. *Training for a (half-)marathon: Training volume and
+  longest endurance run related to performance and running injuries.*
+  Scandinavian Journal of Medicine & Science in Sports 30:1692–1704.
+- **Summary.** Recreational half-marathon runners who averaged over 32 km a
+  week, or whose longest run was over 21 km, finished faster and slowed less
+  during the race. Neither volume nor longest run was associated with injury.
+- **Key result.** About 4 minutes faster for each of the two factors; no
+  association with injuries.
+- **Study type and size.** Prospective questionnaires, 556 half-marathon and
+  441 marathon runners.
+- **Evidence.** Moderate for performance, weak for "no extra injury" (self-reported
+  training, and faster runners may simply train more).
+- **Principle.** For a half-marathon goal, build towards about 32 km a week and
+  a long run near race distance only as far as P29 and P31 allow in the time
+  available; don't push volume to hit those numbers.
+
+#### P33. Return after injury is a graded continuum, decided together [Ardern 2016]
+
+- **Paper.** Ardern, Glasgow, Schneiders, Witvrouw, Clarsen, Cools and others.
+  2016. *2016 Consensus statement on return to sport from the First World
+  Congress in Sports Physical Therapy, Bern.* British Journal of Sports
+  Medicine 50:853–864.
+- **Summary.** Returning after injury is a continuum alongside rehabilitation:
+  return to participation (training, but below the goal level), return to
+  sport, return to performance. Progress should be graded and based on
+  criteria rather than time, and decided together with clinicians; with
+  gradually worsening symptoms the decision may be to reduce load or stop.
+  The ratio of recent to longer-term load might help plan the progression, but
+  that needs more research. Evidence for return decisions is scarce.
+- **Key result.** A framework and definitions, not measured outcomes.
+- **Study type and size.** Consensus statement of 17 expert clinicians.
+- **Evidence.** Weak: expert consensus; the authors call the evidence scarce.
+- **Principle.** After an injury pause, restart below the pre-pause load, step
+  up only when the user reports no worse pain, and point to a professional for
+  the decision. Never diagnose.
+
+**How they fit together** (interpretation):
+
+- **Weekly increases.** P29 points to keeping increases under 20%, P30 says the
+  10% rule isn't evidence-based, and P31 found no week-to-week effect at all.
+  The safer reading is a 10% weekly cap as a cautious default, clearly labelled
+  as such, with the single-run cap (P31) as the better-supported rule.
+- **The acute:chronic ratio.** P33 (2016) suggests it may help plan a return;
+  P26 (2020) and P31 (2025) are later and argue against relying on it. The
+  later work wins: soft warning only.
+- **What none of them cover:** tapering for runners, combining running with
+  strength or climbing, and climbing or finger load. Those rules keep "needs
+  source".
+
 ## 2. Limits
 
 For each principle: how strong the evidence is, and whether current guidelines
@@ -499,3 +708,56 @@ W3C. 2024. Web Content Accessibility Guidelines (WCAG) 2.2. W3C Recommendation,
 W3C Web Accessibility Initiative. 2024. Understanding Success Criterion 2.5.8:
 Target Size (Minimum). Retrieved November 14, 2026 from
 https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html
+
+**Training load papers (section 1.7).**
+
+Clare L. Ardern, Philip Glasgow, Anthony Schneiders, Erik Witvrouw, Benjamin
+Clarsen, Ann Cools, et al. 2016. 2016 Consensus statement on return to sport
+from the First World Congress in Sports Physical Therapy, Bern. *British Journal
+of Sports Medicine* 50 (2016), 853–864. https://doi.org/10.1136/bjsports-2016-096278
+[Ardern 2016]
+
+Lee Bell, Ben William Strafford, Max Coleman, Patroklos Androulakis Korakakis,
+and David Nolan. 2023. Integrating Deloading into Strength and Physique Sports
+Training Programmes: An International Delphi Consensus Approach. *Sports
+Medicine – Open* 9, 87 (2023). https://doi.org/10.1186/s40798-023-00633-0
+[Bell 2023]
+
+Camma Damsted, Simone Glad, Rasmus Oestergaard Nielsen, Henrik Sørensen, and
+Laurent Malisoux. 2018. Is there evidence for an association between changes in
+training load and running-related injuries? A systematic review. *International
+Journal of Sports Physical Therapy* 13, 6 (2018), 931–942.
+https://doi.org/10.26603/ijspt20180931 [Damsted 2018]
+
+Camma Damsted, Erik Thorlund Parner, Henrik Sørensen, Laurent Malisoux, Adam
+Hulme, and Rasmus Østergaard Nielsen. 2019. The Association Between Changes in
+Weekly Running Distance and Running-Related Injury: Preparing for a Half
+Marathon. *Journal of Orthopaedic & Sports Physical Therapy* 49, 4 (2019),
+230–238. https://doi.org/10.2519/jospt.2019.8541 [Damsted 2019]
+
+Tryntsje Fokkema, Ankie A. D. N. van Damme, Maarten W. J. Fornerod, Robert-Jan
+de Vos, Sita M. A. Bierma-Zeinstra, and Marienke van Middelkoop. 2020. Training
+for a (half-)marathon: Training volume and longest endurance run related to
+performance and running injuries. *Scandinavian Journal of Medicine & Science in
+Sports* 30 (2020), 1692–1704. https://doi.org/10.1111/sms.13725 [Fokkema 2020]
+
+Jesper Schuster Brandt Frandsen, Adam Hulme, Erik Thorlund Parner, Merete
+Møller, et al. 2025. How much running is too much? Identifying high-risk running
+sessions in a 5200-person cohort study. *British Journal of Sports Medicine*
+(2025). https://doi.org/10.1136/bjsports-2024-109380 [Frandsen 2025]
+
+Anny Fredette, Jean-Sébastien Roy, Kadija Perreault, Frédérique Dupuis,
+Christopher Napier, and Jean-Francois Esculier. 2022. The Association Between
+Running Injuries and Training Parameters: A Systematic Review. *Journal of
+Athletic Training* 57, 7 (2022), 650–671. https://doi.org/10.4085/1062-6050-0195.21
+[Fredette 2022]
+
+Monoem Haddad, Georgios Stylianides, Leo Djaoui, Alexandre Dellal, and Karim
+Chamari. 2017. Session-RPE Method for Training Load Monitoring: Validity,
+Ecological Usefulness, and Influencing Factors. *Frontiers in Neuroscience* 11,
+612 (2017). https://doi.org/10.3389/fnins.2017.00612 [Haddad 2017]
+
+Franco M. Impellizzeri, Alan McCall, Patrick Ward, Luke Bornn, and Aaron J.
+Coutts. 2020. Training Load and Its Role in Injury Prevention, Part 2:
+Conceptual and Methodologic Pitfalls. *Journal of Athletic Training* 55, 9
+(2020), 893–901. https://doi.org/10.4085/1062-6050-501-19 [Impellizzeri 2020]
