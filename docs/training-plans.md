@@ -107,7 +107,7 @@ The coach never saves a plan. It **proposes**, the app shows the proposal as a c
 
 The app already measures load as **session-RPE** (minutes × effort) and shows an **acute:chronic ratio** as a rough guide (`tools.py`, which cites the session-RPE method in code). Neither comes from a paper in `research/`.
 
-The rules below are what a plan needs, written as **parameters with placeholder values**. Each is marked **needs source**: none is backed by `research/` yet, and none should ship with a number until Q1 is answered. The server keeps them in one place (`plans.RULES`), so a sourced value changes one line; evals test behaviour against the parameter, not a hard-coded number.
+The rules below are what a plan needs, written as **parameters with placeholder values**. Each is marked **needs source**: none is backed by `research/` yet, and none gets a number until a paper supports it (Q1: they ship now as labelled placeholders). The server keeps them in one place (`plans.RULES`), so a sourced value changes one line; evals test behaviour against the parameter, not a hard-coded number.
 
 | Rule | What it controls | Placeholder | Status |
 |---|---|---|---|
@@ -177,7 +177,7 @@ No change to `sessions`, `goals` or `pauses`.
 | **Dashboard** | The weekly load card draws planned load as outlined bars behind done load, with deload weeks labelled. The plan's goal card shows weeks left. | 5 |
 | **Sessions** | A linked session shows "Planned: Easy run" under its title. | — |
 
-**Navigation (Q2)**: A, no new tab: the Plan view opens from the Coach strip, the Dashboard and You. B, a sixth tab. Recommendation: A, since the tab bar is already full at 375 px.
+**Navigation (Q2)**: A, no new tab: the Plan view opens from the Coach strip, the Dashboard and You. B, a sixth tab. Decided: A, since the tab bar is already full at 375 px.
 
 **Discreet mode**: plan name, session titles, sports and day names stay visible; targets, actual values, load numbers and the load bars' axis blur, like values today (Q6 in `docs/custom-log-forms.md`).
 
@@ -200,26 +200,20 @@ New cases in `backend/evals/cases/`, seeded with history, goals, templates and p
 | `plan_thin_history_asks` | With under two weeks of history → asks about current training before proposing, or proposes a conservative start and says why |
 | `plan_no_invented_science` | Asked "why a lighter week?" → explains plainly and calls it a common practice or a rough guide, never cites a study the tools didn't give |
 
-## 10. Open questions
+## 10. Decisions
 
-1. **Q1. Which papers should back the load rules?** None of `research/` covers them, so L1–L6 can't ship with numbers yet. **Recommended:** add these kinds of papers to `research/` (or to the research library, #40) before the plan issues that use the rules:
-   - (a) training-load monitoring with session-RPE;
-   - (b) the acute:chronic workload ratio, including the papers that criticise it;
-   - (c) reviews of periodisation, deload weeks and tapering;
-   - (d) running load progression and running injury;
-   - (e) climbing: finger and hangboard loading, and climbing injuries;
-   - (f) concurrent training, for combining endurance with strength or climbing;
-   - (g) return to sport after injury or illness, for #34.
-   Until then, ship the rules as clearly labelled placeholders, or (alternative B) hold the proposal tool back until (a)–(e) are in.
-2. **Q2. Where does the Plan view live?** A: opened from Coach, Dashboard and You, with no new tab. B: a sixth tab. **Recommended: A.**
-3. **Q3. One plan at a time?** **Recommended:** yes, one active plan, with one-off suggestions (#38) allowed next to it. Alternative: several plans (e.g. one per sport), which makes load per week ambiguous.
-4. **Q4. Does a goal's date set the plan's end?** **Recommended:** yes, if the goal has a date within 4–12 weeks; otherwise the user picks the length.
-5. **Q5. Can "Save without asking" also accept plans?** **Recommended:** no; plans always need a tap. Alternative: let the setting cover change proposals only.
-6. **Q6. How does a logged session match a planned one?** A: auto-link a single same-day candidate with Undo, and ask otherwise. B: always ask. C: never link automatically, only through "Log it". **Recommended: A.**
-7. **Q7. Are "not done" sessions shown at all after the week ends?** **Recommended:** yes, in grey in the Plan view, but never counted against the user on Coach or the Dashboard.
-8. **Q8. Strength and other sessions in plans?** **Recommended:** yes, with templates. Strength and other have load but no progression yet, so their targets are template values only.
-9. **Q9. Should the coach propose plans unasked?** **Recommended:** no, except one change proposal after a pause or a week well under plan. Alternative: a weekly "plan next week?" offer on the weekly review.
-10. **Q10. Is the weekly goal (#26) part of this?** **Recommended:** keep #26 separate and later let a plan set the weekly goal from its planned sessions.
+Decided on 2026-11-18; every recommendation was accepted. The alternatives are kept briefly for the record.
+
+1. **Q1. Load rules without sources: build now.** L1–L6 ship as clearly labelled "needs source" placeholders in `plans.RULES`, and get numbers as papers arrive. The kinds of papers to add: (a) session-RPE load monitoring; (b) the acute:chronic workload ratio and its critiques; (c) periodisation, deload and taper reviews; (d) running load progression and injury; (e) climbing finger and hangboard loading; (f) concurrent training; (g) return to sport after injury or illness (#34). *Not chosen:* hold the proposal tool back until (a)–(e) are in.
+2. **Q2. Plan view: A, no sixth tab.** It opens from Coach, the Dashboard and You. *Not chosen:* B, a sixth tab (the tab bar is full at 375 px).
+3. **Q3. One active plan at a time,** with one-off suggestions (#38, planned sessions without a plan) allowed next to it. *Not chosen:* several plans, e.g. one per sport, which makes load per week ambiguous.
+4. **Q4. A goal's date sets the plan's end** when it falls within 4–12 weeks of the start; otherwise the user picks the length.
+5. **Q5. "Save without asking" doesn't cover plans:** plans and change proposals always need a tap. *Not chosen:* letting the setting cover change proposals.
+6. **Q6. Matching: A.** Auto-link a single same-day candidate with Undo, and ask otherwise. *Not chosen:* B, always ask; C, link only through "Log it".
+7. **Q7. "Not done" sessions stay visible** in grey in the Plan view, and are never counted against the user on Coach or the Dashboard.
+8. **Q8. Strength and other sessions are in plans,** through templates; their targets are template values only.
+9. **Q9. No unasked plans.** The coach offers only one change proposal, after a pause or after a week well under plan. *Not chosen:* a weekly "plan next week?" offer on the weekly review.
+10. **Q10. #26 (weekly goal) stays separate.** Later, a plan may set the weekly goal from its planned sessions.
 
 ## 11. Issues
 
@@ -234,4 +228,6 @@ In order, each small enough for one PR. #39 and #38 stay the parent issues.
 | 5 | [#120 Proposal and change cards in Coach: Accept, Review, Not now](https://github.com/JesperBarosen/treningsagent/issues/120) | #38 | frontend | M |
 | 6 | [#121 Planned vs done on Coach and the Dashboard](https://github.com/JesperBarosen/treningsagent/issues/121) | #38 | frontend | M |
 
-All six are on the board under this milestone (P2, phase "Plans and proposals") and are sub-issues of #39 or #38. #119 can be built before the load sources arrive, but its rule values stay placeholders until Q1 is answered.
+All six are on the board under this milestone (P2, phase "Plans and proposals") and are sub-issues of #39 or #38. #119 is built now (Q1); its rule values stay labelled placeholders until papers support them.
+
+Scope changes from the decisions: #116 also stores one-off planned sessions without a plan (Q3) and sets a plan's length from its goal's date (Q4); #119 limits unasked proposals to one change proposal after a pause or a week well under plan (Q9). The other issues already matched the recommendations.
