@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it } from "vitest";
 import { Dashboard } from "@/app/dashboard/dashboard-view";
 import type { Progression, TrainingLoad, Trend } from "@/lib/api";
-import { mainPaceBand, ratioView, summarySentence } from "@/lib/dashboard";
+import { mainPaceBand, ratioGap, ratioView, summarySentence, trendGap } from "@/lib/dashboard";
 
 beforeAll(() => {
   // Recharts' ResponsiveContainer needs ResizeObserver, which jsdom lacks.
@@ -78,6 +78,37 @@ const progression = (): Progression => ({
   },
 });
 
+describe("trendGap and ratioGap (#126)", () => {
+  const runs = { none: "runs", count: "runs" };
+  const gap = (recent_sessions: number, baseline_sessions: number) =>
+    trendGap({ ...trend("not enough data"), recent_sessions, baseline_sessions }, runs);
+
+  it("names what a trend is missing, from the backend's counts", () => {
+    expect(gap(2, 0)).toBe("No runs in the 4 weeks before to compare with");
+    expect(gap(0, 4)).toBe("No runs in the last 2 weeks");
+    expect(gap(0, 0)).toBe("No runs in the last 6 weeks");
+    expect(gap(1, 5)).toBe("Trend after 3 recent runs · 1 so far");
+    // Points on both sides, but too few before: no count to promise.
+    expect(gap(4, 2)).toBe("Too early for a trend");
+    expect(gap(2, 1)).toBe("Too early for a trend");
+    expect(trendGap(trend("flat"), runs)).toBeNull();
+  });
+
+  it("never blames", () => {
+    for (const [r, b] of [[2, 0], [0, 4], [0, 0], [1, 5], [4, 2]]) {
+      expect(gap(r, b)).not.toMatch(/not enough|missed|failed|only|behind|you didn/i);
+    }
+  });
+
+  it("says how far along the ratio is", () => {
+    expect(ratioGap(0)).toEqual({ need: "Needs 4 weeks of sessions", sofar: null });
+    expect(ratioGap(1).sofar).toBe("1 day so far");
+    expect(ratioGap(6).sofar).toBe("6 days so far");
+    expect(ratioGap(10).sofar).toBe("1 week so far");
+    expect(ratioGap(21).sofar).toBe("3 weeks so far");
+  });
+});
+
 describe("ratioView", () => {
   it("shows the backend's ratio once about 4 weeks are logged", () => {
     expect(ratioView(load())).toEqual({ kind: "ok", ratio: 1.07, zone: "moderate" });
@@ -107,13 +138,39 @@ describe("Dashboard", () => {
     expect(within(card).getByText("1.07")).toBeInTheDocument();
   });
 
-  it("shows not enough data instead of a young ratio", () => {
+  it("says what a young ratio still needs instead of showing it (#126)", () => {
     const young = load({ ratio_status: "not_enough_data", history_days: 10 });
     render(<Dashboard load={young} progression={progression()} />);
     const card = screen.getByRole("region", { name: "Acute:chronic ratio" });
-    expect(within(card).getByText("Not enough data")).toBeInTheDocument();
-    expect(within(card).getByText(/You have 10 days so far/)).toBeInTheDocument();
+    expect(within(card).getByText("Needs 4 weeks of sessions")).toBeInTheDocument();
+    expect(within(card).getByText(/^1 week so far\./)).toBeInTheDocument();
     expect(within(card).queryByText("1.07")).toBeNull();
+    expect(screen.queryByText(/Not enough data/i)).toBeNull();
+  });
+
+  it("says what each trend is missing, in words that stay readable in discreet mode (#126)", () => {
+    const p = progression();
+    // Runs only in the last 2 weeks: nothing to compare with.
+    p.running.trends.pace_by_distance.under_7km = { ...trend("not enough data"), recent_sessions: 2, baseline_sessions: 0 };
+    // Plenty before, one session with a send since.
+    p.climbing.weekly = [
+      { week_start: "2026-11-09", sessions: 1, climbs: 4, hardest_sent: "purple", flash_grade: null,
+        hardest_sent_level: 4, flash_level: null, send_rate_by_grade: {} },
+    ];
+    p.climbing.trends.avg_session_hardest_sent = {
+      ...trend("not enough data", 4.2, 3.4), recent_sessions: 1, baseline_sessions: 5, recent_grade: "purple", baseline_grade: "blue",
+    };
+    render(<Dashboard load={load()} progression={p} />);
+
+    const pace = screen.getByRole("region", { name: "Running pace" });
+    const band = within(pace).getByRole("region", { name: "Under 7 km" });
+    const gap = within(band).getByText("No runs in the 4 weeks before to compare with");
+    expect(gap).not.toHaveAttribute("data-sensitive");
+    expect(gap.closest("[data-sensitive]")).toBeNull();
+    expect(gap).not.toHaveClass("whitespace-nowrap"); // wraps at 375 px
+
+    const grades = screen.getByRole("region", { name: "Hardest grades" });
+    expect(within(grades).getAllByText("Trend after 3 recent sessions · 1 so far").length).toBeGreaterThan(0);
   });
 
   it("shows the backend's send rates and trend words per grade, easiest first", () => {
@@ -122,7 +179,7 @@ describe("Dashboard", () => {
     const items = within(card).getAllByRole("listitem");
     expect(items.map((li) => li.textContent)).toEqual([
       "blueImprovingLast 2 wks90%4 wks before60%",
-      "redNot enough dataLast 2 wks25%4 wks before–",
+      "redToo early for a trendLast 2 wks25%4 wks before–",
     ]);
   });
 
@@ -154,7 +211,7 @@ describe("summary first on mobile", () => {
     p.running.trends.pace_by_distance.over_15km = trend("not enough data");
     p.climbing.trends.avg_session_hardest_sent.trend = "not enough data";
     const young = load({ ratio_status: "not_enough_data", history_days: 10 });
-    expect(summarySentence(young, p)).toBe("Not enough data for trends yet. Keep logging and they show up here.");
+    expect(summarySentence(young, p)).toBe("Too early for trends. They show up here after a few weeks of sessions.");
     expect(summarySentence(load({ ratio_status: "paused" }), p)).toBe("Your load ratio is paused for your break.");
   });
 

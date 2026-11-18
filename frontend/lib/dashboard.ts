@@ -1,7 +1,7 @@
 // Display rules for the dashboard. The numbers themselves come from the
 // backend (/training-load and /progression); these only decide how to show them.
 
-import { DISTANCE_BANDS, type DistanceBand, type Progression, type TrainingLoad, type TrendWord } from "./api";
+import { DISTANCE_BANDS, type DistanceBand, type Progression, type TrainingLoad, type Trend, type TrendWord } from "./api";
 import type { SportFilter } from "./sport-filter";
 
 /** The backend's minimum history for the ratio (tools.RATIO_MIN_HISTORY_DAYS),
@@ -32,6 +32,47 @@ export function ratioView(load: TrainingLoad): RatioView {
           ? "moderate"
           : "below";
   return { kind: "ok", ratio, zone };
+}
+
+// --- What a trend or the ratio still needs (#126) ---------------------------------
+
+/** The backend's trend rule (progression.MIN_SESSIONS): each window needs this
+ *  many sessions with the metric, the last 2 weeks and the 4 weeks before. */
+export const TREND_MIN_SESSIONS = 3;
+
+export const TOO_EARLY = "Too early for a trend";
+
+/** What a trend counts, for its label: `none` names what's missing ("runs",
+ *  "sends"), `count` what the backend counted per window ("runs", "sessions"). */
+export type TrendNoun = { none: string; count: string };
+
+/** Instead of "Not enough data": what the trend is still missing, from the
+ *  backend's own counts, in words that never blame (P17, P24). Null when the
+ *  trend has a word. Short enough for a chip at 375 px. */
+export function trendGap(t: Trend, noun: TrendNoun): string | null {
+  if (t.trend !== "not enough data") return null;
+  const { recent_sessions: recent, baseline_sessions: before } = t;
+  if (recent === 0 && before === 0) return `No ${noun.none} in the last 6 weeks`;
+  if (before === 0) return `No ${noun.none} in the 4 weeks before to compare with`;
+  if (recent === 0) return `No ${noun.none} in the last 2 weeks`;
+  if (recent < TREND_MIN_SESSIONS && before >= TREND_MIN_SESSIONS) {
+    return `Trend after ${TREND_MIN_SESSIONS} recent ${noun.count} · ${recent} so far`;
+  }
+  // There are points on both sides, just not enough of them yet.
+  return TOO_EARLY;
+}
+
+/** The ratio's history need in words: "Needs 4 weeks of sessions", and how
+ *  far along the user is ("1 week so far", or days in the first week). */
+export function ratioGap(historyDays: number): { need: string; sofar: string | null } {
+  const need = `Needs ${RATIO_MIN_HISTORY_DAYS / 7} weeks of sessions`;
+  if (historyDays <= 0) return { need, sofar: null };
+  const weeks = Math.floor(historyDays / 7);
+  const sofar =
+    weeks === 0
+      ? `${historyDays} ${historyDays === 1 ? "day" : "days"} so far`
+      : `${weeks} ${weeks === 1 ? "week" : "weeks"} so far`;
+  return { need, sofar };
 }
 
 export const BAND_LABELS: Record<DistanceBand, string> = {
@@ -117,5 +158,5 @@ export function summarySentence(load: TrainingLoad, progression: Progression, sp
     const grade = GRADE_SENTENCE[progression.climbing.trends.avg_session_hardest_sent.trend];
     if (grade) parts.push(grade);
   }
-  return parts.length > 0 ? parts.join(" ") : "Not enough data for trends yet. Keep logging and they show up here.";
+  return parts.length > 0 ? parts.join(" ") : "Too early for trends. They show up here after a few weeks of sessions.";
 }
