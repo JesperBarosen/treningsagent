@@ -235,6 +235,10 @@ In order, each small enough for one PR. #39 and #38 stay the parent issues.
 | 4 | [#119 propose_program and get_plan agent tools, with evals](https://github.com/JesperBarosen/treningsagent/issues/119) | #39 | agent, evals, backend | L |
 | 5 | [#120 Proposal and change cards in Coach: Accept, Review, Not now](https://github.com/JesperBarosen/treningsagent/issues/120) | #38 | frontend | M |
 | 6 | [#121 Planned vs done on Coach and the Dashboard](https://github.com/JesperBarosen/treningsagent/issues/121) | #38 | frontend | M |
+| 7 | [#131 Change proposals: change mode and the change card](https://github.com/JesperBarosen/treningsagent/issues/131) | #39 | agent, backend, frontend, evals | M |
+| 8 | [#132 Log a planned session from the Plan view](https://github.com/JesperBarosen/treningsagent/issues/132) | #38 | frontend | M |
+
+New plans came first: #119 and #120 shipped `propose_program` for new plans with the Accept / Dismiss card, and #118 the Plan view, so change proposals moved to #131 and logging from the Plan view to #132. `propose_program` refuses a proposal that breaks a sourced rule (L1a, L1b, L2 in section 5) and returns what the rules allow by the plan's end, so the coach can say plainly when a goal can't be reached in time. Until #117 stores links, the Plan view counts a same-day session of the same sport as done, without storing anything.
 
 All six are on the board under this milestone (P2, phase "Plans and proposals") and are sub-issues of #39 or #38. #119 is built now (Q1); its rule values stay labelled placeholders until papers support them.
 

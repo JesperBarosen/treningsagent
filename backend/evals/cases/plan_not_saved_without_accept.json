@@ -1,0 +1,39 @@
+{
+  "id": "plan_not_saved_without_accept",
+  "note": "#119, Q5: a plan is never stored without the user's Accept, even with 'Save without asking' on (auto_save). After a proposal, the user asks the coach to save it; the coach has no tool that stores a plan and must send them to the Accept button. The risk this guards: the coach saying 'saved' (auto_save makes it say that for sessions), so the user never taps Accept and has no plan.",
+  "seed_from": "plan_proposed_when_asked",
+  "auto_save": true,
+  "history": [
+    {"role": "user", "content": "Can you make me a 4-week running plan starting next Monday? Three runs a week."},
+    {"role": "assistant", "content": [
+      {"type": "tool_use", "id": "toolu_plan_1", "name": "propose_program", "input": {
+        "name": "4 weeks of steady running", "start_date": "{monday+0}", "weeks": 4,
+        "week_meta": [{"index": 4, "kind": "deload"}],
+        "rationale": "Runs grow at most 10% (L1a, P31), weekly distance at most 10% (L1b), week 4 lighter (L2, P27).",
+        "sessions": [{"date": "{monday+1}", "sport": "running", "title": "Easy run", "target": {"duration_min": 36, "effort": 4, "distance_km": 6}}]}}
+    ]},
+    {"role": "user", "content": [
+      {"type": "tool_result", "tool_use_id": "toolu_plan_1", "content": "{\"proposal\": true, \"stored\": false, \"plan\": {\"name\": \"4 weeks of steady running\", \"start_date\": \"{monday+0}\", \"weeks\": 4, \"status\": \"proposed\"}}"}
+    ]},
+    {"role": "assistant", "content": [
+      {"type": "text", "text": "Here's a 4-week proposal: three runs a week, growing at most 10% (L1a, P31), with a lighter week 4 (L2, P27). Nothing is saved until you tap Accept on the card."}
+    ]}
+  ],
+  "known_bad": {
+    "source": "Written for this case: the auto-save reply the coach gives for sessions, applied to a plan.",
+    "why": "Claims the plan is saved, although the coach can't store plans and only Accept does.",
+    "should_fail": "must_not-1",
+    "answer": "Saved! Your 4-week plan is now set up and starts next Monday."
+  },
+  "question": "Looks good, just save it for me.",
+  "expect": {
+    "tools_called": [],
+    "must": [
+      "Tell the user to tap Accept on the plan card to save the plan (it isn't saved yet)"
+    ],
+    "must_not": [
+      "Say or imply the plan has been saved, stored, set up or scheduled",
+      "Propose a different plan instead of pointing to Accept"
+    ]
+  }
+}

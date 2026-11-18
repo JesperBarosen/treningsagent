@@ -67,6 +67,9 @@ class ChatResponse(BaseModel):
     # Sessions draft_session prepared this turn, for the user to save or review.
     # Not stored: they have no id.
     drafts: list[dict] = []
+    # Plans propose_program made this turn (#119). Never stored, even with
+    # auto_save (Q5): the app shows a card, and Accept POSTs `accept` to /plans.
+    proposals: list[dict] = []
 
 
 @cache
@@ -102,7 +105,8 @@ def post_chat(
         raise HTTPException(502, f"Claude API error: {e.message}") from e
     return ChatResponse(reply=reply, history=messages, conversation_id=conversation_id,
                         logged_sessions=logged_sessions(messages[turn_start:]),
-                        drafts=tool_results(messages[turn_start:], "draft_session"))
+                        drafts=tool_results(messages[turn_start:], "draft_session"),
+                        proposals=tool_results(messages[turn_start:], "propose_program"))
 
 
 def logged_sessions(turn: list[dict]) -> list[dict]:

@@ -31,16 +31,31 @@ MAX_SESSIONS = 7 * MAX_WEEKS * PER_DAY
 MAX_TARGET_BYTES = 8192
 MAX_GRADE_TARGETS = 10
 
-# Load rules (docs/training-plans.md section 5). Placeholders: the values come
-# from the sources in docs/design-research.md once they are reviewed. Nothing
-# in #116 enforces them; the coach's tools (#119) turn them into warnings.
-RULES: dict[str, dict] = {
-    name: {"value": None, "status": "needs source"}
-    for name in ("max_run_vs_longest_30d", "max_weekly_run_increase", "max_weekly_increase",
-                 "deload_every", "deload_factor", "taper_weeks", "taper_factor",
-                 "max_hard_days_in_a_row", "finger_rest_days", "return_start_factor",
-                 "replan_threshold")
+# Load rules (docs/training-plans.md section 5, principles P25-P33 in
+# docs/design-research.md section 1.7). Sourced values are cautious defaults:
+# none is shown to prevent injury. propose_program refuses a proposal that
+# breaks a sourced rule; rules marked "needs source" have no value and are
+# never applied or claimed.
+_SOURCED = {
+    "max_run_vs_longest_30d": {
+        "value": 1.10, "rule": "L1a", "source": "P31 (Frandsen 2025)",
+        "text": "no planned run more than 10% longer than the longest run in the 30 days before it"},
+    "max_weekly_run_increase": {
+        "value": 0.10, "rule": "L1b", "source": "P29 (Damsted 2019), P30 (Fredette 2022)",
+        "text": "weekly running distance at most 10% above the last full (not lighter) week, "
+                "a cautious default: the 10% rule itself isn't evidence-based"},
+    "deload_every": {
+        "value": 4, "rule": "L2", "source": "P27 (Bell 2023)",
+        "text": "every 4th week is a lighter week, with less planned load than the week before"},
 }
+_UNSOURCED = ("max_weekly_increase", "deload_factor", "taper_weeks", "taper_factor",
+              "max_hard_days_in_a_row", "finger_rest_days", "return_start_factor",
+              "replan_threshold")
+RULES: dict[str, dict] = {
+    **{k: {**v, "status": "sourced"} for k, v in _SOURCED.items()},
+    **{k: {"value": None, "status": "needs source"} for k in _UNSOURCED},
+}
+ROUNDING_KM = 0.05  # tolerance for distances rounded to 0.1 km
 
 
 # --- Small checks -----------------------------------------------------------------
@@ -353,11 +368,20 @@ def current_plan(store) -> dict | None:
     return next((p for p in store.plans() if p["status"] in CURRENT), None)
 
 
-def get_plan(store, plan_id: int) -> dict:
+def get_plan(store, plan_id: int, today: date | None = None) -> dict:
+    """The plan with its sessions, planned load per week, and each session's
+    derived status (done, today, upcoming, not done, skipped, paused)."""
     plan = next((p for p in store.plans() if p["id"] == plan_id), None)
     if plan is None:
         raise LookupError(f"plan {plan_id} not found")
-    return with_sessions(plan, store.planned_sessions(plan_id=plan_id))
+    out = with_sessions(plan, store.planned_sessions(plan_id=plan_id))
+    today = today or date.today()
+    logged = store.sessions_since(plan["start_date"]) if hasattr(store, "sessions_since") else []
+    pause_rows = store.pauses_since(plan["start_date"]) if hasattr(store, "pauses_since") else []
+    with_status(out["sessions"], logged, pause_rows, today)
+    out["today"] = today.isoformat()
+    out["current_week"] = week_index(plan, today)
+    return out
 
 
 def create_plan(store, body: dict, today: date | None = None) -> dict:
@@ -496,3 +520,199 @@ def list_planned(store, since: str, until: str) -> list[dict]:
     plans = {p["id"]: p for p in store.plans()}
     return [decorate(p, plans.get(p.get("plan_id"))) for p in
             store.planned_sessions(since=start.isoformat(), until=end.isoformat())]
+
+
+# --- Derived status (read only; storing links is #117) -------------------------------
+
+def _paused(day: date, pause_rows: list[dict]) -> bool:
+    """Whether `day` falls inside a pause: from its start to the day before it
+    ended, or, while it is on, to its planned end (or open-ended)."""
+    for p in pause_rows:
+        start = _date(p["start_date"], "start_date")
+        if p.get("ended_on"):
+            end = _date(p["ended_on"], "ended_on") - timedelta(days=1)
+        elif p.get("planned_end"):
+            end = _date(p["planned_end"], "planned_end")
+        else:
+            end = date.max
+        if start <= day <= end:
+            return True
+    return False
+
+
+def with_status(planned: list[dict], logged: list[dict], pause_rows: list[dict], today: date) -> list[dict]:
+    """Give each planned session (in place) its status and the session that
+    did it. A planned session is done when it is linked (session_id) or, until
+    #117 stores links, when a session of the same sport (and template, if
+    planned) was logged that day and isn't already counted for another planned
+    session. Never judgemental: "not done" is only a past day with nothing
+    logged, and nothing about it is stored (P17, P24, Q7)."""
+    by_id = {s["id"]: s for s in logged}
+    used = {p["session_id"] for p in planned if p.get("session_id")}
+    for p in sorted(planned, key=lambda p: (p["date"], p["slot"])):
+        done = by_id.get(p.get("session_id"))
+        if done is None and not p.get("session_id"):
+            done = next((s for s in logged if s["id"] not in used and s["date"] == p["date"]
+                         and s["sport"] == p["sport"]
+                         and (p.get("template_id") is None or s.get("template_id") == p["template_id"])),
+                        None)
+            if done is not None:
+                used.add(done["id"])
+        day = _date(p["date"], "date")
+        if done is not None:
+            status = "done"
+        elif p.get("status") == "skipped":
+            status = "skipped"
+        elif _paused(day, pause_rows):
+            status = "paused"
+        elif day == today:
+            status = "today"
+        elif day > today:
+            status = "upcoming"
+        else:
+            status = "not_done"
+        p["state"] = status
+        p["done"] = ({k: done.get(k) for k in ("id", "date", "duration_min", "effort", "distance_km")}
+                     if done is not None else None)
+    return planned
+
+
+# --- Load rules (section 5) -----------------------------------------------------------
+
+def _km(p: dict) -> float:
+    return float((p.get("target") or {}).get("distance_km") or 0)
+
+
+def check_rules(row: dict, rows: list[dict], history: list[dict], today: date) -> dict:
+    """Check a proposed plan against the sourced load rules. Returns the
+    violations (the proposal is refused while there are any), notes, and what
+    the rules allow by the plan's end (`capacity`), so the coach can say
+    plainly when a goal can't be reached in time.
+
+    `history`: the user's logged sessions from at least 30 days before the plan."""
+    violations: list[str] = []
+    notes: list[str] = []
+    plan = {**row, "id": 0}
+    start = _date(row["start_date"], "start_date")
+    runs = sorted((p for p in rows if p["sport"] == "running"), key=lambda p: (p["date"], p["slot"]))
+    for p in runs:
+        if not _km(p):
+            violations.append(f"the run on {p['date']} needs a target distance_km, so the "
+                              "running rules can be checked")
+    past_runs = [(_date(s["date"], "date"), float(s.get("distance_km") or 0))
+                 for s in history if s["sport"] == "running" and s.get("distance_km")
+                 and _date(s["date"], "date") <= today]
+    rule = RULES["max_run_vs_longest_30d"]
+
+    # L1a: each planned run against the longest run in the 30 days before it,
+    # counting earlier planned runs too.
+    seen = list(past_runs)
+    for p in runs:
+        day, km = _date(p["date"], "date"), _km(p)
+        window = [d for when, d in seen if day - timedelta(days=30) <= when < day]
+        if km and not window:
+            violations.append(f"no run in the 30 days before {p['date']} to build from (L1a): ask the "
+                              "user what they run now before planning runs")
+        elif km and km > max(window) * rule["value"] + ROUNDING_KM:
+            violations.append(f"the {km:g} km run on {p['date']} is more than 10% longer than the "
+                              f"longest run in the 30 days before it ({max(window):g} km) (L1a, P31)")
+        if km:
+            seen.append((day, km))
+
+    # L1b: weekly running distance against the last full (not lighter) week.
+    base_end = min(today, start - timedelta(days=1))
+    base = sum(d for when, d in past_runs if base_end - timedelta(days=6) <= when <= base_end)
+    weekly_km = [0.0] * int(row["weeks"])
+    for p in runs:
+        weekly_km[week_index(plan, p["date"]) - 1] += _km(p)
+    kinds = [w["kind"] for w in row["week_meta"]]
+    step = RULES["max_weekly_run_increase"]["value"]
+    for i, km in enumerate(weekly_km):
+        if km and not base:
+            notes.append(f"week {i + 1}: no running in the last 7 days to compare with; only L1a applies")
+        elif km > base * (1 + step) + ROUNDING_KM:
+            violations.append(f"week {i + 1} plans {km:g} km of running, more than 10% above "
+                              f"{base:g} km (L1b, P29/P30)")
+        if kinds[i] == "build" and km:
+            base = km  # lighter weeks don't reset the base
+
+    # L2: every 4th week is lighter, with less planned load than the week before.
+    loads = [w["planned_load"] for w in weekly_load(plan, rows)]
+    every = RULES["deload_every"]["value"]
+    for i in range(every - 1, int(row["weeks"]), every):
+        if kinds[i] not in ("deload", "taper"):
+            violations.append(f"week {i + 1} must be a lighter week (kind deload) (L2, P27)")
+        elif i and loads[i] >= loads[i - 1] and loads[i - 1]:
+            violations.append(f"week {i + 1} is marked lighter but its planned load ({loads[i]}) isn't "
+                              f"below week {i}'s ({loads[i - 1]}) (L2, P27)")
+    if "taper" in kinds:
+        notes.append("taper has no sourced rule yet (L3, needs source): don't claim a number for it")
+
+    # What the rules allow by the end: one 10% step per full week.
+    longest = max((d for when, d in past_runs if when > today - timedelta(days=30)), default=0.0)
+    last_week = sum(d for when, d in past_runs if when > today - timedelta(days=7))
+    build_weeks = sum(1 for k in kinds if k == "build")
+    capacity = {
+        "longest_run_30d_km": round(longest, 1),
+        "running_last_7d_km": round(last_week, 1),
+        "max_long_run_by_end_km": round(longest * rule["value"] ** build_weeks, 1),
+        "max_weekly_running_by_end_km": round(last_week * (1 + step) ** build_weeks, 1),
+        "note": "upper limits under L1a and L1b, not targets",
+    }
+    return {"violations": violations, "notes": notes, "capacity": capacity,
+            "weekly_running_km": [round(k, 1) for k in weekly_km]}
+
+
+# --- The coach's tools (#119) -----------------------------------------------------------
+
+def propose_program(store, today: date | None = None, **body) -> dict:
+    """A plan the coach proposes: validated and checked against the load rules,
+    never stored. The app shows it as a card; only the user's Accept stores it
+    (POST /plans), whatever the "Save without asking" setting (Q5)."""
+    today = today or date.today()
+    current = current_plan(store) if hasattr(store, "plans") else None
+    if current:
+        raise ValueError(f"the user already has a plan ({current['name']!r}, {current['status']}); "
+                         "they can leave or finish it in the Plan view before a new one (Q3)")
+    row, rows = validate_plan({**body, "source": "coach"},
+                              goals=store.goals() if hasattr(store, "goals") else [],
+                              templates=store.templates() if hasattr(store, "templates") else [],
+                              gym_list=store.gyms() if hasattr(store, "gyms") else [], today=today)
+    history = store.sessions_since((today - timedelta(days=45)).isoformat())
+    checks = check_rules(row, rows, history, today)
+    if checks["violations"]:
+        raise ValueError("the proposal breaks the load rules; change it or tell the user "
+                         "plainly what can't be reached in time: " + "; ".join(checks["violations"])
+                         + f". Capacity: {json.dumps(checks['capacity'])}")
+    goal = next((g for g in (store.goals() if hasattr(store, "goals") else [])
+                 if g["id"] == row["goal_id"]), None)
+    plan = {**row, "id": None, "status": "proposed"}
+    sessions = [{**r, "id": None, "plan_id": None} for r in rows]
+    shown = {**plan, "end_date": plan_end(plan).isoformat(),
+             "sessions": [decorate(s, plan) for s in sessions],
+             "weekly": weekly_load(plan, sessions),
+             "weekly_running_km": checks["weekly_running_km"]}
+    # What the app sends back to POST /plans on Accept.
+    accept = {"name": row["name"], "start_date": row["start_date"], "weeks": row["weeks"],
+              "goal_id": row["goal_id"], "week_meta": row["week_meta"], "rationale": row["rationale"],
+              "source": "coach",
+              "sessions": [{k: r[k] for k in ("date", "sport", "template_id", "title", "target")}
+                           for r in rows]}
+    return {"proposal": True, "stored": False, "plan": shown, "accept": accept,
+            "goal": goal, "rules_applied": [f"{v['rule']}: {v['text']} [{v['source']}]"
+                                            for v in _SOURCED.values()],
+            "needs_source": list(_UNSOURCED), "notes": checks["notes"], "capacity": checks["capacity"]}
+
+
+def plan_for_coach(store, today: date | None = None) -> dict:
+    """get_plan for the coach: the current plan with this week's and next
+    week's sessions and their status, or that there is none."""
+    current = current_plan(store) if hasattr(store, "plans") else None
+    if current is None:
+        return {"plan": None}
+    plan = get_plan(store, current["id"], today)
+    week = plan["current_week"]
+    near = [s for s in plan["sessions"] if week and s["week"] in (week, week + 1)]
+    return {"plan": {k: plan[k] for k in ("id", "name", "status", "start_date", "end_date", "weeks",
+                                          "week_meta", "goal_id", "current_week", "weekly")},
+            "this_and_next_week": near}
