@@ -25,9 +25,13 @@ import {
   RATIO_MIN_HISTORY_DAYS,
   RATIO_MODERATE,
   RATIO_SPIKE,
+  ratioGap,
   ratioView,
   sessionsPerWeek,
   summarySentence,
+  TOO_EARLY,
+  trendGap,
+  type TrendNoun,
   ZONE_WORD,
 } from "@/lib/dashboard";
 import {
@@ -308,7 +312,13 @@ function SummaryTiles({ load, progression, sport }: SummaryProps) {
     {
       label: "Ratio",
       value: view.kind === "ok" ? view.ratio.toFixed(2) : "–",
-      sub: view.kind === "ok" ? ZONE_WORD[view.zone] : view.kind === "paused" ? "paused" : "not enough data",
+      // The tile is narrow: just how far along, e.g. "1 week so far" (#126).
+      sub:
+        view.kind === "ok"
+          ? ZONE_WORD[view.zone]
+          : view.kind === "paused"
+            ? "paused"
+            : (ratioGap(view.historyDays).sofar ?? `after ${RATIO_MIN_HISTORY_DAYS / 7} weeks`),
     },
   ];
   return (
@@ -409,12 +419,13 @@ function Card({
           </h2>
           {subtitle && <p className={`text-sm text-ink-muted ${shut}`}>{subtitle}</p>}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {rowAside && <span className="flex items-center gap-2 md:hidden">{rowAside}</span>}
+        {/* min-w-0: a longer "what's missing" chip wraps instead of widening the card (#126). */}
+        <div className="flex min-w-0 items-center gap-2">
+          {rowAside && <span className="flex min-w-0 items-center gap-2 md:hidden">{rowAside}</span>}
           {aside}
           <ChevronIcon
             size={18}
-            className={`text-ink-muted transition-transform md:hidden ${open ? "rotate-90" : ""}`}
+            className={`shrink-0 text-ink-muted transition-transform md:hidden ${open ? "rotate-90" : ""}`}
           />
         </div>
       </div>
@@ -438,12 +449,27 @@ const TREND_TEXT: Record<TrendWord, string> = {
   improving: "Improving",
   flat: "Flat",
   declining: "Declining",
-  "not enough data": "Not enough data",
+  "not enough data": TOO_EARLY,
 };
 
-/** The backend's trend word, as a chip. Colour only adds to the word. */
-export function TrendChip({ trend }: { trend: TrendWord }) {
+const PACE_NOUN: TrendNoun = { none: "runs", count: "runs" };
+const SEND_NOUN: TrendNoun = { none: "sends", count: "sessions" };
+const FLASH_NOUN: TrendNoun = { none: "flashes", count: "sessions" };
+const RATE_NOUN: TrendNoun = { none: "climbs at this grade", count: "sessions" };
+
+/** The backend's trend word, as a chip. Colour only adds to the word. Without
+ *  a word yet, it says what's missing (`missing`, from trendGap) and may wrap,
+ *  so a longer label never pushes the card wider than 375 px (#126). The words
+ *  carry no values, so they stay readable in discreet mode. */
+export function TrendChip({ trend, missing }: { trend: TrendWord; missing?: string | null }) {
   const look = trend === "improving" ? "bg-accent-soft text-accent" : "bg-sunken text-ink-muted";
+  if (trend === "not enough data") {
+    return (
+      <span className={`inline-flex min-h-6 min-w-0 items-center rounded-xl px-2.5 py-0.5 text-right text-xs font-medium ${look}`}>
+        {missing ?? TOO_EARLY}
+      </span>
+    );
+  }
   return (
     <span className={`inline-flex h-6 shrink-0 items-center rounded-full px-2.5 text-xs font-medium whitespace-nowrap ${look}`}>
       {TREND_TEXT[trend]}
@@ -590,11 +616,10 @@ function RatioCard({ load, sport = "all" }: { load: TrainingLoad; sport?: SportF
         </div>
       ) : view.kind === "not enough data" ? (
         <div>
-          <p className="font-display text-2xl font-semibold text-ink-muted">Not enough data</p>
+          <p className="font-display text-2xl font-semibold text-ink-muted">{ratioGap(view.historyDays).need}</p>
           <p className="mt-1 text-sm text-ink-muted">
-            The ratio needs about {RATIO_MIN_HISTORY_DAYS / 7} weeks of logged training to mean anything.
-            {view.historyDays > 0 &&
-              ` You have ${view.historyDays} ${view.historyDays === 1 ? "day" : "days"} so far.`}
+            {ratioGap(view.historyDays).sofar && `${ratioGap(view.historyDays).sofar}. `}
+            It compares this week with your usual, so it needs a few weeks first.
           </p>
         </div>
       ) : (
@@ -660,7 +685,7 @@ function PaceCard({ running, className }: { running: Progression["running"]; cla
         band && (
           <>
             <span className="text-meta text-ink-muted">{BAND_LABELS[band]}</span>
-            <TrendChip trend={running.trends.pace_by_distance[band].trend} />
+            <TrendChip trend={running.trends.pace_by_distance[band].trend} missing={trendGap(running.trends.pace_by_distance[band], PACE_NOUN)} />
           </>
         )
       }
@@ -684,7 +709,7 @@ function PaceCard({ running, className }: { running: Progression["running"]; cla
                   <h3 id={`band-${band}`} className="text-sm font-semibold">
                     {BAND_LABELS[band]}
                   </h3>
-                  <TrendChip trend={trend.trend} />
+                  <TrendChip trend={trend.trend} missing={trendGap(trend, PACE_NOUN)} />
                 </div>
                 <PaceTrendLine trend={trend} />
                 {any ? (
@@ -747,7 +772,7 @@ function GradeCard({ climbing, className }: { climbing: Progression["climbing"];
       labelledBy="grade-title"
       title="Hardest grades"
       subtitle="Hardest send and hardest flash each week"
-      rowAside={anySend && <TrendChip trend={send.trend} />}
+      rowAside={anySend && <TrendChip trend={send.trend} missing={trendGap(send, SEND_NOUN)} />}
       className={className}
     >
       {!anySend ? (
@@ -765,16 +790,16 @@ function GradeCard({ climbing, className }: { climbing: Progression["climbing"];
           <GradeChart climbing={climbing} />
           <dl className="mt-3 grid gap-2 border-t border-line pt-3 text-sm sm:grid-cols-2">
             {[
-              { label: "Average hardest send per session", t: send },
-              { label: "Average hardest flash per session", t: flash },
-            ].map(({ label, t }) => (
+              { label: "Average hardest send per session", t: send, noun: SEND_NOUN },
+              { label: "Average hardest flash per session", t: flash, noun: FLASH_NOUN },
+            ].map(({ label, t, noun }) => (
               <div key={label}>
                 <dt className="text-meta text-ink-muted">{label}</dt>
                 <dd className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                   <GradeName grade={t.recent_grade} colour={scaleColour(climbing, t.recent_grade)} />
                   <span className="text-meta text-ink-muted">last 2 wks, was</span>
                   <GradeName grade={t.baseline_grade} colour={scaleColour(climbing, t.baseline_grade)} />
-                  <TrendChip trend={t.trend} />
+                  <TrendChip trend={t.trend} missing={trendGap(t, noun)} />
                 </dd>
               </div>
             ))}
@@ -845,7 +870,7 @@ function SendRateCard({ climbing }: { climbing: Progression["climbing"] }) {
                   <span className="text-sm font-medium">
                     <GradeName grade={g} colour={scaleColour(climbing, g)} />
                   </span>
-                  <TrendChip trend={t.trend} />
+                  <TrendChip trend={t.trend} missing={trendGap(t, RATE_NOUN)} />
                 </div>
                 <RateBar grade={g} colour={scaleColour(climbing, g)} rate={t.recent} label="Last 2 wks" />
                 <RateBar grade={g} colour={scaleColour(climbing, g)} rate={t.baseline} label="4 wks before" />
