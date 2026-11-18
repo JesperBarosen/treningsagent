@@ -32,9 +32,13 @@ function parseNumber(text: string): number | null | string {
   return Number.isFinite(n) ? n : text;
 }
 
+/** Units up to this many characters fit inside a measure box next to the number. */
+const SHORT_UNIT = 4;
+
 /** A number field with several measures (#111): one small box per measure on a
- *  row, each with its unit inside ("5 kg", "10 s", "6 sets"), wrapping to a
- *  second row when needed. Every measure is optional; a required field needs one. */
+ *  row, each with its unit inside ("5 kg", "10 s", "6 sets") or, when longer,
+ *  above it, wrapping to a second row when needed. Every measure is optional;
+ *  a required field needs one. */
 function MeasuresField({ f, value, onChange }: { f: TemplateField; value: TemplateValue | null; onChange: (v: TemplateValue | null) => void }) {
   const measures = f.measures ?? [];
   // A plain number is a session from before the field had measures: it belongs to PLAIN_MEASURE.
@@ -58,26 +62,38 @@ function MeasuresField({ f, value, onChange }: { f: TemplateField; value: Templa
       <legend className={label}>
         {f.label} <Optional f={f} />
       </legend>
-      <div className="flex flex-wrap gap-2">
-        {measures.map((m) => (
-          <label
-            key={m.key}
-            className="flex min-h-11 w-[4.75rem] min-w-0 items-center rounded-md border border-control bg-surface pr-2 focus-within:border-accent"
-          >
-            <input
-              aria-label={`${f.label}, ${m.label}`}
-              inputMode={m.decimals ? "decimal" : "numeric"}
-              value={texts[m.key] ?? ""}
-              onChange={(e) => change(m.key, e.target.value)}
-              className="w-full min-w-0 bg-transparent py-2 pl-2 text-base tabular-nums text-ink focus:outline-none"
-              {...SENSITIVE}
-            />
-            {/* The unit is a name, not a value: it stays visible in discreet mode. */}
-            <span aria-hidden="true" className="shrink-0 text-xs text-ink-muted">
-              {m.label}
-            </span>
-          </label>
-        ))}
+      {/* items-end: a box with its unit above lines up with the boxes beside it. */}
+      <div className="flex flex-wrap items-end gap-2">
+        {measures.map((m) => {
+          // A long unit ("Rest (min)") inside a 76 px box left the input no width
+          // on iPhone (#123), so it goes above the box instead, truncated.
+          const above = m.label.length > SHORT_UNIT;
+          return (
+            <label key={m.key} className="flex w-[4.75rem] min-w-0 flex-col">
+              {/* The unit is a name, not a value: it stays visible in discreet mode. */}
+              {above && (
+                <span aria-hidden="true" title={m.label} className="mb-0.5 truncate text-xs text-ink-muted">
+                  {m.label}
+                </span>
+              )}
+              <span className="flex min-h-11 min-w-0 items-center rounded-md border border-control bg-surface pr-2 focus-within:border-accent">
+                <input
+                  aria-label={`${f.label}, ${m.label}`}
+                  inputMode={m.decimals ? "decimal" : "numeric"}
+                  value={texts[m.key] ?? ""}
+                  onChange={(e) => change(m.key, e.target.value)}
+                  className="w-full min-w-8 bg-transparent py-2 pl-2 text-base tabular-nums text-ink focus:outline-none"
+                  {...SENSITIVE}
+                />
+                {!above && (
+                  <span aria-hidden="true" className="shrink-0 text-xs text-ink-muted">
+                    {m.label}
+                  </span>
+                )}
+              </span>
+            </label>
+          );
+        })}
       </div>
       <Help f={f} />
     </fieldset>

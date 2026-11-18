@@ -132,7 +132,9 @@ export function SessionForm({
       grade,
       style,
       sent,
-      attempts: attempts ?? null,
+      // A send with no count (a coach draft, or a repeated old session) starts at
+      // 2 like a tapped one, instead of "–" (#123). An edit keeps what was saved.
+      attempts: attempts ?? (sent && !editing ? 2 : null),
       grade_system,
       gym_id,
       colour,
