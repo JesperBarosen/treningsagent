@@ -44,7 +44,7 @@ The papers in `research/` are about personal informatics, behaviour change and i
 | P24 Never frame numbers as failure | Attig 2020 | "4 of 5 sessions this week", not "1 missed". |
 | P10 Large thumb targets | *Target Size Study for One-Handed Thumb Use on Small Touchscreen Devices* (Parhi 2006) | Every control in the Plan view is at least 44 px. |
 
-**None of these papers covers training load.** None of the 12 papers in `research/` discusses progressive overload, deload weeks, tapering, periodisation or how to balance running and climbing (a full-text search for those terms finds nothing). Section 5 therefore marks every load rule as **needs source**, and Q1 lists the kinds of papers to add.
+**None of these twelve covers training load.** Nine training-load papers were added later (P25–P33 in `docs/design-research.md`, section 1.7); section 5 says which load rules they back and which still **need a source**.
 
 ## 3. What a plan is
 
@@ -103,22 +103,30 @@ The coach never saves a plan. It **proposes**, the app shows the proposal as a c
 
 **Reading tool `get_plan`**: the active plan, this week's and next week's planned sessions with their status, planned vs done load per week, and the plan's goal. The coach calls it before answering "what should I do today?" or proposing a change.
 
-## 5. Load principles (needs source)
+## 5. Load principles
 
-The app already measures load as **session-RPE** (minutes × effort) and shows an **acute:chronic ratio** as a rough guide (`tools.py`, which cites the session-RPE method in code). Neither comes from a paper in `research/`.
+The app measures load as **session-RPE** (minutes × effort) and shows an **acute:chronic ratio** as a rough guide (`tools.py`). Nine training-load papers in `research/` now back some of the rules; they are summarised as **P25–P33** in `docs/design-research.md` (section 1.7), with study type, size and how strong the evidence is.
 
-The rules below are what a plan needs, written as **parameters with placeholder values**. Each is marked **needs source**: none is backed by `research/` yet, and none gets a number until a paper supports it (Q1: they ship now as labelled placeholders). The server keeps them in one place (`plans.RULES`), so a sourced value changes one line; evals test behaviour against the parameter, not a hard-coded number.
+The rules live in one place (`plans.RULES`), so a value changes one line, and evals test behaviour against the parameter, not a hard-coded number. **None of these papers shows that following a rule prevents injury**: they are observational studies, reviews, expert consensus or commentary. So every number below is a **cautious default**, the safer value where papers disagree, and the coach says so ("a common cautious step", never "science says"). A rule produces a warning on the proposal; it never makes the coach claim a plan is safe.
 
-| Rule | What it controls | Placeholder | Status |
-|---|---|---|---|
-| L1 Progressive overload | Largest increase in planned weekly load from one week to the next | `max_weekly_increase` | **needs source** |
-| L2 Deload weeks | How often a lighter week comes, and how much lighter | `deload_every`, `deload_factor` | **needs source** |
-| L3 Taper | Load in the last week(s) before a goal date or test week | `taper_weeks`, `taper_factor` | **needs source** |
-| L4 Running/climbing balance | Hard days in a row across sports; spacing of high-effort climbing, hangboard and running days | `max_hard_days_in_a_row`, `finger_rest_days` | **needs source** |
-| L5 Ratio guardrail | Warn when the projected acute:chronic ratio leaves the band the app already calls "moderate" | the app's existing band | **needs source** (the ratio is used today without a paper in `research/`) |
-| L6 After a pause | How a plan restarts after an injury or illness pause (#34) | `return_weeks`, start below the pre-pause load | **needs source** |
+| Rule | What it controls | Value | Source | Status |
+|---|---|---|---|---|
+| L0 Load measure | How planned and done load are counted and compared | Load = minutes × effort (1–10), effort entered **after** the session. Planned effort is an estimate; planned vs done is shown side by side, never as pass/fail. | P25 | **sourced** (moderate to strong) |
+| L1a Longest run | Longest planned run against the user's recent runs | `max_run_vs_longest_30d = 1.10`: no planned run more than 10% longer than the longest run in the last 30 days. With no run in the last 30 days, start from the user's typical recent run or ask. | P31 | **sourced** (strong association, observational) |
+| L1b Weekly running increase | Planned weekly running distance against the week before | `max_weekly_run_increase = 0.10` (10%). P29 saw more injuries at 20–60% than under 20%; P30 says the 10% rule itself isn't evidence-based and P31 found no week-to-week effect. 10% is the safer side of "clearly under 20%", labelled as a cautious default. | P29, P30, P28 | **sourced, uncertain** (weak to moderate) |
+| L1c Weekly increase, other sports | Weekly load increase for climbing, strength and other | `max_weekly_increase`: placeholder | — | **needs source** |
+| L2 Lighter weeks | How often a lighter week comes | `deload_every = 4`: every 4th week is a lighter week (the short end of the commonly used 4–6 weeks). The user can make any week lighter when tired, and the coach offers that when the user says they're worn out. | P27 | **sourced, weak** (expert consensus, strength sports) |
+| L2b How much lighter | Size of the reduction | `deload_factor`: placeholder; the week gets less volume (fewer or shorter sessions) at the same or lower effort. No paper gives a number. | P27 (principle only) | **needs source** (the number) |
+| L3 Taper | Load before a goal date or test week | `taper_weeks`, `taper_factor`: placeholders | — | **needs source** |
+| L4 Running with strength or climbing | Hard days in a row across sports; spacing of hard climbing, hangboard and running days | `max_hard_days_in_a_row`, `finger_rest_days`: placeholders | — | **needs source** |
+| L4b Climbing and finger load | Hangboard and limit-climbing load and progression | placeholders | — | **needs source** |
+| L5 Ratio | What the acute:chronic ratio may do | **Soft warning only.** Shown as "this week compared with the last four", a rough guide. It never blocks a proposal, is never called an injury risk, and no "safe band" is quoted as fact. | P26, P31 (P33 suggested it might help, but is older and untested) | **sourced** (moderate) |
+| L6 After an injury pause | How a plan restarts (#34) | Restart below the pre-pause load (`return_start_factor`: placeholder number). Step up only when the user reports no worse pain, never by the calendar alone; L1a and L1b apply from the post-pause runs. Suggest a physiotherapist or doctor for the return decision; never diagnose. | P33 | **sourced, weak** (the approach); **needs source** (the numbers) |
+| L7 Half-marathon goal | Volume a half-marathon plan builds towards | Build towards about 32 km a week and a long run near 21 km **only as far as L1a and L1b allow** in the weeks available; if they don't fit, say so rather than push volume. | P32 | **sourced, moderate** (performance; observational) |
 
-Until sources exist, a proposal shows its load per week plainly and never claims a rule is "scientific". The coach's wording stays "a rough guide".
+Rules still marked **needs source**: L1c, L2b (the number), L3, L4, L4b and the numbers in L6, plus `replan_threshold` (section 6). Papers that would close them: tapering for runners, concurrent training (running with strength or climbing), climbing finger and hangboard load, and graded return-to-running programmes.
+
+**Follow-up for the existing coach**: the `get_training_load` tool description still cites a 0.8–1.3 "moderate range" and ~1.5 as a spike. P26 shows that band rests on weak evidence; it should become L5's wording when #119 touches the system prompt.
 
 ## 6. Planned vs done
 
@@ -204,7 +212,7 @@ New cases in `backend/evals/cases/`, seeded with history, goals, templates and p
 
 Decided on 2026-11-18; every recommendation was accepted. The alternatives are kept briefly for the record.
 
-1. **Q1. Load rules without sources: build now.** L1–L6 ship as clearly labelled "needs source" placeholders in `plans.RULES`, and get numbers as papers arrive. The kinds of papers to add: (a) session-RPE load monitoring; (b) the acute:chronic workload ratio and its critiques; (c) periodisation, deload and taper reviews; (d) running load progression and injury; (e) climbing finger and hangboard loading; (f) concurrent training; (g) return to sport after injury or illness (#34). *Not chosen:* hold the proposal tool back until (a)–(e) are in.
+1. **Q1. Load rules without sources: build now.** L1–L6 ship as clearly labelled "needs source" placeholders in `plans.RULES`, and get numbers as papers arrive. The kinds of papers to add: (a) session-RPE load monitoring; (b) the acute:chronic workload ratio and its critiques; (c) periodisation, deload and taper reviews; (d) running load progression and injury; (e) climbing finger and hangboard loading; (f) concurrent training; (g) return to sport after injury or illness (#34). *Not chosen:* hold the proposal tool back until (a)–(e) are in. **Update:** papers for (a), (b), (c, deload only), (d) and (g) are now in (P25–P33); section 5 lists what is sourced. Still missing: taper, (e) and (f).
 2. **Q2. Plan view: A, no sixth tab.** It opens from Coach, the Dashboard and You. *Not chosen:* B, a sixth tab (the tab bar is full at 375 px).
 3. **Q3. One active plan at a time,** with one-off suggestions (#38, planned sessions without a plan) allowed next to it. *Not chosen:* several plans, e.g. one per sport, which makes load per week ambiguous.
 4. **Q4. A goal's date sets the plan's end** when it falls within 4–12 weeks of the start; otherwise the user picks the length.
