@@ -121,8 +121,18 @@ def test_every_data_endpoint_needs_a_token(http):
     assert http.get("/health").status_code == 200
 
 
-def test_chat_daily_limit(http, store, monkeypatch):
-    monkeypatch.setattr(api, "CHAT_DAILY_LIMIT", 0)
+def test_chat_hourly_limit(http, store, monkeypatch):
+    monkeypatch.setenv("CHAT_MESSAGES_PER_HOUR", "0")
     res = http.post("/chat", json={"message": "hi"}, headers={"Authorization": f"Bearer {token()}"})
     assert res.status_code == 429
-    assert "limit" in res.json()["detail"]
+    assert res.json()["limit"] == "hourly"
+
+
+def test_get_user_carries_the_signed_email(monkeypatch):
+    """The closed-beta check (#130) trusts the email because it comes from the verified token."""
+    monkeypatch.setenv("SUPABASE_URL", SUPABASE)
+    from fastapi.security import HTTPAuthorizationCredentials
+    creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token(email="me@example.com"))
+    assert auth.get_user(creds, FakeJWKS()) == {"id": USER, "email": "me@example.com"}
+    creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token())
+    assert auth.get_user(creds, FakeJWKS())["email"] is None

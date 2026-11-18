@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 
 import pytest
 from anthropic.types import Message
@@ -13,7 +14,12 @@ class FakeStore:
         self.rows: list[dict] = []
         self.climbs: list[dict] = []
         self.model_calls: list[dict] = []
-        self.chat_requests = 0
+        # Usage limits (#129, #130): request times, everyone else's calls, the
+        # invite list, and the clock the fake stamps rows with.
+        self.chat_requests: list = []
+        self.other_users_calls: list[dict] = []
+        self.invited: set[str] = {"me@example.com"}
+        self.now = datetime.now(timezone.utc)
         self.pauses: list[dict] = []
         self.goal_rows: list[dict] = []
         self.gym_rows: list[dict] = []
@@ -258,14 +264,39 @@ class FakeStore:
         self.planned_rows = [p for p in self.planned_rows if p["id"] != planned_id]
         return len(self.planned_rows) < before
 
-    def claim_chat_request(self, daily_limit: int) -> bool:
-        if self.chat_requests >= daily_limit:
-            return False
-        self.chat_requests += 1
-        return True
+    # --- Usage limits (#129, #130) ---
+    # Counted like the database does: requests and calls carry a time (`now`,
+    # which tests move forward), and `other_users_calls` stands in for
+    # everyone else's model calls in the global budget.
+    def is_invited(self, email: str) -> bool:
+        return email in self.invited
+
+    def _calls_since(self, calls: list[dict], since):
+        return [c for c in calls if c.get("created_at", self.now) >= since]
+
+    def global_usage(self, month_start, day_start) -> list[dict]:
+        cols = ("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+        everyone = self.model_calls + self.other_users_calls
+        out = []
+        for model in sorted({c["model"] for c in everyone}):
+            mine = [c for c in everyone if c["model"] == model]
+            out.append({"model": model,
+                        "month": {k: sum(c.get(k, 0) for c in self._calls_since(mine, month_start)) for k in cols},
+                        "day": {k: sum(c.get(k, 0) for c in self._calls_since(mine, day_start)) for k in cols}})
+        return out
+
+    def tokens_since(self, since) -> int:
+        return sum(c["input_tokens"] + c["output_tokens"] for c in self._calls_since(self.model_calls, since))
+
+    def claim_chat_request(self, limit: int, since):
+        recent = sorted(t for t in self.chat_requests if t > since)
+        if len(recent) >= limit:
+            return recent[0]
+        self.chat_requests.append(self.now)
+        return None
 
     def log_model_call(self, call: dict) -> None:
-        self.model_calls.append(call)
+        self.model_calls.append({"created_at": self.now, **call})
 
 
 @pytest.fixture

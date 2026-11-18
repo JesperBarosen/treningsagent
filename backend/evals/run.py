@@ -33,13 +33,14 @@ import db
 import env
 import grades
 import gyms
+import limits
 import tools
 
 CASES_DIR = Path(__file__).parent / "cases"
 JUDGE_MODEL = "claude-haiku-5-5"
-# USD per million input / output tokens (list prices, 2026-11). Cache writes
-# are billed at 1.25x input and cache reads at 0.1x.
-PRICES = {"claude-haiku-5-5": (0.10, 0.50)}
+# USD per million input / output tokens, kept in one place with the app's
+# budget (limits.PRICES). Cache writes are billed at 1.25x input and cache reads at 0.1x.
+PRICES = limits.PRICES
 
 JUDGE_SYSTEM = """You grade a training assistant's answer against a checklist.
 The tool results are the ground truth for every number and grade. Grade each

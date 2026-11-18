@@ -62,10 +62,38 @@ def test_first_session_date(conn):
 
 
 def test_chat_requests_are_limited_per_user(conn):
+    """#129: None means recorded; a refusal returns the oldest request in the window."""
+    from datetime import datetime, timedelta, timezone
+    hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
     alice, bob = make_store(conn), make_store(conn)
-    assert alice.claim_chat_request(2) and alice.claim_chat_request(2)
-    assert not alice.claim_chat_request(2)
-    assert bob.claim_chat_request(2)  # alice's requests don't count for bob
+    assert alice.claim_chat_request(2, hour_ago) is None and alice.claim_chat_request(2, hour_ago) is None
+    assert alice.claim_chat_request(2, hour_ago) is not None
+    assert bob.claim_chat_request(2, hour_ago) is None  # alice's requests don't count for bob
+    # A window that starts after them has room again.
+    assert alice.claim_chat_request(2, datetime.now(timezone.utc) + timedelta(seconds=1)) is None
+
+
+def test_usage_counts_for_the_limits(conn):
+    """tokens_since is per user; global_usage sums every user's calls by model."""
+    from datetime import datetime, timedelta, timezone
+    alice, bob = make_store(conn), make_store(conn)
+    call = {"conversation_id": "00000000-0000-0000-0000-0000000000aa", "model": "claude-haiku-5-5",
+            "input_tokens": 1000, "output_tokens": 200, "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0, "latency_ms": 5, "stop_reason": "end_turn"}
+    alice.log_model_call(call)
+    bob.log_model_call(call)
+    since = datetime.now(timezone.utc) - timedelta(minutes=5)
+    assert alice.tokens_since(since) == 1200
+    [row] = [r for r in alice.global_usage(since, since) if r["model"] == "claude-haiku-5-5"]
+    assert row["month"]["input_tokens"] >= 2000 and row["day"]["output_tokens"] >= 400
+
+
+def test_beta_invites_are_backend_only(conn):
+    store = make_store(conn)
+    assert store.is_invited("nobody-listed@example.invalid") is False
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        with store._as_user() as c:  # the app's users can't read the list
+            c.execute("select * from public.beta_invites").fetchall()
 
 
 def test_rows_need_a_real_auth_user(conn):
