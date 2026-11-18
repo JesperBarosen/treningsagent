@@ -240,7 +240,105 @@ export type ChatResponse = {
   conversation_id: string;
   logged_sessions: Session[];
   drafts?: Draft[];
+  /** Plans the coach proposed this turn (#119): never stored until Accept (Q5). */
+  proposals?: PlanProposal[];
 };
+
+// --- Training plans (#116, #118, #119) -------------------------------------------------
+
+export type WeekKind = "build" | "deload" | "taper" | "test";
+export type WeekMeta = { index: number; kind: WeekKind; note: string | null };
+
+/** A planned session's target: every part optional (docs/training-plans.md 3). */
+export type PlanTarget = {
+  duration_min?: number;
+  effort?: number;
+  distance_km?: number;
+  grades?: { system: GradeSystem; grade: string; count: number; gym_id?: number }[];
+  values?: TemplateValues;
+};
+
+/** Derived by the backend when read; nothing judgemental is stored (Q7). */
+export type PlannedState = "done" | "today" | "upcoming" | "not_done" | "skipped" | "paused";
+
+export type PlannedSession = {
+  id: number | null;
+  plan_id: number | null;
+  date: string;
+  slot: number;
+  sport: Sport;
+  template_id: number | null;
+  title: string;
+  target: PlanTarget;
+  status: "planned" | "skipped";
+  skip_reason: string | null;
+  session_id: number | null;
+  week: number | null;
+  planned_load: number | null;
+  state?: PlannedState;
+  /** The logged session that did it, when done. */
+  done?: { id: number; date: string; duration_min: number; effort: number; distance_km: number | null } | null;
+};
+
+export type PlanWeek = { index: number; kind: WeekKind; week_start: string; sessions: number; planned_load: number };
+
+export type PlanStatus = "active" | "paused" | "finished" | "left";
+
+export type Plan = {
+  id: number;
+  name: string;
+  goal_id: number | null;
+  start_date: string;
+  end_date: string;
+  weeks: number;
+  week_meta: WeekMeta[];
+  status: PlanStatus;
+  ended_on: string | null;
+  rationale: string | null;
+  source: "coach" | "user";
+  sessions: PlannedSession[];
+  weekly: PlanWeek[];
+  today?: string;
+  current_week?: number | null;
+};
+
+/** What Accept sends back to POST /plans. */
+export type PlanInput = {
+  name: string;
+  start_date: string;
+  weeks: number;
+  goal_id: number | null;
+  week_meta: WeekMeta[];
+  rationale: string | null;
+  source: "coach" | "user";
+  sessions: Pick<PlannedSession, "date" | "sport" | "template_id" | "title" | "target">[];
+};
+
+/** propose_program's result: shown as a card, stored only on Accept. */
+export type PlanProposal = {
+  proposal: true;
+  stored: false;
+  plan: Omit<Plan, "id" | "status" | "ended_on"> & { id: null; status: "proposed"; weekly_running_km?: number[] };
+  accept: PlanInput;
+  goal: Goal | null;
+  rules_applied: string[];
+};
+
+export function getPlans(signal?: AbortSignal): Promise<{ current: Plan | null; plans: Omit<Plan, "sessions" | "weekly">[] }> {
+  return request("/plans", { signal });
+}
+
+export function createPlan(input: PlanInput): Promise<Plan> {
+  return request("/plans", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function changePlan(id: number, change: { status?: "active" | "paused" | "finished"; name?: string }): Promise<Plan> {
+  return request(`/plans/${id}`, { method: "PATCH", body: JSON.stringify(change) });
+}
+
+export function leavePlan(id: number): Promise<Plan> {
+  return request(`/plans/${id}/leave`, { method: "POST" });
+}
 
 /** What the Log form or the Save button sends for a draft. */
 export function draftInput(d: Draft): SessionInput {

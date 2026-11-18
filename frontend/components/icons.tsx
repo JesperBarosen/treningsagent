@@ -53,6 +53,14 @@ export const ListIcon = (p: IconProps) => (
   </Icon>
 );
 
+/** A calendar page: a training plan (#118). */
+export const PlanIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3.5" y="5" width="17" height="15.5" rx="3" />
+    <path d="M3.5 10h17M8 3v4M16 3v4M8 14h3M8 17h6" />
+  </Icon>
+);
+
 export const SendIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M12 19V5M6 11l6-6 6 6" />

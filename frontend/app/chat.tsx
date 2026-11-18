@@ -1,13 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { ChatIcon, PlusIcon, SendIcon } from "@/components/icons";
+import { ChatIcon, PlanIcon, PlusIcon, SendIcon } from "@/components/icons";
 import { LogShortcuts } from "@/components/log-shortcuts";
 import { LoggedSessionCard } from "@/components/session-card";
 import { Button, OfflineHint } from "@/components/states";
 import { WeekGlance } from "@/components/week-glance";
 import { asSession, DraftCard } from "@/components/draft-card";
-import { ApiError, createSession, draftInput, sendChat, type Draft, type Session } from "@/lib/api";
+import Link from "next/link";
+import { PlanProposalCard } from "@/components/plan-proposal-card";
+import {
+  ApiError,
+  createPlan,
+  createSession,
+  draftInput,
+  sendChat,
+  type Draft,
+  type Plan,
+  type PlanProposal,
+  type Session,
+} from "@/lib/api";
 import {
   clearDraftForForm,
   handDraftToForm,
@@ -32,9 +44,12 @@ type Logged = Session & { edited?: boolean; undone?: boolean };
  *  into `logged`, so their card gets Edit and Undo like any logged session. */
 type DraftItem = { key: string; draft: Draft; status: "open" | "saved" | "dismissed" };
 
+/** A plan the coach proposed (#119) and what the user did with it. Only Accept stores it. */
+type ProposalItem = { key: string; proposal: PlanProposal; status: "open" | "accepted" | "dismissed" };
+
 type Item =
   | { id: string; role: "user"; text: string }
-  | { id: string; role: "agent"; text: string; logged: Logged[]; drafts?: DraftItem[] }
+  | { id: string; role: "agent"; text: string; logged: Logged[]; drafts?: DraftItem[]; proposals?: ProposalItem[] }
   | { id: string; role: "error"; text: string; offline: boolean; retry: string };
 
 type Conversation = { items: Item[]; history: unknown[]; conversationId: string | null };
@@ -59,6 +74,10 @@ export const editedNote = (s: Session) => `[User edited the session to: ${descri
 export const savedDraftNote = (s: Session) => `[User saved the draft as: ${describe(s)}.]`;
 export const dismissedDraftNote = (d: Draft) =>
   `[User dismissed the draft: ${sessionSummary(asSession(d))} on ${d.date}. Nothing was stored.]`;
+export const acceptedPlanNote = (p: Plan) =>
+  `[User accepted the plan: ${p.name}, ${p.weeks} weeks from ${p.start_date} (plan id ${p.id}). It is saved.]`;
+export const dismissedPlanNote = (p: PlanProposal) =>
+  `[User dismissed the plan proposal: ${p.plan.name}. Nothing was stored.]`;
 
 /** Append a note for the coach to the stored history (the API merges it with the
  *  next user message into one turn). Not before the first reply: nothing to note. */
@@ -126,12 +145,13 @@ export function Chat() {
     try {
       const res = await sendChat(message, convo.history, convo.conversationId, undefined, readAutoSave());
       const drafts = (res.drafts ?? []).map((draft) => ({ key: newId(), draft, status: "open" as const }));
+      const proposals = (res.proposals ?? []).map((proposal) => ({ key: newId(), proposal, status: "open" as const }));
       setConvo((c) => ({
         history: res.history,
         conversationId: res.conversation_id,
         items: [
           ...c.items,
-          { id: newId(), role: "agent", text: res.reply, logged: res.logged_sessions ?? [], drafts },
+          { id: newId(), role: "agent", text: res.reply, logged: res.logged_sessions ?? [], drafts, proposals },
         ],
       }));
     } catch (e) {
@@ -221,17 +241,50 @@ export function Chat() {
     settleDraft(ref, { saved });
   }
 
+  /** A proposed plan was accepted (stored now) or dismissed: update its card and tell the coach. */
+  function settleProposal(ref: DraftRef, outcome: { accepted: Plan } | { dismissed: PlanProposal }) {
+    setConvo((c) => ({
+      ...c,
+      history: withNote(c.history, "accepted" in outcome ? acceptedPlanNote(outcome.accepted) : dismissedPlanNote(outcome.dismissed)),
+      items: c.items.map((i) =>
+        i.id !== ref.itemId || i.role !== "agent"
+          ? i
+          : {
+              ...i,
+              proposals: i.proposals?.map((p) =>
+                p.key === ref.key ? { ...p, status: "accepted" in outcome ? "accepted" : "dismissed" } : p,
+              ),
+            },
+      ),
+    }));
+  }
+
+  async function acceptProposal(ref: DraftRef, proposal: PlanProposal) {
+    // The only way a proposed plan is stored: the user's tap (Q5).
+    const plan = await createPlan(proposal.accept);
+    settleProposal(ref, { accepted: plan });
+  }
+
   const empty = restored && convo.items.length === 0;
 
   return (
     <>
       <div className="flex items-center justify-between pt-4 pb-2">
         <h1 className="font-display text-xl font-semibold">Coach</h1>
-        {convo.items.length > 0 && (
-          <Button variant="ghost" onClick={newChat} className="-mr-3 px-3" disabled={sending}>
-            <PlusIcon size={18} /> New chat
-          </Button>
-        )}
+        <div className="-mr-3 flex items-center">
+          {/* The Plan view has no tab of its own (Q2, variant A). */}
+          <Link
+            href="/plan"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-sm font-semibold text-ink transition hover:bg-sunken"
+          >
+            <PlanIcon size={18} /> Plan
+          </Link>
+          {convo.items.length > 0 && (
+            <Button variant="ghost" onClick={newChat} className="px-3" disabled={sending}>
+              <PlusIcon size={18} /> New chat
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Bottom padding leaves room for the fixed composer; <main> already
@@ -251,6 +304,8 @@ export function Chat() {
                   updateLogged(s.id, (old) => ({ ...old, undone: true }), removedNote(s))
                 }
                 onSaveDraft={saveDraft}
+                onAcceptProposal={acceptProposal}
+                onDismissProposal={(ref, p) => settleProposal(ref, { dismissed: p })}
                 onReviewDraft={handDraftToForm}
                 onDismissDraft={(ref, draft) => {
                   // A dismissed draft must not reappear in the Log form.
@@ -377,6 +432,8 @@ function Message({
   onEdit,
   onUndone,
   onSaveDraft,
+  onAcceptProposal,
+  onDismissProposal,
   onReviewDraft,
   onDismissDraft,
 }: {
@@ -386,6 +443,8 @@ function Message({
   onEdit: (s: Session) => void;
   onUndone: (s: Session) => void;
   onSaveDraft: (ref: DraftRef, d: Draft) => Promise<void>;
+  onAcceptProposal: (ref: DraftRef, p: PlanProposal) => Promise<void>;
+  onDismissProposal: (ref: DraftRef, p: PlanProposal) => void;
   onReviewDraft: (ref: DraftRef, d: Draft) => void;
   onDismissDraft: (ref: DraftRef, d: Draft) => void;
 }) {
@@ -441,6 +500,18 @@ function Message({
             />
           );
         })}
+      {item.proposals?.map(({ key, proposal, status }) => {
+        const ref = { itemId: item.id, key };
+        return (
+          <PlanProposalCard
+            key={key}
+            proposal={proposal}
+            status={status}
+            onAccept={() => onAcceptProposal(ref, proposal)}
+            onDismiss={() => onDismissProposal(ref, proposal)}
+          />
+        );
+      })}
       <div {...SENSITIVE} className="max-w-[92%] leading-relaxed">
         <span className="sr-only">Coach: </span>
         <Markdown text={item.text} />
