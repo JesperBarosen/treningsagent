@@ -24,6 +24,7 @@ import env
 import forms
 import gyms
 import pauses
+import plans
 import tools
 
 env.load()  # ANTHROPIC_API_KEY, DATABASE_URL, SUPABASE_URL, CHAT_DAILY_LIMIT from the root .env
@@ -513,3 +514,146 @@ def patch_goal(goal_id: int, body: GoalChange, store: db.PostgresStore = Depends
 def delete_goal(goal_id: int, store: db.PostgresStore = Depends(get_store)) -> None:
     if not store.delete_goal(goal_id):
         raise HTTPException(404, "Goal not found.")
+
+
+# --- Training plans (#116, docs/training-plans.md) -------------------------------------
+# Plans are stored only from an accepted proposal or the user's own edits; the
+# coach never writes here (#119 proposes through the approval flow). plans.py
+# validates everything; these routes map its errors: ValueError 422,
+# LookupError 404, RuntimeError (another plan is active) 409.
+
+def _plans_call(fn, *args, missing: str = "Plan not found."):
+    try:
+        return fn(*args)
+    except LookupError:
+        raise HTTPException(404, missing) from None
+    except RuntimeError as e:
+        raise HTTPException(409, str(e)) from None
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+class PlannedIn(BaseModel):
+    date: str
+    sport: str
+    title: str
+    template_id: int | None = None
+    target: dict = {}
+
+
+class PlanIn(BaseModel):
+    name: str
+    start_date: str
+    # Left out: from the goal's date when it is 4-12 weeks away (Q4).
+    weeks: int | None = None
+    goal_id: int | None = None
+    week_meta: list[dict] = []
+    rationale: str | None = None
+    source: Literal["coach", "user"] = "user"
+    sessions: list[PlannedIn] = []
+
+
+class PlanChange(BaseModel):
+    name: str | None = None
+    rationale: str | None = None
+    week_meta: list[dict] | None = None
+    status: Literal["active", "paused", "finished"] | None = None
+
+
+class PlannedAdd(PlannedIn):
+    # Left out: a one-off planned session with no plan (#38, Q3).
+    plan_id: int | None = None
+
+
+class PlannedChange(BaseModel):
+    sport: str | None = None
+    template_id: int | None = None
+    title: str | None = None
+    target: dict | None = None
+
+
+class PlannedMove(BaseModel):
+    date: str
+
+
+class PlannedSkip(BaseModel):
+    reason: str | None = None
+
+
+@app.get("/plans")
+def get_plans(store: db.PostgresStore = Depends(get_store)) -> dict:
+    """The current plan (active or paused) with its sessions and planned load
+    per week, and every plan without sessions (newest first)."""
+    current = plans.current_plan(store)
+    return {"current": plans.get_plan(store, current["id"]) if current else None,
+            "plans": store.plans()}
+
+
+@app.post("/plans", status_code=201)
+def post_plan(body: PlanIn, store: db.PostgresStore = Depends(get_store)) -> dict:
+    """Store a plan the user accepted (Q5: never without their tap)."""
+    data = body.model_dump(exclude_none=True)
+    data["sessions"] = [s.model_dump(exclude_none=True) for s in body.sessions]
+    return _plans_call(plans.create_plan, store, data)
+
+
+@app.get("/plans/{plan_id}")
+def get_plan(plan_id: int, store: db.PostgresStore = Depends(get_store)) -> dict:
+    return _plans_call(plans.get_plan, store, plan_id)
+
+
+@app.patch("/plans/{plan_id}")
+def patch_plan(plan_id: int, body: PlanChange, store: db.PostgresStore = Depends(get_store)) -> dict:
+    """Rename, change week kinds or the rationale, pause, resume or finish a plan."""
+    return _plans_call(plans.update_plan, store, plan_id, body.model_dump(exclude_unset=True))
+
+
+@app.post("/plans/{plan_id}/leave")
+def post_leave_plan(plan_id: int, store: db.PostgresStore = Depends(get_store)) -> dict:
+    """Leave a plan. Nothing is deleted; its sessions stay as a record (P23)."""
+    return _plans_call(plans.leave_plan, store, plan_id)
+
+
+@app.get("/planned-sessions")
+def get_planned_sessions(since: str = Query(alias="from"), until: str = Query(alias="to"),
+                         store: db.PostgresStore = Depends(get_store)) -> list[dict]:
+    """Planned sessions between two dates, from the plan and one-offs alike."""
+    return _plans_call(plans.list_planned, store, since, until)
+
+
+@app.post("/planned-sessions", status_code=201)
+def post_planned(body: PlannedAdd, store: db.PostgresStore = Depends(get_store)) -> dict:
+    return _plans_call(plans.add_planned, store, body.model_dump(exclude_none=True))
+
+
+@app.patch("/planned-sessions/{planned_id}")
+def patch_planned(planned_id: int, body: PlannedChange, store: db.PostgresStore = Depends(get_store)) -> dict:
+    """Change a planned session's sport, template, title or target."""
+    return _plans_call(plans.edit_planned, store, planned_id, body.model_dump(exclude_unset=True),
+                       missing="Planned session not found.")
+
+
+@app.post("/planned-sessions/{planned_id}/move")
+def post_move_planned(planned_id: int, body: PlannedMove,
+                      store: db.PostgresStore = Depends(get_store)) -> dict:
+    return _plans_call(plans.move_planned, store, planned_id, body.date,
+                       missing="Planned session not found.")
+
+
+@app.post("/planned-sessions/{planned_id}/skip")
+def post_skip_planned(planned_id: int, body: PlannedSkip,
+                      store: db.PostgresStore = Depends(get_store)) -> dict:
+    return _plans_call(plans.skip_planned, store, planned_id, body.reason,
+                       missing="Planned session not found.")
+
+
+@app.delete("/planned-sessions/{planned_id}/skip")
+def delete_skip_planned(planned_id: int, store: db.PostgresStore = Depends(get_store)) -> dict:
+    """Undo a skip."""
+    return _plans_call(lambda s, i: plans.skip_planned(s, i, skip=False), store, planned_id,
+                       missing="Planned session not found.")
+
+
+@app.delete("/planned-sessions/{planned_id}", status_code=204)
+def delete_planned(planned_id: int, store: db.PostgresStore = Depends(get_store)) -> None:
+    _plans_call(plans.remove_planned, store, planned_id, missing="Planned session not found.")

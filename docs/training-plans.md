@@ -1,6 +1,6 @@
 # Training plans and proposals: design
 
-Design for the milestone **Training plans and proposals**: plans of 4 to 12 weeks with planned sessions, a coach that proposes plans and changes to them, and planned versus done. It covers #39 (plans and `propose_program`) and #38 (coach suggestions you can accept, adjust or dismiss; N9 in `docs/design-proposals-2.md`), and prepares #34 (return to training after a pause) and #26 (an optional weekly goal). **Design only: nothing here is built yet, and no migration files are written.**
+Design for the milestone **Training plans and proposals**: plans of 4 to 12 weeks with planned sessions, a coach that proposes plans and changes to them, and planned versus done. It covers #39 (plans and `propose_program`) and #38 (coach suggestions you can accept, adjust or dismiss; N9 in `docs/design-proposals-2.md`), and prepares #34 (return to training after a pause) and #26 (an optional weekly goal). **The database and API (#116) are built; the rest is design.**
 
 Mockups (dark, 375 px phone; variant A and B where a choice matters):
 
@@ -149,7 +149,7 @@ Until sources exist, a proposal shows its load per week plainly and never claims
 - **For an injury**, the coach uses body part and pain only to propose **less**, never more. It doesn't interpret them medically, doesn't suggest training through pain, and says that if pain persists or gets worse the user should see a physiotherapist or doctor. A plan never schedules sessions during an active injury pause.
 - **Leaving a plan** is always one tap, and the app asks whether it went well rather than calling it a failure (P23).
 
-## 7. Data model sketch (no migrations written)
+## 7. Data model
 
 **`training_plans`**: `id`, `user_id` (default `auth.uid()`, cascade), `name` (1–60), `goal_id` (nullable, FK `goals`, on delete set null), `start_date` (a Monday), `weeks` (smallint 4–12), `week_meta` **jsonb** (array of `{index, kind, note}`; small, always read with the plan), `status` (`active`, `paused`, `finished`, `left`), `rationale` (text ≤ 300), `source` (`coach` or `user`), `created_at`, `updated_at`. A partial unique index allows one `active` plan per user (Q3).
 
@@ -160,12 +160,12 @@ Until sources exist, a proposal shows its load per week plainly and never claims
 
 **RLS**: owner-only select, insert, update and delete on both tables, as everywhere else. Foreign keys bypass RLS, so insert and update policies also require that `goal_id`, `plan_id`, `template_id` and `session_id` belong to the caller (the same pattern as `climbs.gym_id` and `sessions.template_id`). Column grants leave `user_id` to its default.
 
-**Migrations it would need** (to be written in the first issue, not now):
+**Migrations** (written in #116, applied only after review):
 
-1. `create_training_plans`: table, partial unique index, RLS, grants.
-2. `create_planned_sessions`: table, indexes on `(user_id, date)` and `plan_id`, unique `session_id`, RLS with ownership checks, grants.
+1. `20261118120000_create_training_plans.sql`: table, partial unique index, RLS, grants.
+2. `20261118120100_create_planned_sessions.sql`: table, indexes on `(user_id, date)`, `plan_id` and `template_id`, unique `session_id`, RLS with ownership checks, grants.
 
-No change to `sessions`, `goals` or `pauses`.
+As built, three details differ from the sketch above: the unique index allows one **active or paused** plan (a paused plan is still the current one); plans get an `ended_on` date when finished or left; and `planned_sessions.template_id` is NO ACTION like `sessions.template_id`, so a template that plans use is archived, not deleted. No change to `sessions`, `goals` or `pauses`.
 
 ## 8. Where it shows
 
