@@ -76,6 +76,29 @@ describe("SessionForm", () => {
     ]);
   });
 
+  it("starts a newly added gym send at 2 attempts (#123)", async () => {
+    render(<SessionForm onSubmit={vi.fn()} />);
+    pick("Climb");
+    fireEvent.click(await screen.findByRole("button", { name: /^Add black/ }));
+    const list = screen.getByRole("list", { name: "Logged climbs" });
+    fireEvent.click(within(list).getByRole("button", { name: /^black/ }));
+    expect(within(list).getByText("Sent")).toBeInTheDocument();
+    expect(within(list).getByLabelText("attempts")).toHaveTextContent("2");
+  });
+
+  it("shows a drafted send without a count as 2 attempts, and keeps an edit's own value (#123)", () => {
+    const draft = {
+      sport: "climbing", date: "2026-11-18", duration_min: 60, effort: 6,
+      climbs: [{ grade: "black", style: "boulder", sent: true, attempts: null }],
+    } as unknown as Session;
+    const { unmount } = render(<SessionForm session={draft} keepDate onSubmit={vi.fn()} />);
+    expect(within(screen.getByRole("list", { name: "Logged climbs" })).getByLabelText("attempts")).toHaveTextContent("2");
+    unmount();
+
+    render(<SessionForm session={{ ...draft, id: 5 }} editing onSubmit={vi.fn()} />);
+    expect(within(screen.getByRole("list", { name: "Logged climbs" })).getByLabelText("attempts")).toHaveTextContent("–");
+  });
+
   it("sends a run's elevation gain in whole metres, only when given (#84)", () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(<SessionForm onSubmit={onSubmit} />);
