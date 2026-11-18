@@ -25,7 +25,11 @@ SESSION_COLUMNS = ("id", "sport", "date", "duration_min", "effort", "notes", "di
                    "template_id", "custom_values")
 TEMPLATE_COLUMNS = ("id", "name", "sport", "core_fields", "fields", "position", "archived_at")
 # jsonb columns: psycopg needs their Python values wrapped (text[] lists such as tags are not).
-JSON_COLUMNS = {"custom_values", "fields"}
+JSON_COLUMNS = {"custom_values", "fields", "week_meta", "target"}
+PLAN_COLUMNS = ("id", "name", "goal_id", "start_date", "weeks", "week_meta", "status", "ended_on",
+                "rationale", "source", "created_at")
+PLANNED_COLUMNS = ("id", "plan_id", "date", "slot", "sport", "template_id", "title", "target",
+                   "status", "skip_reason", "session_id")
 PAUSE_COLUMNS = ("id", "start_date", "planned_end", "ended_on", "reason", "body_part", "pain",
                  "note", "resume_choice")
 GOAL_COLUMNS = ("id", "kind", "grade", "climb_mode", "band", "target_pace", "start_pace",
@@ -449,13 +453,13 @@ class PostgresStore:
         return self._template(row) if row else None
 
     def delete_template(self, template_id: int) -> bool:
-        """Delete an unused template. ValueError if sessions use it."""
+        """Delete an unused template. ValueError if sessions or plans use it."""
         try:
             with self._as_user() as conn:
                 return conn.execute("delete from public.session_templates where id = %s returning id",
                                     (template_id,)).fetchone() is not None
         except psycopg.errors.ForeignKeyViolation:
-            raise ValueError("a template that sessions use can't be deleted; archive it") from None
+            raise ValueError("a template that sessions or plans use can't be deleted; archive it") from None
 
     def template_value_keys(self, template_id: int) -> set[str]:
         """The field keys that this template's sessions have values for."""
@@ -463,6 +467,104 @@ class PostgresStore:
             rows = conn.execute("select distinct jsonb_object_keys(custom_values) as key"
                                 " from public.sessions where template_id = %s", (template_id,)).fetchall()
         return {r["key"] for r in rows}
+
+    # --- Training plans (#116) -------------------------------------------------------
+    # Need migrations 20261118120000_create_training_plans.sql and
+    # 20261118120100_create_planned_sessions.sql. Before they run, reads return
+    # nothing, like goals.
+
+    @staticmethod
+    def _iso(row: dict) -> dict:
+        return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in row.items()}
+
+    def _select(self, table: str, columns: tuple[str, ...], where: sql.Composable, order: str) -> sql.Composed:
+        return sql.SQL("select {} from public.{} {} order by " + order).format(
+            sql.SQL(", ").join(map(sql.Identifier, columns)), sql.Identifier(table), where)
+
+    def _update(self, conn, table: str, columns: tuple[str, ...], row_id: int, changes: dict) -> dict | None:
+        values = {**changes, "updated_at": datetime.now(timezone.utc)}
+        query = sql.SQL("update public.{} set {} where id = %s returning {}").format(
+            sql.Identifier(table),
+            sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(k)) for k in values),
+            sql.SQL(", ").join(map(sql.Identifier, columns)))
+        row = conn.execute(query, (*self._params(values), row_id)).fetchone()
+        return self._iso(row) if row else None
+
+    def plans(self) -> list[dict]:
+        """Every plan, newest first."""
+        try:
+            with self._as_user() as conn:
+                return [self._iso(r) for r in conn.execute(self._select(
+                    "training_plans", PLAN_COLUMNS, sql.SQL(""), "start_date desc, id desc")).fetchall()]
+        except psycopg.errors.UndefinedTable:
+            return []
+
+    def insert_plan(self, row: dict, sessions: list[dict]) -> dict:
+        """A plan and its planned sessions in one transaction: all or nothing."""
+        try:
+            with self._as_user() as conn:
+                plan_id = self._insert(conn, "training_plans", row)
+                for s in sessions:
+                    self._insert(conn, "planned_sessions", {**s, "plan_id": plan_id})
+                return self._iso(conn.execute(self._select(
+                    "training_plans", PLAN_COLUMNS, sql.SQL("where id = %s"), "id"), (plan_id,)).fetchone())
+        except psycopg.errors.UniqueViolation:
+            raise RuntimeError("there is already an active plan; leave or finish it first") from None
+        except psycopg.errors.IntegrityError as e:
+            raise ValueError(e.diag.message_primary) from None
+
+    def update_plan(self, plan_id: int, changes: dict) -> dict | None:
+        try:
+            with self._as_user() as conn:
+                return self._update(conn, "training_plans", PLAN_COLUMNS, plan_id, changes)
+        except psycopg.errors.UniqueViolation:
+            raise RuntimeError("there is already an active plan; leave or finish it first") from None
+        except psycopg.errors.IntegrityError as e:
+            raise ValueError(e.diag.message_primary) from None
+
+    def planned_sessions(self, plan_id: int | None = None, since: str | None = None,
+                         until: str | None = None) -> list[dict]:
+        """Planned sessions of one plan, or between two dates (plans and one-offs)."""
+        conds, params = [], []
+        for cond, value in (("plan_id = %s", plan_id), ("date >= %s", since), ("date <= %s", until)):
+            if value is not None:
+                conds.append(cond)
+                params.append(value)
+        where = sql.SQL("where " + " and ".join(conds)) if conds else sql.SQL("")
+        try:
+            with self._as_user() as conn:
+                return [self._iso(r) for r in conn.execute(self._select(
+                    "planned_sessions", PLANNED_COLUMNS, where, "date, slot, id"), params).fetchall()]
+        except psycopg.errors.UndefinedTable:
+            return []
+
+    def get_planned(self, planned_id: int) -> dict | None:
+        with self._as_user() as conn:
+            row = conn.execute(self._select("planned_sessions", PLANNED_COLUMNS,
+                                            sql.SQL("where id = %s"), "id"), (planned_id,)).fetchone()
+        return self._iso(row) if row else None
+
+    def insert_planned(self, row: dict) -> dict:
+        try:
+            with self._as_user() as conn:
+                planned_id = self._insert(conn, "planned_sessions", row)
+                return self._iso(conn.execute(self._select(
+                    "planned_sessions", PLANNED_COLUMNS, sql.SQL("where id = %s"), "id"),
+                    (planned_id,)).fetchone())
+        except psycopg.errors.IntegrityError as e:
+            raise ValueError(e.diag.message_primary) from None
+
+    def update_planned(self, planned_id: int, changes: dict) -> dict | None:
+        try:
+            with self._as_user() as conn:
+                return self._update(conn, "planned_sessions", PLANNED_COLUMNS, planned_id, changes)
+        except psycopg.errors.IntegrityError as e:
+            raise ValueError(e.diag.message_primary) from None
+
+    def delete_planned(self, planned_id: int) -> bool:
+        with self._as_user() as conn:
+            return conn.execute("delete from public.planned_sessions where id = %s returning id",
+                                (planned_id,)).fetchone() is not None
 
     def last_gym_id(self) -> int | None:
         """The gym of the most recent climbing session with a gym."""

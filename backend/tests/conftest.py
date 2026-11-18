@@ -19,6 +19,8 @@ class FakeStore:
         self.gym_rows: list[dict] = []
         self.gym_grades: list[dict] = []
         self.template_rows: list[dict] = []
+        self.plan_rows: list[dict] = []
+        self.planned_rows: list[dict] = []
 
     def insert_session(self, row: dict, climbs: list[dict] = ()) -> int:
         session_id = len(self.rows) + 1
@@ -187,8 +189,8 @@ class FakeStore:
         return json.loads(json.dumps(t))
 
     def delete_template(self, template_id: int) -> bool:
-        if any(r.get("template_id") == template_id for r in self.rows):
-            raise ValueError("a template that sessions use can't be deleted; archive it")
+        if any(r.get("template_id") == template_id for r in self.rows + self.planned_rows):
+            raise ValueError("a template that sessions or plans use can't be deleted; archive it")
         before = len(self.template_rows)
         self.template_rows = [t for t in self.template_rows if t["id"] != template_id]
         return len(self.template_rows) < before
@@ -196,6 +198,65 @@ class FakeStore:
     def template_value_keys(self, template_id: int) -> set[str]:
         return {k for r in self.rows if r.get("template_id") == template_id
                 for k in (r.get("custom_values") or {})}
+
+    # --- Training plans (#116) ---
+    # Mirrors the database: one active or paused plan per user, at most one
+    # planned session per logged session, rows copied in and out.
+    def plans(self) -> list[dict]:
+        return sorted((json.loads(json.dumps(p)) for p in self.plan_rows),
+                      key=lambda p: (p["start_date"], p["id"]), reverse=True)
+
+    def _one_current(self, plan_id: int | None, status: str) -> None:
+        if status in ("active", "paused") and any(
+                p["status"] in ("active", "paused") and p["id"] != plan_id for p in self.plan_rows):
+            raise RuntimeError("there is already an active plan; leave or finish it first")
+
+    def insert_plan(self, row: dict, sessions: list[dict]) -> dict:
+        plan = {"id": len(self.plan_rows) + 1, "status": "active", "ended_on": None,
+                "created_at": "2026-11-18T00:00:00+00:00", **json.loads(json.dumps(row))}
+        self._one_current(None, plan["status"])
+        self.plan_rows.append(plan)
+        for s in sessions:
+            self.insert_planned({**s, "plan_id": plan["id"]})
+        return json.loads(json.dumps(plan))
+
+    def update_plan(self, plan_id: int, changes: dict) -> dict | None:
+        plan = next((p for p in self.plan_rows if p["id"] == plan_id), None)
+        if plan is None:
+            return None
+        self._one_current(plan_id, changes.get("status", plan["status"]))
+        plan.update(json.loads(json.dumps(changes)))
+        return json.loads(json.dumps(plan))
+
+    def planned_sessions(self, plan_id: int | None = None, since: str | None = None,
+                         until: str | None = None) -> list[dict]:
+        rows = [p for p in self.planned_rows if (plan_id is None or p["plan_id"] == plan_id)
+                and (since is None or p["date"] >= since) and (until is None or p["date"] <= until)]
+        return [json.loads(json.dumps(p)) for p in sorted(rows, key=lambda p: (p["date"], p["slot"], p["id"]))]
+
+    def get_planned(self, planned_id: int) -> dict | None:
+        p = next((p for p in self.planned_rows if p["id"] == planned_id), None)
+        return json.loads(json.dumps(p)) if p else None
+
+    def insert_planned(self, row: dict) -> dict:
+        p = {"id": len(self.planned_rows) + 1, "plan_id": None, "slot": 0, "status": "planned",
+             "skip_reason": None, "session_id": None, "target": {}, **json.loads(json.dumps(row))}
+        if any(x["date"] == p["date"] and x["slot"] == p["slot"] for x in self.planned_rows):
+            raise AssertionError("two planned sessions in one slot")  # plans.slots must prevent it
+        self.planned_rows.append(p)
+        return json.loads(json.dumps(p))
+
+    def update_planned(self, planned_id: int, changes: dict) -> dict | None:
+        p = next((p for p in self.planned_rows if p["id"] == planned_id), None)
+        if p is None:
+            return None
+        p.update(json.loads(json.dumps(changes)))
+        return json.loads(json.dumps(p))
+
+    def delete_planned(self, planned_id: int) -> bool:
+        before = len(self.planned_rows)
+        self.planned_rows = [p for p in self.planned_rows if p["id"] != planned_id]
+        return len(self.planned_rows) < before
 
     def claim_chat_request(self, daily_limit: int) -> bool:
         if self.chat_requests >= daily_limit:
