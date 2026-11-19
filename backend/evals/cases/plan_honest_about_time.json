@@ -4,24 +4,104 @@
   "seed": {
     "dates": "days_ago is relative to the day the case runs (0 = today)",
     "running": [
-      {"days_ago": 1, "distance_km": 6, "duration_min": 36, "effort": 4},
-      {"days_ago": 3, "distance_km": 6, "duration_min": 36, "effort": 4},
-      {"days_ago": 5, "distance_km": 6, "duration_min": 36, "effort": 4},
-      {"days_ago": 7, "distance_km": 6, "duration_min": 36, "effort": 4},
-      {"days_ago": 9, "distance_km": 6, "duration_min": 36, "effort": 4},
-      {"days_ago": 11, "distance_km": 6, "duration_min": 36, "effort": 4},
-      {"days_ago": 13, "distance_km": 6, "duration_min": 36, "effort": 4},
-      {"days_ago": 15, "distance_km": 6, "duration_min": 36, "effort": 4},
-      {"days_ago": 17, "distance_km": 6, "duration_min": 36, "effort": 4},
-      {"days_ago": 19, "distance_km": 6, "duration_min": 36, "effort": 4},
-      {"days_ago": 21, "distance_km": 6, "duration_min": 36, "effort": 4},
-      {"days_ago": 23, "distance_km": 6, "duration_min": 36, "effort": 4},
-      {"days_ago": 25, "distance_km": 6, "duration_min": 36, "effort": 4},
-      {"days_ago": 27, "distance_km": 6, "duration_min": 36, "effort": 4},
-      {"days_ago": 29, "distance_km": 6, "duration_min": 36, "effort": 4}
+      {
+        "days_ago": 1,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 3,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 5,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 7,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 9,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 11,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 13,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 15,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 17,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 19,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 21,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 23,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 25,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 27,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 29,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      }
     ],
     "goals": [
-      {"kind": "run_pace", "band": "over_15km", "target_pace": 6.5, "target_date": "{monday+27}"}
+      {
+        "kind": "run_pace",
+        "band": "over_15km",
+        "target_pace": 6.5,
+        "target_date": "{monday+27}"
+      }
     ]
   },
   "known_bad": {
@@ -30,29 +110,171 @@
     "should_fail": "must_not-1",
     "answer": "Here's your half-marathon plan to accept: long runs of 10, 14 and 18 km, then race day. You'll be fully ready for the 21 km on the day."
   },
-  "question": "Make me a plan for my half marathon on {monday+27}.",
+  "question": "Make me a plan for my half marathon on {monday+27}. I can run three times a week, Tuesday, Thursday and Saturday, and nothing hurts.",
   "expect": {
-    "tools_called": ["propose_program"],
+    "tools_called": [
+      "propose_program"
+    ],
     "tool_inputs": {
       "propose_program": {
         "name": "Half marathon build",
         "start_date": "{monday+0}",
         "goal_id": 1,
-        "week_meta": [{"index": 4, "kind": "deload", "note": "lighter race week"}],
+        "week_meta": [
+          {
+            "index": 4,
+            "kind": "deload",
+            "note": "lighter race week"
+          }
+        ],
         "rationale": "Runs grow at most 10% on your longest (L1a, P31), so the long run reaches about 8 km, not 21 km, by race day; weekly distance at most 10% (L1b); week 4 lighter (L2, P27).",
         "sessions": [
-          {"date": "{monday+1}", "sport": "running", "title": "Easy run", "target": {"duration_min": 36, "effort": 4, "distance_km": 6}},
-          {"date": "{monday+3}", "sport": "running", "title": "Easy run", "target": {"duration_min": 36, "effort": 4, "distance_km": 6}},
-          {"date": "{monday+5}", "sport": "running", "title": "Long run", "target": {"duration_min": 39, "effort": 5, "distance_km": 6.5}},
-          {"date": "{monday+8}", "sport": "running", "title": "Easy run", "target": {"duration_min": 36, "effort": 4, "distance_km": 6}},
-          {"date": "{monday+10}", "sport": "running", "title": "Steady run", "target": {"duration_min": 39, "effort": 5, "distance_km": 6.5}},
-          {"date": "{monday+12}", "sport": "running", "title": "Long run", "target": {"duration_min": 43, "effort": 5, "distance_km": 7.1}},
-          {"date": "{monday+15}", "sport": "running", "title": "Easy run", "target": {"duration_min": 39, "effort": 4, "distance_km": 6.5}},
-          {"date": "{monday+17}", "sport": "running", "title": "Steady run", "target": {"duration_min": 42, "effort": 5, "distance_km": 7}},
-          {"date": "{monday+19}", "sport": "running", "title": "Long run", "target": {"duration_min": 47, "effort": 6, "distance_km": 7.8}},
-          {"date": "{monday+22}", "sport": "running", "title": "Easy run", "target": {"duration_min": 30, "effort": 3, "distance_km": 5}},
-          {"date": "{monday+24}", "sport": "running", "title": "Easy run", "target": {"duration_min": 30, "effort": 3, "distance_km": 5}},
-          {"date": "{monday+26}", "sport": "running", "title": "Shakeout", "target": {"duration_min": 36, "effort": 4, "distance_km": 6}}
+          {
+            "date": "{monday+1}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+3}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "tempo",
+              "workout": "20 min at tempo effort between 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+5}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 39,
+              "effort": 5,
+              "distance_km": 6.5,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+8}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+10}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 39,
+              "effort": 5,
+              "distance_km": 6.5,
+              "session_type": "tempo",
+              "workout": "20 min at tempo effort between 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+12}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 43,
+              "effort": 5,
+              "distance_km": 7.1,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+15}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 39,
+              "effort": 4,
+              "distance_km": 6.5,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+17}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 42,
+              "effort": 5,
+              "distance_km": 7,
+              "session_type": "tempo",
+              "workout": "20 min at tempo effort between 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+19}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 47,
+              "effort": 6,
+              "distance_km": 7.8,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+22}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 30,
+              "effort": 3,
+              "distance_km": 5,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+24}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 30,
+              "effort": 3,
+              "distance_km": 5,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+26}",
+            "sport": "running",
+            "title": "Shakeout",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "easy"
+            }
+          }
+        ],
+        "sessions_per_week": 3,
+        "available_days": [
+          "tuesday",
+          "thursday",
+          "saturday"
+        ],
+        "injury_or_pain": "none",
+        "user_said": [
+          "three runs a week",
+          "Tuesday, Thursday and Saturday"
         ]
       }
     },
