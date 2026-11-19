@@ -11,7 +11,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
  *  out, and the Account page has the break section. */
 export function YouView() {
   const { busy, signOut } = useSignOut();
-  const row = "flex min-h-14 w-full items-center gap-3 px-4 text-left";
+  const row = "flex min-h-14 w-full items-center gap-4 px-5 py-3 text-left";
   return (
     <div className="pt-4 pb-12">
       <h1 className="font-display text-xl font-semibold">You</h1>
