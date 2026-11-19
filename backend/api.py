@@ -27,6 +27,7 @@ import limits
 import pauses
 import plans
 import tools
+import training_profile
 
 env.load()  # ANTHROPIC_API_KEY, DATABASE_URL, SUPABASE_URL and the limits (limits.py) from the root .env
 
@@ -75,6 +76,9 @@ class ChatResponse(BaseModel):
     # Plans propose_program made this turn (#119). Never stored, even with
     # auto_save (Q5): the app shows a card, and Accept POSTs `accept` to /plans.
     proposals: list[dict] = []
+    # Profile changes propose_profile_update made this turn (#137): never stored
+    # until the user's Save sends `changes` to PATCH /profile.
+    profile_updates: list[dict] = []
 
 
 @cache
@@ -114,7 +118,8 @@ def post_chat(
     return ChatResponse(reply=reply, history=messages, conversation_id=conversation_id,
                         logged_sessions=logged_sessions(messages[turn_start:]),
                         drafts=tool_results(messages[turn_start:], "draft_session"),
-                        proposals=tool_results(messages[turn_start:], "propose_program"))
+                        proposals=tool_results(messages[turn_start:], "propose_program"),
+                        profile_updates=tool_results(messages[turn_start:], "propose_profile_update"))
 
 
 def logged_sessions(turn: list[dict]) -> list[dict]:
@@ -483,6 +488,26 @@ class GoalChange(BaseModel):
     target_date: str | None = None
     # A goal can be paused, resumed or let go; "achieved" is set by progress only.
     status: Literal["active", "paused", "dropped"] | None = None
+
+
+@app.get("/profile")
+def get_profile(store: db.PostgresStore = Depends(get_store)) -> dict:
+    """The training profile (#137), every field present; onboarding null until
+    the first-login step was shown."""
+    return training_profile.read(store)
+
+
+@app.patch("/profile")
+def patch_profile(body: dict, store: db.PostgresStore = Depends(get_store)) -> dict:
+    """Change the given fields of the profile (the You tab, the first-login step,
+    or a coach's change the user saved). Creates the profile on first save."""
+    try:
+        changes = training_profile.validate_changes(body)
+        if not changes:
+            raise ValueError("nothing to change")
+        return {**training_profile.EMPTY, **store.save_profile(changes)}
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
 
 
 @app.get("/goals")

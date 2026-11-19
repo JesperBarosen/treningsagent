@@ -25,7 +25,9 @@ SESSION_COLUMNS = ("id", "sport", "date", "duration_min", "effort", "notes", "di
                    "template_id", "custom_values")
 TEMPLATE_COLUMNS = ("id", "name", "sport", "core_fields", "fields", "position", "archived_at")
 # jsonb columns: psycopg needs their Python values wrapped (text[] lists such as tags are not).
-JSON_COLUMNS = {"custom_values", "fields", "week_meta", "target"}
+JSON_COLUMNS = {"custom_values", "fields", "week_meta", "target", "injuries"}
+PROFILE_COLUMNS = ("longest_run_km", "weekly_run_km", "climbing_level", "injuries", "sessions_per_week",
+                   "preferred_days", "other_sports", "goals_note", "onboarding")
 PLAN_COLUMNS = ("id", "name", "goal_id", "start_date", "weeks", "week_meta", "status", "ended_on",
                 "rationale", "source", "created_at")
 PLANNED_COLUMNS = ("id", "plan_id", "date", "slot", "sport", "template_id", "title", "target",
@@ -573,6 +575,46 @@ class PostgresStore:
                 "select c.gym_id from public.climbs c join public.sessions s on s.id = c.session_id"
                 " where c.gym_id is not null order by s.date desc, c.id desc limit 1").fetchone()
         return row["gym_id"] if row else None
+
+    # --- Training profile (#137) ---------------------------------------------------------
+    # Needs migration 20261119120000_create_training_profiles.sql.
+
+    @staticmethod
+    def _profile(row: dict) -> dict:
+        out = dict(row)
+        for k in ("longest_run_km", "weekly_run_km"):  # numeric -> float for JSON
+            if out.get(k) is not None:
+                out[k] = float(out[k])
+        return out
+
+    def get_profile(self) -> dict | None:
+        """The user's profile row, or None before they have one."""
+        try:
+            with self._as_user() as conn:
+                row = conn.execute(sql.SQL("select {} from public.training_profiles").format(
+                    sql.SQL(", ").join(map(sql.Identifier, PROFILE_COLUMNS)))).fetchone()
+        except psycopg.errors.UndefinedTable:  # migration not applied yet: no profile
+            return None
+        return self._profile(row) if row else None
+
+    def save_profile(self, changes: dict) -> dict:
+        """Insert or update the user's profile with `changes` (validated by
+        training_profile.validate_changes); returns the whole row."""
+        cols = list(changes)
+        values = self._params(changes)
+        updates = [sql.SQL("{} = excluded.{}").format(sql.Identifier(c), sql.Identifier(c)) for c in cols]
+        updates.append(sql.SQL("updated_at = now()"))
+        query = sql.SQL("insert into public.training_profiles ({}) values ({}) on conflict (user_id) "
+                        "do update set {} returning {}").format(
+            sql.SQL(", ").join(map(sql.Identifier, cols)) if cols else sql.SQL("onboarding"),
+            sql.SQL(", ").join(sql.Placeholder() * len(cols)) if cols else sql.SQL("null"),
+            sql.SQL(", ").join(updates),
+            sql.SQL(", ").join(map(sql.Identifier, PROFILE_COLUMNS)))
+        try:
+            with self._as_user() as conn:
+                return self._profile(conn.execute(query, values).fetchone())
+        except psycopg.errors.IntegrityError as e:
+            raise ValueError(e.diag.message_primary) from None
 
     # --- Usage limits (#129, #130; limits.py) ------------------------------------------
     # Need migration 20261118130000_beta_invites_and_usage_indexes.sql.
