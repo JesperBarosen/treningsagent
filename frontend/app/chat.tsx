@@ -105,6 +105,9 @@ export function Chat() {
   const [editing, setEditing] = useState<Session | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const lastRef = useRef<HTMLDivElement>(null);
+  const listBoxRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
   const keyboard = useComposerKeyboard();
 
   // Restore after mount (the server render has no localStorage), for the signed-in user only.
@@ -135,8 +138,28 @@ export function Chat() {
   }, [convo, restored, userId]);
 
   useEffect(() => {
+    if (keyboard.active) return; // while typing, the effect below places the conversation
     endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [convo.items.length, sending]);
+  }, [convo.items.length, sending, keyboard.active]);
+
+  // While typing on a phone (#138): room under the conversation for the keyboard
+  // and the composer, and its last message right above the composer. Set on the
+  // elements directly (no re-render); cleared when the keyboard closes, so the
+  // page looks exactly as before.
+  useEffect(() => {
+    const box = listBoxRef.current;
+    const last = lastRef.current;
+    if (!box || !last) return;
+    if (!keyboard.active) {
+      box.style.paddingBottom = "";
+      last.style.scrollMarginBottom = "";
+      return;
+    }
+    const composer = composerRef.current?.offsetHeight ?? 0;
+    box.style.paddingBottom = `${keyboard.inset + composer + 16}px`;
+    last.style.scrollMarginBottom = `${composer + 8}px`;
+    last.scrollIntoView({ block: "end" });
+  }, [keyboard.active, keyboard.inset, keyboard.top, convo.items.length, sending]);
 
   async function send(text: string) {
     const message = text.trim();
@@ -304,7 +327,7 @@ export function Chat() {
 
       {/* Bottom padding leaves room for the fixed composer; <main> already
           leaves room for the tab bar on phones. */}
-      <div className="pb-52">
+      <div ref={listBoxRef} className="pb-52">
         {userId && <WeekGlance />}
         {empty && <Welcome />}
         <ol aria-label="Conversation" aria-live="polite" className="space-y-4">
@@ -336,6 +359,8 @@ export function Chat() {
             </li>
           )}
         </ol>
+        {/* The last message's bottom: kept just above the composer while typing. */}
+        <div ref={lastRef} data-testid="conversation-end" />
         <div ref={endRef} />
       </div>
 
@@ -357,12 +382,15 @@ export function Chat() {
 
       {/* While typing on a phone the tab bar hides and the composer sits on the
           keyboard (lib/keyboard.ts); otherwise it sits on the tab bar. */}
+      {/* Opaque (#138): nothing of the conversation or the tab bar shows through.
+          With the keyboard open, its bottom edge is pinned to the keyboard's top. */}
       <div
+        ref={composerRef}
         data-testid="composer"
         onFocus={keyboard.onFocus}
         onBlur={keyboard.onBlur}
-        style={keyboard.active ? { bottom: keyboard.inset } : undefined}
-        className="fixed inset-x-0 bottom-tab-bar z-20 border-t border-line bg-elevated/95 shadow-sheet backdrop-blur md:bottom-0"
+        style={keyboard.active ? { top: keyboard.top, bottom: "auto", transform: "translateY(-100%)" } : undefined}
+        className="fixed inset-x-0 bottom-tab-bar z-20 border-t border-line bg-elevated shadow-sheet md:bottom-0"
       >
         <div
           className={`mx-auto max-w-content px-4 pt-3 sm:px-6 ${
