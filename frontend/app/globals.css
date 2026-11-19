@@ -29,6 +29,9 @@
   --sheet-shadow: 0 -8px 32px rgb(21 25 27 / 0.12);
   /* Height of the phone tab bar's row (components/nav.tsx), without the safe area. */
   --tab-bar-h: 3.5rem;
+  /* Height of the sticky top bar (components/nav.tsx: h-14 plus its 1 px border).
+     Coach's fixed column starts below it (#144). */
+  --top-bar-h: calc(3.5rem + 1px);
   color-scheme: light;
 }
 

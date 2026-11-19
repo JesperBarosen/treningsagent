@@ -1,15 +1,18 @@
-// Keeping the Coach composer above the on-screen keyboard on phones.
+// Coach with the on-screen keyboard on phones (#138, #144).
 //
 // iOS Safari (and the home-screen app) doesn't shrink the layout viewport when
-// the keyboard opens, so a `position: fixed; bottom: …` composer stays where it
-// was: behind the keyboard, or floating with the tab bar's height (plus the
-// home-indicator inset) of empty space under it. While the composer has focus
-// on a phone we therefore hide the tab bar (globals.css, via KEYBOARD_ATTR on
-// <html>) and pin the composer's bottom edge to the top of the keyboard: the
-// bottom of window.visualViewport (#138). Measuring from the visual viewport's
-// own top and height, not from innerHeight, matters in the home-screen app,
-// where innerHeight and the fixed-position box can differ and left a
-// see-through gap between the composer and the keyboard.
+// the keyboard opens; it shrinks the visual viewport and scrolls the document
+// under it. #139 chased that by moving a fixed composer on every visualViewport
+// event, which jittered while iOS scrolled the document (#144). Instead, Coach
+// is a fixed-height column whose own messages area is the only thing that
+// scrolls, and the composer is its last child (app/chat.tsx). While the
+// composer has focus on a phone this hook:
+// - hides the tab bar (globals.css, via KEYBOARD_ATTR on <html>);
+// - reports the visible height (window.visualViewport.height) so the column
+//   ends exactly at the keyboard, updated on resize only (not scroll), at most
+//   once a frame;
+// - puts the document back at the top (window.scrollTo(0, 0)) when iOS scrolls
+//   it to show the input, so nothing slides behind the composer.
 
 import { useCallback, useEffect, useRef, useState, type FocusEvent } from "react";
 
@@ -19,21 +22,16 @@ export const KEYBOARD_ATTR = "data-composer-focus";
 /** Phone widths: below md (768 px), where the tab bar shows. */
 export const PHONE_QUERY = "(max-width: 47.99rem)";
 
-/** Pixels the keyboard (or anything else) covers at the bottom of the layout
- *  viewport: its height minus the visible part and how far that part is scrolled. */
-export function keyboardInset(win: Window = window): number {
-  const vv = win.visualViewport;
-  if (!vv) return 0;
-  return Math.max(0, Math.round(win.innerHeight - vv.height - vv.offsetTop));
+/** The height of what's visible above the keyboard, in px; the window's height
+ *  without visualViewport. */
+export function visibleHeight(win: Window = window): number {
+  return Math.round(win.visualViewport?.height ?? win.innerHeight);
 }
 
-/** Where the keyboard starts, in the layout viewport's coordinates (what
- *  `position: fixed; top` uses): the bottom of the visible part. Without
- *  visualViewport, the bottom of the window. */
-export function keyboardTop(win: Window = window): number {
-  const vv = win.visualViewport;
-  if (!vv) return win.innerHeight;
-  return Math.round(vv.offsetTop + vv.height);
+/** Undo iOS scrolling the document to show a focused input: on Coach the
+ *  document never scrolls, only the messages area does. */
+export function resetDocumentScroll(win: Window = window): void {
+  if (win.scrollY !== 0 || win.scrollX !== 0) win.scrollTo(0, 0);
 }
 
 function isPhone(win: Window = window): boolean {
@@ -44,21 +42,23 @@ function isPhone(win: Window = window): boolean {
  *  quick reply lands before the layout moves. */
 export const BLUR_GRACE_MS = 150;
 
-/** Focus handlers for the composer's container, and how to place it: `active`
- *  while it has focus on a phone, with `top` where the keyboard starts (pin the
- *  composer's bottom edge there) and `inset` the keyboard's height in px. */
+/** Less than this many px covered is not an on-screen keyboard (a toolbar, a hardware keyboard's bar). */
+export const KEYBOARD_MIN_PX = 80;
+
+/** Focus handlers for the composer's container, and the column's height:
+ *  `active` while it has focus on a phone, with `height` the visible height in
+ *  px (null when not active: the column uses 100dvh). */
 export function useComposerKeyboard() {
   const [active, setActive] = useState(false);
-  const [inset, setInset] = useState(0);
-  const [top, setTop] = useState(0);
+  const [height, setHeight] = useState<number | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onFocus = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
     if (!isPhone()) return;
-    setInset(keyboardInset());
-    setTop(keyboardTop());
+    setHeight(visibleHeight());
     setActive(true);
+    resetDocumentScroll();
   }, []);
 
   const onBlur = useCallback((e: FocusEvent<HTMLElement>) => {
@@ -75,16 +75,25 @@ export function useComposerKeyboard() {
     const root = document.documentElement;
     root.setAttribute(KEYBOARD_ATTR, "");
     const vv = window.visualViewport;
-    const update = () => {
-      setInset(keyboardInset());
-      setTop(keyboardTop());
+    let frame = 0;
+    // Resize only: the keyboard opening, closing or changing height. Scroll
+    // events are iOS panning the document, which resetDocumentScroll undoes.
+    const onResize = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        setHeight(visibleHeight());
+        resetDocumentScroll();
+      });
     };
-    vv?.addEventListener("resize", update);
-    vv?.addEventListener("scroll", update);
+    vv?.addEventListener("resize", onResize);
+    // iOS scrolls the document right after focus, once the keyboard is up.
+    const settle = requestAnimationFrame(() => resetDocumentScroll());
     return () => {
       root.removeAttribute(KEYBOARD_ATTR);
-      vv?.removeEventListener("resize", update);
-      vv?.removeEventListener("scroll", update);
+      vv?.removeEventListener("resize", onResize);
+      cancelAnimationFrame(frame);
+      cancelAnimationFrame(settle);
     };
   }, [active]);
 
@@ -92,5 +101,8 @@ export function useComposerKeyboard() {
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
-  return { active, inset: active ? inset : 0, top, onFocus, onBlur };
+  // The on-screen keyboard is up when it covers a real part of the window (not
+  // with a hardware keyboard, where focus leaves the full height visible).
+  const keyboardUp = active && height !== null && typeof window !== "undefined" && window.innerHeight - height > KEYBOARD_MIN_PX;
+  return { active, height: active ? height : null, keyboardUp, onFocus, onBlur };
 }
