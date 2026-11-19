@@ -5,8 +5,11 @@
 // was: behind the keyboard, or floating with the tab bar's height (plus the
 // home-indicator inset) of empty space under it. While the composer has focus
 // on a phone we therefore hide the tab bar (globals.css, via KEYBOARD_ATTR on
-// <html>) and lift the composer by the keyboard's height, read from
-// window.visualViewport.
+// <html>) and pin the composer's bottom edge to the top of the keyboard: the
+// bottom of window.visualViewport (#138). Measuring from the visual viewport's
+// own top and height, not from innerHeight, matters in the home-screen app,
+// where innerHeight and the fixed-position box can differ and left a
+// see-through gap between the composer and the keyboard.
 
 import { useCallback, useEffect, useRef, useState, type FocusEvent } from "react";
 
@@ -24,6 +27,15 @@ export function keyboardInset(win: Window = window): number {
   return Math.max(0, Math.round(win.innerHeight - vv.height - vv.offsetTop));
 }
 
+/** Where the keyboard starts, in the layout viewport's coordinates (what
+ *  `position: fixed; top` uses): the bottom of the visible part. Without
+ *  visualViewport, the bottom of the window. */
+export function keyboardTop(win: Window = window): number {
+  const vv = win.visualViewport;
+  if (!vv) return win.innerHeight;
+  return Math.round(vv.offsetTop + vv.height);
+}
+
 function isPhone(win: Window = window): boolean {
   return win.matchMedia?.(PHONE_QUERY).matches ?? false;
 }
@@ -33,16 +45,19 @@ function isPhone(win: Window = window): boolean {
 export const BLUR_GRACE_MS = 150;
 
 /** Focus handlers for the composer's container, and how to place it: `active`
- *  while it has focus on a phone, with `inset` the keyboard height in px. */
+ *  while it has focus on a phone, with `top` where the keyboard starts (pin the
+ *  composer's bottom edge there) and `inset` the keyboard's height in px. */
 export function useComposerKeyboard() {
   const [active, setActive] = useState(false);
   const [inset, setInset] = useState(0);
+  const [top, setTop] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onFocus = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
     if (!isPhone()) return;
     setInset(keyboardInset());
+    setTop(keyboardTop());
     setActive(true);
   }, []);
 
@@ -60,7 +75,10 @@ export function useComposerKeyboard() {
     const root = document.documentElement;
     root.setAttribute(KEYBOARD_ATTR, "");
     const vv = window.visualViewport;
-    const update = () => setInset(keyboardInset());
+    const update = () => {
+      setInset(keyboardInset());
+      setTop(keyboardTop());
+    };
     vv?.addEventListener("resize", update);
     vv?.addEventListener("scroll", update);
     return () => {
@@ -74,5 +92,5 @@ export function useComposerKeyboard() {
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
-  return { active, inset: active ? inset : 0, onFocus, onBlur };
+  return { active, inset: active ? inset : 0, top, onFocus, onBlur };
 }

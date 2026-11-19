@@ -88,6 +88,27 @@ test("Coach", async ({ page }) => {
   await expectFits(page, "Coach");
 });
 
+test("Coach while typing: opaque composer, no tab bar (#138)", async ({ page }) => {
+  await open(page, "/");
+  const composer = page.getByTestId("composer");
+  // Opaque before and while typing: nothing behind it shows through.
+  const alpha = () =>
+    composer.evaluate((el) => {
+      const bg = getComputedStyle(el).backgroundColor;
+      const parts = bg.match(/[\d.]+/g) ?? [];
+      return bg.startsWith("rgba") || bg.includes("/") ? Number(parts[3] ?? 1) : 1;
+    });
+  expect(await alpha()).toBe(1);
+  await page.getByLabel("Message").focus();
+  await expect(page.getByRole("navigation", { name: "Main" })).toBeHidden(); // Log included
+  expect(await alpha()).toBe(1);
+  // Pinned to the visible part's bottom (Chromium has no on-screen keyboard: the window's bottom).
+  const box = await composer.boundingBox();
+  const bottom = await page.evaluate(() => Math.round((visualViewport?.offsetTop ?? 0) + (visualViewport?.height ?? innerHeight)));
+  expect(Math.round(box!.y + box!.height)).toBe(bottom);
+  await expectFits(page, "Coach while typing");
+});
+
 test("Sessions, every filter", async ({ page }) => {
   await open(page, "/sessions");
   await expect(page.getByRole("radio", { name: "Other" })).toBeVisible();

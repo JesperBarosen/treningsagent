@@ -21,7 +21,7 @@ vi.mock("@/lib/api", async (importOriginal) => ({
 }));
 
 const { Chat } = await import("@/app/chat");
-const { BLUR_GRACE_MS, KEYBOARD_ATTR, keyboardInset } = await import("@/lib/keyboard");
+const { BLUR_GRACE_MS, KEYBOARD_ATTR, keyboardInset, keyboardTop } = await import("@/lib/keyboard");
 
 /** A visualViewport stand-in: a layout viewport of 800 px with `height` visible. */
 class FakeViewport extends EventTarget {
@@ -89,18 +89,35 @@ describe("the composer on a phone", () => {
     expect(document.documentElement.hasAttribute(KEYBOARD_ATTR)).toBe(false);
   });
 
-  it("hides the tab bar on focus and follows the keyboard as it opens and closes", async () => {
+  /** Pinned with its bottom edge at `px` from the top of the layout viewport. */
+  const pinnedAt = (composer: HTMLElement, px: number) => {
+    expect(composer.style.top).toBe(`${px}px`);
+    expect(composer.style.bottom).toBe("auto");
+    expect(composer.style.transform).toBe("translateY(-100%)");
+  };
+
+  it("hides the tab bar on focus and sits right on the keyboard as it opens and closes (#138)", async () => {
     const { composer } = await focusedComposer();
     expect(document.documentElement.hasAttribute(KEYBOARD_ATTR)).toBe(true);
-    expect(composer.style.bottom).toBe("0px");
+    pinnedAt(composer, 800);
 
     act(() => viewport.keyboard(320));
-    expect(composer.style.bottom).toBe("320px"); // right on top of the keyboard
+    pinnedAt(composer, 480); // its bottom edge on the keyboard's top: no gap
     expect(composer.firstElementChild).toHaveClass("pb-3");
 
     act(() => viewport.keyboard(0)); // keyboard down, still focused (e.g. a hardware keyboard)
-    expect(composer.style.bottom).toBe("0px");
+    pinnedAt(composer, 800);
     expect(composer.firstElementChild).toHaveClass("pb-[max(0.75rem,env(safe-area-inset-bottom))]");
+  });
+
+  it("follows the visible part when iOS scrolls it, without reading innerHeight", async () => {
+    const { composer } = await focusedComposer();
+    // The home-screen app: innerHeight doesn't match the fixed-position box.
+    Object.defineProperty(window, "innerHeight", { value: 860, configurable: true });
+    viewport.offsetTop = 40;
+    act(() => viewport.keyboard(320));
+    pinnedAt(composer, 40 + 480);
+    expect(keyboardTop()).toBe(520);
   });
 
   it("keeps its place while focus moves inside it, e.g. to Send", async () => {
@@ -110,7 +127,7 @@ describe("the composer on a phone", () => {
     fireEvent.blur(input, { relatedTarget: send });
     await wait(BLUR_GRACE_MS + 50);
     expect(document.documentElement.hasAttribute(KEYBOARD_ATTR)).toBe(true);
-    expect(composer.style.bottom).toBe("300px");
+    pinnedAt(composer, 500);
   });
 
   it("brings the tab bar back shortly after focus leaves, so a tap lands first", async () => {
@@ -120,10 +137,11 @@ describe("the composer on a phone", () => {
     expect(document.documentElement.hasAttribute(KEYBOARD_ATTR)).toBe(true); // not yet
     await wait(BLUR_GRACE_MS + 50);
     expect(document.documentElement.hasAttribute(KEYBOARD_ATTR)).toBe(false);
-    expect(composer.style.bottom).toBe("");
+    expect(composer.style.top).toBe("");
+    expect(composer.style.transform).toBe("");
     // A later resize no longer moves it.
     act(() => viewport.keyboard(200));
-    expect(composer.style.bottom).toBe("");
+    expect(composer.style.top).toBe("");
   });
 
   it("does nothing on a larger screen, where there is no tab bar", async () => {
@@ -131,7 +149,34 @@ describe("the composer on a phone", () => {
     const { composer } = await focusedComposer();
     act(() => viewport.keyboard(300));
     expect(document.documentElement.hasAttribute(KEYBOARD_ATTR)).toBe(false);
-    expect(composer.style.bottom).toBe("");
+    expect(composer.style.top).toBe("");
+  });
+
+  it("is opaque: nothing of the conversation or the tab bar shows through (#138)", async () => {
+    render(<Chat />);
+    await screen.findByLabelText("Message");
+    const composer = screen.getByTestId("composer");
+    expect(composer).toHaveClass("bg-elevated");
+    expect(composer.className).not.toMatch(/bg-elevated\/|backdrop-blur|opacity-/);
+  });
+
+  it("keeps the last message right above the composer while typing, and resets after", async () => {
+    const { input } = await focusedComposer();
+    const end = screen.getByTestId("conversation-end");
+    const box = end.parentElement!;
+    const scroll = vi.mocked(window.HTMLElement.prototype.scrollIntoView);
+    scroll.mockClear();
+    act(() => viewport.keyboard(320));
+    // jsdom has no layout, so the composer measures 0 px tall here.
+    expect(box.style.paddingBottom).toBe(`${320 + 0 + 16}px`);
+    expect(end.style.scrollMarginBottom).toBe("8px");
+    expect(scroll.mock.contexts).toContain(end);
+    expect(scroll).toHaveBeenLastCalledWith({ block: "end" });
+
+    act(() => input.blur());
+    await wait(BLUR_GRACE_MS + 50);
+    expect(box.style.paddingBottom).toBe(""); // back to the class's padding, as before
+    expect(box).toHaveClass("pb-52");
   });
 });
 
