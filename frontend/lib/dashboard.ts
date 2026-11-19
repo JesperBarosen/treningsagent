@@ -8,14 +8,16 @@ import type { SportFilter } from "./sport-filter";
  *  used only in the explanatory text; the backend decides ratio_status. */
 export const RATIO_MIN_HISTORY_DAYS = 28;
 
-/** The ranges the agent's tool description cites (Gabbett 2016). */
-export const RATIO_MODERATE = [0.8, 1.3] as const;
-export const RATIO_SPIKE = 1.5;
-
+/** The ratio is only a rough warning signal of how this week compares with the
+ *  last four, as the coach's get_training_load says (#133, #150): no range of
+ *  it is shown as safe or moderate, and nothing cites a band (the research
+ *  behind such bands is weak; Impellizzeri 2020). So the app shows it as plain
+ *  arithmetic: how far the last 7 days' daily average is above or below the
+ *  last 28 days'. */
 export type RatioView =
   | { kind: "paused" }
   | { kind: "not enough data"; historyDays: number }
-  | { kind: "ok"; ratio: number; zone: "below" | "moderate" | "above" | "spike" };
+  | { kind: "ok"; ratio: number; /** Whole percent above (+) or below (−) the 28-day average. */ change: number };
 
 export function ratioView(load: TrainingLoad): RatioView {
   const ratio = load.acute_chronic_ratio;
@@ -23,16 +25,24 @@ export function ratioView(load: TrainingLoad): RatioView {
   if (load.ratio_status !== "ok" || ratio === null) {
     return { kind: "not enough data", historyDays: load.history_days };
   }
-  const zone =
-    ratio >= RATIO_SPIKE
-      ? "spike"
-      : ratio > RATIO_MODERATE[1]
-        ? "above"
-        : ratio >= RATIO_MODERATE[0]
-          ? "moderate"
-          : "below";
-  return { kind: "ok", ratio, zone };
+  return { kind: "ok", ratio, change: Math.round((ratio - 1) * 100) || 0 };
 }
+
+/** "+7% vs usual", "−20% vs usual", "same as usual": the narrow summary tile. */
+export function changeWord(change: number): string {
+  if (change === 0) return "same as usual";
+  return `${change > 0 ? "+" : "−"}${Math.abs(change)}% vs usual`;
+}
+
+/** "7% above your 4-week average": the card and the summary sentence. */
+export function changeText(change: number): string {
+  if (change === 0) return "the same as your 4-week average";
+  return `${Math.abs(change)}% ${change > 0 ? "above" : "below"} your 4-week average`;
+}
+
+/** What the card and the tool say the ratio is, word for word. */
+export const RATIO_CAVEAT =
+  "Only a rough warning signal of how this week compares with the last four. No range of it is safe, and it doesn't predict injury.";
 
 // --- What a trend or the ratio still needs (#126) ---------------------------------
 
@@ -83,9 +93,6 @@ export const BAND_LABELS: Record<DistanceBand, string> = {
 
 // --- Summary first on mobile (#59, design-visual V-M3) ---------------------------
 
-/** The ratio zone as one word, for the summary tile. */
-export const ZONE_WORD = { below: "lighter", moderate: "moderate", above: "higher", spike: "spike" } as const;
-
 /** The distance band with the most runs in the last 2 weeks that has a trend,
  *  so the collapsed pace row shows one honest chip instead of mixing bands. */
 export function mainPaceBand(running: Progression["running"]): DistanceBand | null {
@@ -97,13 +104,6 @@ export function mainPaceBand(running: Progression["running"]): DistanceBand | nu
   }
   return best;
 }
-
-const LOAD_SENTENCE = {
-  below: "load is lighter than your recent usual.",
-  moderate: "load is in your usual range.",
-  above: "load is higher than your recent usual.",
-  spike: "load is well above your recent usual.",
-} as const;
 
 /** Whose load the sentence is about: everything (All) or one sport (#46). */
 const LOAD_SUBJECT: Record<SportFilter, string> = {
@@ -147,7 +147,7 @@ const GRADE_SENTENCE: Partial<Record<TrendWord, string>> = {
 export function summarySentence(load: TrainingLoad, progression: Progression, sport: SportFilter = "all"): string {
   const parts: string[] = [];
   const view = ratioView(load);
-  if (view.kind === "ok") parts.push(`${LOAD_SUBJECT[sport]} ${LOAD_SENTENCE[view.zone]}`);
+  if (view.kind === "ok") parts.push(`${LOAD_SUBJECT[sport]} load over the last 7 days is ${changeText(view.change)}.`);
   else if (view.kind === "paused") parts.push(`${LOAD_SUBJECT[sport]} load ratio is paused for your break.`);
   if (sport === "all" || sport === "running") {
     const band = mainPaceBand(progression.running);

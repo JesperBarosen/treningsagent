@@ -124,16 +124,16 @@ describe("sessions per week", () => {
 describe("the summary sentence", () => {
   it("All speaks of the combined load and both sports", () => {
     expect(summarySentence(load(), progression(), "all")).toBe(
-      "Your load is in your usual range. Pace on 7–15 km runs is getting faster. Your hardest sends are going up.",
+      "Your load over the last 7 days is 7% above your 4-week average. Pace on 7–15 km runs is getting faster. Your hardest sends are going up.",
     );
   });
 
   it("a single sport speaks only of itself", () => {
     expect(summarySentence(runOnly(), progression(), "running")).toBe(
-      "Your running load is higher than your recent usual. Pace on 7–15 km runs is getting faster.",
+      "Your running load over the last 7 days is 40% above your 4-week average. Pace on 7–15 km runs is getting faster.",
     );
     expect(summarySentence(load(), progression(), "climbing")).toBe(
-      "Your climbing load is in your usual range. Your hardest sends are going up.",
+      "Your climbing load over the last 7 days is 7% above your 4-week average. Your hardest sends are going up.",
     );
     expect(summarySentence(load({ ratio_status: "paused", pause: BREAK }), progression(), "climbing")).toBe(
       "Your climbing load ratio is paused for your break. Your hardest sends are going up.",
@@ -151,7 +151,7 @@ describe("the Dashboard per sport", () => {
     );
     expect(screen.getByText("Last 7 days vs last 28 days, all sports")).toBeInTheDocument();
     const assessment = screen.getByLabelText("Assessment");
-    expect(assessment).toHaveTextContent("Your load is in your usual range.");
+    expect(assessment).toHaveTextContent("Your load over the last 7 days is 7% above your 4-week average.");
     expect(assessment).toHaveTextContent("Sessions: 3.5 a week on average.");
     expect(within(assessment).getByText(/3\.5 a week/)).toHaveAttribute("data-sensitive");
   });
