@@ -1,0 +1,308 @@
+{
+  "id": "plan_starts_near_current_form",
+  "note": "#147: week 1 starts near what the user already does (long run about the recent longest, volume about the recent weekly average), then grows within L1a/L1b; the load rules cap increases and are never a reason to start lower. Without pain, every build week has a quality session. Seed: 6 km every other day plus a weekly 10 km long run for 30 days.",
+  "seed": {
+    "dates": "days_ago is relative to the day the case runs (0 = today)",
+    "running": [
+      {
+        "days_ago": 1,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 3,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 5,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 7,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 9,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 11,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 13,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 15,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 17,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 19,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 21,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 23,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 25,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 27,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 29,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 2,
+        "distance_km": 10,
+        "duration_min": 62,
+        "effort": 5
+      },
+      {
+        "days_ago": 9,
+        "distance_km": 10,
+        "duration_min": 62,
+        "effort": 5
+      },
+      {
+        "days_ago": 16,
+        "distance_km": 10,
+        "duration_min": 62,
+        "effort": 5
+      },
+      {
+        "days_ago": 23,
+        "distance_km": 10,
+        "duration_min": 62,
+        "effort": 5
+      }
+    ]
+  },
+  "known_bad": {
+    "source": "The real half-marathon test in #147: a plan that started far below current form.",
+    "why": "Week 1's long run is 3 km although the user ran 10 km every week.",
+    "should_fail": "must-1",
+    "answer": "Here's a proposal to accept: a gentle restart. Week 1 is three easy 3 km runs, so your long run starts at 3 km and grows 10% a week (L1a, P31), with a lighter week 4 (L2, P27). Tap Accept to use it."
+  },
+  "question": "Make me a 4-week running plan from next Monday to build toward a half marathon. Three runs a week, Tuesday, Thursday and Saturday. No injuries.",
+  "expect": {
+    "tools_called": [
+      "propose_program"
+    ],
+    "tool_inputs": {
+      "propose_program": {
+        "name": "4 weeks toward a half marathon",
+        "start_date": "{monday+0}",
+        "weeks": 4,
+        "week_meta": [
+          {
+            "index": 4,
+            "kind": "deload",
+            "note": "lighter week"
+          }
+        ],
+        "rationale": "Starts at your current form: long run 10 km like your recent long runs; runs grow at most 10% (L1a, P31), weekly at most 10% (L1b, P29/P30); week 4 lighter (L2, P27).",
+        "sessions": [
+          {
+            "date": "{monday+1}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 42,
+              "effort": 4,
+              "distance_km": 7,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+3}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 42,
+              "effort": 6,
+              "distance_km": 7,
+              "session_type": "tempo",
+              "workout": "10 min easy, 20 min at tempo effort, 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+5}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 62,
+              "effort": 5,
+              "distance_km": 10,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+8}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 42,
+              "effort": 4,
+              "distance_km": 7,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+10}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 45,
+              "effort": 6,
+              "distance_km": 7.5,
+              "session_type": "tempo",
+              "workout": "10 min easy, 20 min at tempo effort, 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+12}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 68,
+              "effort": 5,
+              "distance_km": 11,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+15}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 45,
+              "effort": 4,
+              "distance_km": 7.5,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+17}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 48,
+              "effort": 6,
+              "distance_km": 8,
+              "session_type": "tempo",
+              "workout": "10 min easy, 20 min at tempo effort, 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+19}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 75,
+              "effort": 6,
+              "distance_km": 12,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+22}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 36,
+              "effort": 3,
+              "distance_km": 6,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+24}",
+            "sport": "running",
+            "title": "Easy run with strides",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "strides",
+              "workout": "easy run with 6 x 20 s strides, walk back between"
+            }
+          },
+          {
+            "date": "{monday+26}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 50,
+              "effort": 4,
+              "distance_km": 8,
+              "session_type": "long"
+            }
+          }
+        ],
+        "sessions_per_week": 3,
+        "available_days": [
+          "tuesday",
+          "thursday",
+          "saturday"
+        ],
+        "injury_or_pain": "none",
+        "user_said": [
+          "three runs a week",
+          "Tuesday, Thursday and Saturday"
+        ]
+      }
+    },
+    "must": [
+      "The plan's first-week long run is close to the user's recent longest run (10 km in the tool results), not far below it (a first-week long run of 3-6 km fails)",
+      "Include at least one quality session a week in the build weeks (strides, tempo or intervals) with a concrete workout, not only easy runs",
+      "Present the plan as a proposal for the user to accept in the app"
+    ],
+    "must_not": [
+      "Say or imply the plan is already saved, stored, scheduled or set up",
+      "Change the goal away from building toward a half marathon"
+    ]
+  }
+}

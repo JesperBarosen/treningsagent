@@ -271,7 +271,8 @@ class FakeStore:
 
     def save_profile(self, changes: dict) -> dict:
         import training_profile
-        self.profile = {**training_profile.EMPTY, **(self.profile or {}), **json.loads(json.dumps(changes))}
+        self.profile = {**training_profile.EMPTY, **(self.profile or {}), **json.loads(json.dumps(changes)),
+                        "updated_at": self.now.isoformat()}
         return self.get_profile()
 
     # --- Usage limits (#129, #130) ---

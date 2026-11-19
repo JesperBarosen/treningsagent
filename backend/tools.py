@@ -934,7 +934,7 @@ _TARGET = {
         "effort": {"type": "integer", "minimum": 1, "maximum": 10},
         "distance_km": {"type": "number"},
         "session_type": {"type": "string", "enum": list(plans.RUN_TYPES),
-                         "description": "Running: easy, long, intervals, tempo or recovery"},
+                         "description": "Running: easy, long, strides, intervals, tempo or recovery"},
         "workout": {"type": "string", "description": "Concrete content, required for intervals and tempo, "
                                                      "e.g. '6 x 800 m at 10 km pace, 90 s jog rest' or "
                                                      "'20 min at tempo effort between 10 min easy'"},
@@ -963,10 +963,20 @@ PROPOSE_PROGRAM = {
         "shaped the plan in user_said (short quotes, e.g. 'I have sore calves', '3 days a week'); "
         "the card shows them, and the rationale must reflect them. With injury or pain, be "
         "conservative, never diagnose, and suggest a physiotherapist if it persists. Every session "
-        "needs duration_min and effort; every run a session_type. A running plan of 3+ runs a week "
-        "mixes most volume easy, one long run and one or two quality sessions (intervals or tempo) "
-        "with a concrete workout; no quality session in the last days before a goal date. (This "
-        "intensity rule, L8, has no sourced numbers yet: don't quote any.) With a goal_id whose date is 4-12 weeks away, "
+        "needs duration_min and effort; every run a session_type. START NEAR CURRENT FORM: week 1's "
+        "long run about the recent longest run and its volume about the recent weekly average "
+        "(`capacity` gives the 'at least' values); the load rules cap increases, they are never a "
+        "reason to start lower. Runs the user says they did in the last 30 days but didn't log go in "
+        "recent_runs and count as the baseline (say so in the reason); older achievements (PBs, races "
+        "before an injury) don't raise it, which you explain in one sentence. A running plan of 3+ "
+        "runs a week mixes most volume easy, one long run and one or two quality sessions (strides, "
+        "tempo or intervals) with a concrete workout; without pain, every build week with 3+ runs "
+        "needs one. With pain or injury: no hard sessions in week 1, none at all above 2/10, and "
+        "later ones only while pain stays at or below 2/10; set pain_level and say this in the "
+        "reason. No quality session in the last days before a goal date. (L8 has no sourced numbers: "
+        "don't quote any.) NEVER change the user's goal (e.g. half marathon to 5 km) without asking: "
+        "if it can't be fully reached, propose the best plan toward it and say what is realistic. "
+        "With a goal_id whose date is 4-12 weeks away, "
         "leave out weeks: the goal's date sets the end. One plan at a time: if the user has "
         "one, this fails and they can leave or finish it in the Plan view. The server checks "
         "the sourced load rules (`rules_applied`: L1a longest run, L1b weekly running increase, "
@@ -1002,6 +1012,15 @@ PROPOSE_PROGRAM = {
                                               "active injury pause is checked automatically"},
             "user_said": {"type": "array", "items": {"type": "string"}, "maxItems": 5,
                           "description": "Short quotes from the user that shaped the plan"},
+            "pain_level": {"type": "integer", "minimum": 0, "maximum": 10,
+                           "description": "The pain the user reported, 0-10, if they gave one (the profile's is used otherwise)"},
+            "recent_runs": {"type": "array", "maxItems": 10, "items": {
+                "type": "object",
+                "properties": {"km": {"type": "number"},
+                               "days_ago": {"type": "integer", "minimum": 0, "maximum": 30}},
+                "required": ["km", "days_ago"]},
+                "description": "Runs the user says they did in the last 30 days but didn't log; they "
+                               "count as the P31 baseline. Never PBs or older races"},
             "sessions": {"type": "array", "items": {
                 "type": "object",
                 "properties": {"date": {"type": "string"}, "sport": {"type": "string", "enum": list(SPORTS)},

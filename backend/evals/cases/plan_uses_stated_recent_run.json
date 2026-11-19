@@ -1,0 +1,258 @@
+{
+  "id": "plan_uses_stated_recent_run",
+  "note": "#147: a run the user says they did in the last 30 days but didn't log becomes the P31 baseline (recent_runs), and the reason says so. Seed: 5 km every third day, so without the stated 12 km run an 11 km long run would break L1a.",
+  "seed": {
+    "dates": "days_ago is relative to the day the case runs (0 = today)",
+    "running": [
+      {
+        "days_ago": 2,
+        "distance_km": 5,
+        "duration_min": 30,
+        "effort": 4
+      },
+      {
+        "days_ago": 5,
+        "distance_km": 5,
+        "duration_min": 30,
+        "effort": 4
+      },
+      {
+        "days_ago": 8,
+        "distance_km": 5,
+        "duration_min": 30,
+        "effort": 4
+      },
+      {
+        "days_ago": 11,
+        "distance_km": 5,
+        "duration_min": 30,
+        "effort": 4
+      },
+      {
+        "days_ago": 14,
+        "distance_km": 5,
+        "duration_min": 30,
+        "effort": 4
+      },
+      {
+        "days_ago": 17,
+        "distance_km": 5,
+        "duration_min": 30,
+        "effort": 4
+      },
+      {
+        "days_ago": 20,
+        "distance_km": 5,
+        "duration_min": 30,
+        "effort": 4
+      },
+      {
+        "days_ago": 23,
+        "distance_km": 5,
+        "duration_min": 30,
+        "effort": 4
+      },
+      {
+        "days_ago": 26,
+        "distance_km": 5,
+        "duration_min": 30,
+        "effort": 4
+      },
+      {
+        "days_ago": 29,
+        "distance_km": 5,
+        "duration_min": 30,
+        "effort": 4
+      }
+    ]
+  },
+  "known_bad": {
+    "source": "Written for this case: a coach that ignores the run the user mentioned.",
+    "why": "Plans from the logged 5 km runs only and never mentions the 12 km run.",
+    "should_fail": "must-1",
+    "answer": "Your logged runs top out at 5 km, so here's a proposal to accept: the long run starts at 5.5 km and grows 10% a week (L1a, P31), with a lighter week 4 (L2, P27)."
+  },
+  "question": "Can you make me a 4-week running plan from next Monday? Tuesday, Thursday and Saturday, no injuries. Five days ago I ran 12 km with friends but I didn't log it.",
+  "expect": {
+    "tools_called": [
+      "propose_program"
+    ],
+    "tool_inputs": {
+      "propose_program": {
+        "name": "4 weeks from your 12 km",
+        "start_date": "{monday+0}",
+        "weeks": 4,
+        "week_meta": [
+          {
+            "index": 4,
+            "kind": "deload",
+            "note": "lighter week"
+          }
+        ],
+        "rationale": "You ran 12 km five days ago (not logged), so that is the baseline: the long run starts at 11 km and grows at most 10% (L1a, P31); week 4 lighter (L2, P27).",
+        "sessions": [
+          {
+            "date": "{monday+1}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 30,
+              "effort": 4,
+              "distance_km": 5,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+3}",
+            "sport": "running",
+            "title": "Easy run with strides",
+            "target": {
+              "duration_min": 33,
+              "effort": 4,
+              "distance_km": 5.5,
+              "session_type": "strides",
+              "workout": "easy run with 6 x 20 s strides, walk back between"
+            }
+          },
+          {
+            "date": "{monday+5}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 70,
+              "effort": 5,
+              "distance_km": 11,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+8}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 33,
+              "effort": 4,
+              "distance_km": 5.5,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+10}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 36,
+              "effort": 6,
+              "distance_km": 6,
+              "session_type": "tempo",
+              "workout": "10 min easy, 20 min at tempo effort, 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+12}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 76,
+              "effort": 5,
+              "distance_km": 12,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+15}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+17}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 36,
+              "effort": 6,
+              "distance_km": 6,
+              "session_type": "tempo",
+              "workout": "10 min easy, 20 min at tempo effort, 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+19}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 82,
+              "effort": 6,
+              "distance_km": 13,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+22}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 30,
+              "effort": 3,
+              "distance_km": 5,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+24}",
+            "sport": "running",
+            "title": "Easy run with strides",
+            "target": {
+              "duration_min": 30,
+              "effort": 4,
+              "distance_km": 5,
+              "session_type": "strides",
+              "workout": "easy run with 6 x 20 s strides, walk back between"
+            }
+          },
+          {
+            "date": "{monday+26}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 56,
+              "effort": 4,
+              "distance_km": 9,
+              "session_type": "long"
+            }
+          }
+        ],
+        "sessions_per_week": 3,
+        "available_days": [
+          "tuesday",
+          "thursday",
+          "saturday"
+        ],
+        "injury_or_pain": "none",
+        "user_said": [
+          "I ran 12 km with friends five days ago",
+          "Tuesday, Thursday and Saturday"
+        ],
+        "recent_runs": [
+          {
+            "km": 12,
+            "days_ago": 5
+          }
+        ]
+      }
+    },
+    "must": [
+      "Say that the plan builds on the 12 km run the user mentioned (as its starting point or baseline), even though it wasn't logged",
+      "The first-week long run is well above the logged 5 km runs (around 10 km or more), built on the 12 km run"
+    ],
+    "must_not": [
+      "Say or imply the plan is already saved, stored, scheduled or set up"
+    ]
+  }
+}

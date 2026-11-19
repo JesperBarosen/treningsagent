@@ -6,6 +6,7 @@ import type { Goal, PlannedSession, PlannedState, PlanTarget, PlanWeek, RunType,
 export const RUN_TYPE_LABEL: Record<RunType, string> = {
   easy: "Easy",
   long: "Long run",
+  strides: "Strides",
   intervals: "Intervals",
   tempo: "Tempo",
   recovery: "Recovery",

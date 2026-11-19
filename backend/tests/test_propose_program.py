@@ -3,7 +3,7 @@ they apply (docs/training-plans.md section 5) and the derived status the Plan
 view shows (#118). Offline, on the in-memory store."""
 
 import json
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -218,25 +218,37 @@ def test_session_types_and_workouts_are_part_of_the_target():
     assert plans.validate_target("climbing", {"workout": "4 x 4 on the blues"}) == {"workout": "4 x 4 on the blues"}
 
 
-def test_intensity_is_summarised_and_a_plan_without_quality_gets_a_note(store):
-    """L8 has no sourced numbers: reported and noted, never refused."""
+def all_easy(sessions=GOOD):
+    """The same runs, every one easy (no quality session)."""
+    offsets = [(date.fromisoformat(r["date"]) - START).days for r in sessions]
+    return [run(o, r["target"]["distance_km"], r["target"]["duration_min"], r["target"]["effort"], kind="easy")
+            for o, r in zip(offsets, sessions)]
+
+
+# With pain: week 1 without a quality session, tempo from week 2 on.
+EASY_START = all_easy(GOOD[:3]) + GOOD[3:]
+
+
+def test_intensity_is_summarised_and_quality_is_required_without_pain(store):
+    """#147: without pain, a build week with 3+ runs needs a quality session.
+    The numbers of L8 still need a source and are never quoted."""
     history(store)
     out = propose(store)
     assert out["intensity"][0] == {"week": 1, "runs": 3, "quality_sessions": 1, "easy_share": round(12.5 / 18.5, 2)}
-    assert not any("no quality session" in n for n in out["notes"])
-    offsets = [(date.fromisoformat(r["date"]) - START).days for r in GOOD]
-    all_easy = [run(o, r["target"]["distance_km"], r["target"]["duration_min"], r["target"]["effort"], kind="easy")
-                for o, r in zip(offsets, GOOD)]
-    out = propose(store, sessions=all_easy)
-    assert any("week 1: 3+ runs and no quality session" in n for n in out["notes"])
-    assert not any("week 4:" in n and "quality" in n for n in out["notes"])  # a lighter week needn't have one
+    with pytest.raises(ValueError, match=r"week 1 has 3 runs and no quality session: add one \(strides, tempo or intervals\)"):
+        propose(store, sessions=all_easy())
+    # A lighter week needn't have one: only weeks 1-3 are named.
+    with pytest.raises(ValueError) as e:
+        propose(store, sessions=all_easy())
+    assert "week 4 has" not in str(e.value)
     for k in ("easy_share_min", "quality_sessions_per_week_max", "taper_quality_free_days"):
         assert plans.RULES[k] == {"value": None, "status": "needs source"}
 
 
 def test_what_the_user_said_and_their_pain_shape_the_result(store):
     history(store)
-    out = propose(store, injury_or_pain="sore calves", user_said=["I have sore calves", "3 days a week"])
+    out = propose(store, sessions=EASY_START, injury_or_pain="sore calves",
+                  user_said=["I have sore calves", "3 days a week"])
     assert out["context"] == {"sessions_per_week": 3, "available_days": ["tuesday", "thursday", "saturday"],
                               "injury_or_pain": "sore calves", "user_said": ["I have sore calves", "3 days a week"]}
     assert any("never diagnose" in n and "physiotherapist" in n for n in out["notes"])
@@ -251,6 +263,111 @@ def test_no_regular_plan_during_an_injury_pause(store):
         propose(store)
     store.pauses[0]["reason"] = "travel"  # a travel pause doesn't block a plan for later
     propose(store)
+
+
+# --- The starting point, stated runs and quality with pain (#147) --------------------------
+
+def test_week_one_starts_near_current_form_not_below_it(store):
+    """The load rules cap increases; they are never a reason to start lower."""
+    history(store)  # longest 6 km, about 21 km a week over 4 weeks
+    tiny = [run(1, 2), run(3, 2, kind="tempo"), run(5, 3)] + GOOD[3:]
+    with pytest.raises(ValueError, match=r"week 1's longest run \(3 km\) starts far below the recent longest \(6 km\)"):
+        propose(store, sessions=tiny)
+    with pytest.raises(ValueError, match=r"week 1 plans 7 km of running, far below the recent weekly average \(21.0 km\)"):
+        propose(store, sessions=tiny)
+    out = propose(store)
+    assert out["capacity"]["start_long_run_km_at_least"] == 4.8  # 80% of 6
+    assert out["capacity"]["start_weekly_km_at_least"] == 14.7  # 70% of 21
+    assert out["capacity"]["running_weekly_avg_28d_km"] == 21.0
+    assert plans.RULES["start_floor"]["status"] == "app default"  # never cited as research
+
+
+def test_with_pain_the_floor_is_lower(store):
+    history(store)
+    week1 = [run(1, 3.5), run(3, 3.5, kind="tempo"), run(5, 4)]  # 11 km, long 4 km
+    with pytest.raises(ValueError, match="starts far below"):
+        propose(store, sessions=week1 + GOOD[3:])
+    # With pain, hard sessions wait, and the floor is 60% of the longest run;
+    # from that lower start the weeks grow within 10% again.
+    later = all_easy([run(8, 3.5), run(10, 4), run(12, 4.5), run(15, 4), run(17, 4), run(19, 5)])
+    lighter = [run(22, 3, 20, 3, kind="easy"), run(24, 3, 20, 3, kind="easy"), run(26, 3, 20, 3, kind="easy")]
+    out = propose(store, sessions=all_easy(week1) + later + lighter,
+                  injury_or_pain="slight knee pain", pain_level=1)
+    assert out["capacity"]["start_long_run_km_at_least"] == 3.6  # 60% of 6
+
+
+def test_week_one_compares_with_the_four_week_average_not_one_light_week(store):
+    """One light last week doesn't drag the L1b base below the usual."""
+    for days_ago in range(9, 30, 2):  # nothing in the last 8 days
+        store.insert_session({"sport": "running", "date": (TODAY - timedelta(days=days_ago)).isoformat(),
+                              "duration_min": 36, "effort": 4, "distance_km": 6.0})
+    steady = [run(1, 5), run(3, 5), run(5, 6),            # 16 km: within 10% of the 15 km average
+              run(8, 5), run(10, 5.5), run(12, 6.5),       # 17 km
+              run(15, 5.5), run(17, 6), run(19, 7),        # 18.5 km
+              run(22, 4, 24, 3), run(24, 4, 24, 3), run(26, 5, 24, 3)]
+    out = propose(store, sessions=steady)  # compared with the 4-week average, not the empty last week
+    assert out["capacity"]["running_last_7d_km"] == 0
+    assert out["capacity"]["running_weekly_avg_28d_km"] == 15.0
+    assert out["plan"]["weekly_running_km"][:3] == [16.0, 17.0, 18.5]
+
+
+def test_a_run_the_user_mentions_counts_as_the_baseline(store):
+    history(store)  # logged longest 6 km
+    longer = [run(1, 6), run(3, 6), run(5, 8.5, 51, 5)] + GOOD[3:]
+    with pytest.raises(ValueError, match="more than 10% longer"):
+        propose(store, sessions=longer)
+    out = propose(store, sessions=longer, recent_runs=[{"km": 8, "days_ago": 5}])
+    assert out["context"]["baseline_from_user"] == ["8 km 5 days ago (stated in chat)"]
+    assert out["capacity"]["longest_run_30d_km"] == 8.0
+    assert any("runs the user stated" in n and "say so in the reason" in n for n in out["notes"])
+    for bad, message in (([{"km": 8, "days_ago": 31}], "between 0 and 30"),
+                         ([{"km": 8}], "days_ago must be a whole number"),
+                         ([{"km": 0, "days_ago": 2}], "between 0 and 100"),
+                         ([{"km": 8, "days_ago": 2, "pb": True}], "km and days_ago")):
+        with pytest.raises(ValueError, match=message):
+            propose(store, sessions=longer, recent_runs=bad)
+
+
+def test_the_profile_longest_run_counts_only_if_said_in_the_last_30_days(store):
+    import training_profile as tp
+    history(store)
+    longer = [run(1, 6), run(3, 6), run(5, 8.5, 51, 5)] + GOOD[3:]
+    store.now = datetime(2026, 10, 10, tzinfo=timezone.utc)  # 39 days before TODAY
+    store.save_profile(tp.validate_changes({"longest_run_km": 8}))
+    with pytest.raises(ValueError, match="more than 10% longer"):
+        propose(store, sessions=longer)
+    store.now = datetime(2026, 11, 15, tzinfo=timezone.utc)
+    store.save_profile(tp.validate_changes({"longest_run_km": 8}))
+    out = propose(store, sessions=longer)
+    assert out["context"]["baseline_from_user"] == ["8 km longest recent run (from the profile, updated 2026-11-15)"]
+
+
+def test_strides_count_as_quality(store):
+    history(store)
+    strides = [{**r, "target": {**r["target"], "session_type": "strides", "workout": "easy 6 km with 6 x 20 s strides"}}
+               if r["target"]["session_type"] == "tempo" else r for r in GOOD]
+    assert propose(store, sessions=strides)["intensity"][0]["quality_sessions"] == 1
+
+
+def test_with_pain_hard_sessions_wait_and_stop_above_two(store):
+    history(store)
+    pain = {"injury_or_pain": "slight pain in right knee"}
+    with pytest.raises(ValueError, match=r"week 1 has a quality session with reported pain \(the first week\)"):
+        propose(store, **pain, pain_level=1)
+    out = propose(store, sessions=EASY_START, **pain, pain_level=1)  # tempo from week 2: fine at 1/10
+    assert any("only while pain stays at or below 2/10" in n and "say this in the reason" in n for n in out["notes"])
+    with pytest.raises(ValueError, match=r"week 2 has a quality session with reported pain \(pain at 3/10\)"):
+        propose(store, sessions=EASY_START, **pain, pain_level=3)
+    assert propose(store, sessions=all_easy(), **pain, pain_level=3)["context"]["pain_level"] == 3
+
+
+def test_the_coach_is_told_never_to_change_the_goal_or_start_low():
+    desc = next(t for t in tools.TOOLS if t["name"] == "propose_program")["description"]
+    assert "NEVER change the user's goal" in desc and "START NEAR CURRENT FORM" in desc
+    assert "recent_runs" in desc and "PBs" in desc
+    prompt = " ".join(chat.SYSTEM_PROMPT.split())
+    assert "Never change their goal (e.g. half marathon to 5 km) without asking" in prompt
+    assert "Start near their current form" in prompt
 
 
 def test_the_coach_is_told_to_ask_first():
