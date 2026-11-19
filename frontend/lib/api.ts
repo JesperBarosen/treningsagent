@@ -251,10 +251,16 @@ export type WeekKind = "build" | "deload" | "taper" | "test";
 export type WeekMeta = { index: number; kind: WeekKind; note: string | null };
 
 /** A planned session's target: every part optional (docs/training-plans.md 3). */
+export type RunType = "easy" | "long" | "intervals" | "tempo" | "recovery";
+
 export type PlanTarget = {
   duration_min?: number;
   effort?: number;
   distance_km?: number;
+  /** Running only (#135). */
+  session_type?: RunType;
+  /** The concrete content, e.g. "6 x 800 m at 10 km pace, 90 s jog rest" (#135). */
+  workout?: string;
   grades?: { system: GradeSystem; grade: string; count: number; gym_id?: number }[];
   values?: TemplateValues;
 };
@@ -323,6 +329,10 @@ export type PlanProposal = {
   accept: PlanInput;
   goal: Goal | null;
   rules_applied: string[];
+  /** What the coach asked first (#135): frequency, days, pain, and the user's own words. */
+  context?: { sessions_per_week: number; available_days: string[]; injury_or_pain: string; user_said: string[] };
+  /** Per week: runs, quality sessions and the easy share of running km (L8, needs source). */
+  intensity?: { week: number; runs: number; quality_sessions: number; easy_share: number | null }[];
 };
 
 export function getPlans(signal?: AbortSignal): Promise<{ current: Plan | null; plans: Omit<Plan, "sessions" | "weekly">[] }> {

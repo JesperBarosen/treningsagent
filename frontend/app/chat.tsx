@@ -22,6 +22,7 @@ import {
   type Session,
 } from "@/lib/api";
 import { limitMessage, SUPPORT_LABEL, type LimitBody } from "@/lib/limits";
+import { handProposalToPreview, takeSettledProposal } from "@/lib/plan-preview";
 import {
   clearDraftForForm,
   handDraftToForm,
@@ -122,6 +123,9 @@ export function Chat() {
         // A draft reviewed and saved in the Log form: mark its card here.
         const saved = takeSavedDraft();
         if (id && saved) settleDraft(saved.ref, { saved: saved.session });
+        // A proposal accepted or dismissed in the preview (#135): mark its card here.
+        const settled = takeSettledProposal();
+        if (id && settled) settleProposal(settled.ref, settled.outcome);
         setRestored(true);
       });
     return () => {
@@ -270,20 +274,27 @@ export function Chat() {
 
   /** A proposed plan was accepted (stored now) or dismissed: update its card and tell the coach. */
   function settleProposal(ref: DraftRef, outcome: { accepted: Plan } | { dismissed: PlanProposal }) {
-    setConvo((c) => ({
-      ...c,
-      history: withNote(c.history, "accepted" in outcome ? acceptedPlanNote(outcome.accepted) : dismissedPlanNote(outcome.dismissed)),
-      items: c.items.map((i) =>
-        i.id !== ref.itemId || i.role !== "agent"
-          ? i
-          : {
-              ...i,
-              proposals: i.proposals?.map((p) =>
-                p.key === ref.key ? { ...p, status: "accepted" in outcome ? "accepted" : "dismissed" } : p,
-              ),
-            },
-      ),
-    }));
+    setConvo((c) => {
+      const open = c.items.some(
+        (i) => i.id === ref.itemId && i.role === "agent" && i.proposals?.some((p) => p.key === ref.key && p.status === "open"),
+      );
+      if (!open) return c; // already settled, or a cleared chat
+      const note = "accepted" in outcome ? acceptedPlanNote(outcome.accepted) : dismissedPlanNote(outcome.dismissed);
+      return {
+        ...c,
+        history: withNote(c.history, note),
+        items: c.items.map((i) =>
+          i.id !== ref.itemId || i.role !== "agent"
+            ? i
+            : {
+                ...i,
+                proposals: i.proposals?.map((p) =>
+                  p.key === ref.key ? { ...p, status: "accepted" in outcome ? "accepted" : "dismissed" } : p,
+                ),
+              },
+        ),
+      };
+    });
   }
 
   async function acceptProposal(ref: DraftRef, proposal: PlanProposal) {
@@ -544,6 +555,7 @@ function Message({
             status={status}
             onAccept={() => onAcceptProposal(ref, proposal)}
             onDismiss={() => onDismissProposal(ref, proposal)}
+            onView={() => handProposalToPreview(ref, proposal)}
           />
         );
       })}

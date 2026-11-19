@@ -13,6 +13,7 @@ import {
   type Goal,
   type Plan,
   type PlannedSession,
+  type WeekMeta,
 } from "@/lib/api";
 import { SENSITIVE } from "@/lib/discreet";
 import { dateRange, goalLine, STATE_LABEL, targetText, weekChip, weekCount, weekDays, weeksLeft } from "@/lib/plans";
@@ -58,7 +59,6 @@ function failed(e: unknown): Load {
  *  never red, and never counted against the user (P17, P24, Q7). */
 export function PlanView() {
   const [load, setLoad] = useState<Load>({ kind: "loading" });
-  const [week, setWeek] = useState<number | null>(null);
   const [confirming, setConfirming] = useState<Action | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -136,8 +136,6 @@ export function PlanView() {
 
   const today = plan.today ?? new Date().toISOString().slice(0, 10);
   const current = plan.current_week ?? null;
-  const shown = week ?? current ?? (today < plan.start_date ? 1 : plan.weeks);
-  const days = weekDays(plan.start_date, shown);
   const count = current ? weekCount(plan.sessions, current) : null;
 
   return (
@@ -167,32 +165,14 @@ export function PlanView() {
         )}
       </div>
 
-      {/* min-w-0 parents so the chips scroll inside their row at 375 px (#110). */}
-      <div
-        role="radiogroup"
-        aria-label="Week"
-        className="scrollbar-none -mx-4 mt-3 flex min-w-0 gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6"
-      >
-        {plan.week_meta.map((w) => (
-          <button
-            key={w.index}
-            type="button"
-            role="radio"
-            aria-checked={w.index === shown}
-            onClick={() => setWeek(w.index)}
-            className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-control bg-surface px-3.5 text-sm font-medium whitespace-nowrap aria-checked:border-accent aria-checked:bg-accent-soft aria-checked:text-accent"
-          >
-            {weekChip(w)}
-            {w.index === current && <span className="sr-only"> (this week)</span>}
-          </button>
-        ))}
-      </div>
-
-      <ol aria-label={`Week ${shown}`} className="mt-3 divide-y divide-line rounded-lg border border-line bg-surface px-3">
-        {days.map((d) => (
-          <DayRow key={d} day={d} today={d === today} sessions={plan.sessions.filter((s) => s.date === d)} />
-        ))}
-      </ol>
+      <PlanCalendar
+        startDate={plan.start_date}
+        weeks={plan.weeks}
+        weekMeta={plan.week_meta}
+        sessions={plan.sessions}
+        today={today}
+        current={current}
+      />
 
       {actionError && (
         <p role="alert" className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
@@ -231,6 +211,58 @@ export function PlanView() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Week chips and the week's day rows (#118); also the proposal preview (#135).
+ *  Opens on `current` (this week), or the first week before the plan starts. */
+export function PlanCalendar({
+  startDate,
+  weeks,
+  weekMeta,
+  sessions,
+  today,
+  current,
+}: {
+  startDate: string;
+  weeks: number;
+  weekMeta: WeekMeta[];
+  sessions: PlannedSession[];
+  today: string;
+  current: number | null;
+}) {
+  const [week, setWeek] = useState<number | null>(null);
+  const shown = week ?? current ?? (today < startDate ? 1 : weeks);
+  const days = weekDays(startDate, shown);
+  return (
+    <>
+      {/* min-w-0 parents so the chips scroll inside their row at 375 px (#110). */}
+      <div
+        role="radiogroup"
+        aria-label="Week"
+        className="scrollbar-none -mx-4 mt-3 flex min-w-0 gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6"
+      >
+        {weekMeta.map((w) => (
+          <button
+            key={w.index}
+            type="button"
+            role="radio"
+            aria-checked={w.index === shown}
+            onClick={() => setWeek(w.index)}
+            className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-control bg-surface px-3.5 text-sm font-medium whitespace-nowrap aria-checked:border-accent aria-checked:bg-accent-soft aria-checked:text-accent"
+          >
+            {weekChip(w)}
+            {w.index === current && <span className="sr-only"> (this week)</span>}
+          </button>
+        ))}
+      </div>
+
+      <ol aria-label={`Week ${shown}`} className="mt-3 divide-y divide-line rounded-lg border border-line bg-surface px-3">
+        {days.map((d) => (
+          <DayRow key={d} day={d} today={d === today} sessions={sessions.filter((s) => s.date === d)} />
+        ))}
+      </ol>
+    </>
   );
 }
 
