@@ -642,11 +642,17 @@ class PostgresStore:
                  "day": {c: int(r[f"day_{c}"]) for c in cols}} for r in rows]
 
     def tokens_since(self, since: datetime) -> int:
-        """This user's input + output tokens since `since` (model_calls_user_id_created_at_idx)."""
+        """This user's tokens since `since` for the daily quota
+        (model_calls_user_id_created_at_idx): input + output, plus cache writes
+        and reads weighted like their price (limits.CACHE_WRITE, limits.CACHE_READ),
+        so a cached turn uses less of the quota (#142)."""
+        import limits  # the weights live with the budget's prices
         with self._as_user() as conn:
-            return int(conn.execute(
-                "select coalesce(sum(input_tokens + output_tokens), 0) as n from public.model_calls"
-                " where created_at >= %s", (since,)).fetchone()["n"])
+            return int(round(float(conn.execute(
+                "select coalesce(sum(input_tokens + output_tokens"
+                " + %s * cache_creation_input_tokens + %s * cache_read_input_tokens), 0) as n"
+                " from public.model_calls where created_at >= %s",
+                (limits.CACHE_WRITE, limits.CACHE_READ, since)).fetchone()["n"])))
 
     def claim_chat_request(self, limit: int, since: datetime) -> datetime | None:
         """Record one /chat request unless the user already made `limit` since

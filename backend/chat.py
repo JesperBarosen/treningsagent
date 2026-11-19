@@ -13,9 +13,12 @@ import training_profile
 MODEL = "claude-haiku-5-5"  # cheapest current model; fine for logging and lookups
 MAX_STEPS = 10  # max tool rounds per user message, guards against runaway loops
 
+# The stable part of the system prompt: byte-identical on every call, so it is
+# cached together with the tool definitions (#142). Anything that changes per
+# turn or per user goes in turn_context(), after the cache breakpoint.
 SYSTEM_PROMPT = """You are a training assistant for a climber and runner.
-{logging} For a climbing session, put
-every climb they mention in that same call's `climbs` list; the gym grades by
+For a climbing session, put every climb they mention in the same logging or
+draft call's `climbs` list; the gym grades by
 colour, easiest to hardest: yellow, green, blue, purple, red, black, white,
 unless the user has other gyms. Strength and other training (yoga, mobility,
 cycling) are sports too. Users can have their own log templates and gyms: call
@@ -64,8 +67,16 @@ note in square brackets, such as "[User removed the session: ...]" or "[User
 edited the session to: ...]"; it overrides what you logged earlier in the
 conversation. Never call a session a duplicate, or refuse to log one, from the
 conversation alone: call get_history first, and treat only the sessions it
-returns as stored.
-Today is {today}."""
+returns as stored."""
+
+# Prompt caching (#142). One breakpoint on the last tool definition, one on the
+# stable system prompt (which caches tools + system together), and top-level
+# automatic caching for the conversation, so each step of a turn reads what the
+# previous step wrote. 3 of the 4 allowed breakpoints; 5-minute TTL (steps of a
+# turn, and turns of a chat, are usually well under 5 minutes apart). The
+# stable prefix is far above the model's minimum cacheable length (512 tokens
+# on Claude Haiku 5.5).
+CACHE = {"type": "ephemeral"}
 
 # How sessions get stored, by the user's setting (N4, docs/design-proposals-2.md).
 LOGGING_AUTO = "Log sessions the user describes with log_session."
@@ -78,6 +89,34 @@ LOGGING_DRAFT = (
 )
 
 log = logging.getLogger(__name__)
+
+
+def turn_context(store: tools.Store, auto_save: bool, today: date | None = None) -> str:
+    """The per-turn part of the system prompt: how sessions get stored, today's
+    date, a pause and the training profile. Placed after the cache breakpoint,
+    so it can change without invalidating the cached tools and prompt."""
+    text = (LOGGING_AUTO if auto_save else LOGGING_DRAFT) + f"\nToday is {(today or date.today()).isoformat()}."
+    # The coach knows about a pause (N5). Stores without pauses (evals) have none.
+    active_pause = getattr(store, "active_pause", None)
+    text += pauses.coach_context(active_pause() if active_pause else None)
+    # The user's training profile (#137), in every turn. Stores without one (evals) add nothing.
+    text += training_profile.coach_context(training_profile.read(store))
+    return text
+
+
+def system_blocks(store: tools.Store, auto_save: bool, today: date | None = None) -> list[dict]:
+    """The system prompt as two blocks: the stable prompt with the cache
+    breakpoint, then the per-turn context."""
+    return [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": CACHE},
+            {"type": "text", "text": turn_context(store, auto_save, today)}]
+
+
+def cached_tools(offered: list[dict]) -> list[dict]:
+    """The tool list with a breakpoint on its last definition. Copies, so the
+    shared definitions in tools.py are never changed."""
+    if not offered:
+        return offered
+    return [*offered[:-1], {**offered[-1], "cache_control": CACHE}]
 
 
 def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list,
@@ -96,14 +135,9 @@ def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list,
     """
     turn_start = len(messages) - 1  # index of the user message that started this turn
     _strip_old_thinking(messages, turn_start)
-    system = SYSTEM_PROMPT.format(today=date.today().isoformat(),
-                                  logging=LOGGING_AUTO if auto_save else LOGGING_DRAFT)
-    # The coach knows about a pause (N5). Stores without pauses (evals) have none.
-    active_pause = getattr(store, "active_pause", None)
-    system += pauses.coach_context(active_pause() if active_pause else None)
-    # The user's training profile (#137), in every turn. Stores without one (evals) add nothing.
-    system += training_profile.coach_context(training_profile.read(store))
-    offered = tools.tools_for(auto_save)
+    # Read once per turn, so every step of the turn sends the same prefix.
+    system = system_blocks(store, auto_save)
+    offered = cached_tools(tools.tools_for(auto_save))
     # In draft mode log_session is defined (old histories call it) but refused.
     refused = set() if auto_save else {"log_session"}
 
@@ -115,6 +149,9 @@ def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list,
             system=system,
             tools=offered,
             messages=messages,
+            # Automatic caching: the breakpoint moves to the last block as the
+            # conversation grows, so the next step reads this one's prefix.
+            cache_control=CACHE,
         )
         _log_model_call(store, conversation_id, response, time.perf_counter() - start)
 

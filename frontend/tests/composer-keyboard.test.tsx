@@ -1,6 +1,8 @@
-// The Coach composer on a phone with the on-screen keyboard open: the tab bar
-// steps aside and the composer sits on the keyboard (lib/keyboard.ts). jsdom has
-// no keyboard, so window.visualViewport and matchMedia are stubbed.
+// Coach on a phone with the on-screen keyboard (#138, #144): a fixed-height
+// column whose messages area is the only scroll container and whose last child
+// is the composer. While typing, the tab bar steps aside and the column ends at
+// the keyboard (lib/keyboard.ts). jsdom has no keyboard, so
+// window.visualViewport, matchMedia and requestAnimationFrame are stubbed.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { act, fireEvent, render, screen } from "@testing-library/react";
@@ -18,10 +20,11 @@ vi.mock("@/lib/api", async (importOriginal) => ({
   sendChat: vi.fn(),
   getTrainingLoad: () => Promise.reject(new Error("not under test")),
   getGoals: () => Promise.reject(new Error("not under test")),
+  getProfile: () => Promise.reject(new Error("not under test")),
 }));
 
 const { Chat } = await import("@/app/chat");
-const { BLUR_GRACE_MS, KEYBOARD_ATTR, keyboardInset, keyboardTop } = await import("@/lib/keyboard");
+const { BLUR_GRACE_MS, KEYBOARD_ATTR, resetDocumentScroll, visibleHeight } = await import("@/lib/keyboard");
 
 /** A visualViewport stand-in: a layout viewport of 800 px with `height` visible. */
 class FakeViewport extends EventTarget {
@@ -35,161 +38,185 @@ class FakeViewport extends EventTarget {
 }
 
 let viewport: FakeViewport;
+let frames: number;
 function phone(isPhone: boolean) {
   window.matchMedia = vi.fn().mockReturnValue({ matches: isPhone }) as unknown as typeof window.matchMedia;
 }
 
 beforeEach(() => {
   localStorage.clear();
-  window.HTMLElement.prototype.scrollIntoView = vi.fn();
   viewport = new FakeViewport();
   Object.defineProperty(window, "visualViewport", { value: viewport, configurable: true });
   Object.defineProperty(window, "innerHeight", { value: 800, configurable: true });
+  Object.defineProperty(window, "scrollY", { value: 0, configurable: true, writable: true });
+  window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
+  frames = 0;
+  vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+    frames += 1;
+    return setTimeout(() => cb(0), 0) as unknown as number;
+  });
+  vi.stubGlobal("cancelAnimationFrame", (id: number) => clearTimeout(id));
   phone(true);
 });
 
 afterEach(() => {
   document.documentElement.removeAttribute(KEYBOARD_ATTR);
+  vi.unstubAllGlobals();
 });
 
 const wait = (ms: number) => act(() => new Promise((r) => setTimeout(r, ms)));
+const nextFrame = () => wait(5);
 
-describe("keyboardInset", () => {
-  it("is what the visual viewport leaves uncovered at the bottom", () => {
-    expect(keyboardInset()).toBe(0);
-    viewport.height = 500;
-    expect(keyboardInset()).toBe(300);
-    viewport.offsetTop = 40; // iOS scrolled the visible part down
-    expect(keyboardInset()).toBe(260);
-    viewport.height = 900; // never negative
-    expect(keyboardInset()).toBe(0);
+describe("the helpers", () => {
+  it("visibleHeight is the visual viewport's height, or the window's without one", () => {
+    expect(visibleHeight()).toBe(800);
+    viewport.height = 480.4;
+    expect(visibleHeight()).toBe(480);
+    Object.defineProperty(window, "visualViewport", { value: undefined, configurable: true });
+    expect(visibleHeight()).toBe(800);
   });
 
-  it("is 0 without visualViewport", () => {
-    Object.defineProperty(window, "visualViewport", { value: undefined, configurable: true });
-    expect(keyboardInset()).toBe(0);
+  it("resetDocumentScroll puts the document back at the top only when iOS moved it", () => {
+    resetDocumentScroll();
+    expect(window.scrollTo).not.toHaveBeenCalled();
+    Object.defineProperty(window, "scrollY", { value: 140, configurable: true });
+    resetDocumentScroll();
+    expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
   });
 });
 
-describe("the composer on a phone", () => {
-  async function focusedComposer() {
+describe("Coach as a fixed-height column", () => {
+  async function coach() {
     render(<Chat />);
     const input = await screen.findByLabelText("Message");
-    const composer = screen.getByTestId("composer");
-    act(() => input.focus());
-    return { input, composer };
+    return { input, column: screen.getByTestId("coach"), messages: screen.getByTestId("messages"), composer: screen.getByTestId("composer") };
   }
 
-  it("sits on the tab bar until it has focus", async () => {
-    render(<Chat />);
-    const composer = screen.getByTestId("composer");
-    await screen.findByLabelText("Message");
-    expect(composer).toHaveClass("bottom-tab-bar", "md:bottom-0");
-    expect(composer.style.bottom).toBe("");
+  it("is 100dvh below the top bar, with the messages area as the only scroller and the composer last", async () => {
+    const { column, messages, composer } = await coach();
+    expect(column).toHaveClass("fixed", "top-(--top-bar-h)", "h-[calc(100dvh-var(--top-bar-h))]", "flex", "flex-col", "pb-tab-bar", "md:pb-0");
+    expect(column.style.height).toBe("");
+    expect(messages).toHaveClass("min-h-0", "flex-1", "overflow-y-auto", "overscroll-contain");
+    // The composer is in the column's flow, its last child, not fixed on its own.
+    expect(composer).not.toHaveClass("fixed");
+    expect(composer.parentElement!.lastElementChild).toBe(composer);
+    expect(composer).toHaveClass("flex-none", "bg-elevated"); // opaque (#138)
+    expect(composer.className).not.toMatch(/bg-elevated\/|backdrop-blur|opacity-/);
     expect(document.documentElement.hasAttribute(KEYBOARD_ATTR)).toBe(false);
   });
 
-  /** Pinned with its bottom edge at `px` from the top of the layout viewport. */
-  const pinnedAt = (composer: HTMLElement, px: number) => {
-    expect(composer.style.top).toBe(`${px}px`);
-    expect(composer.style.bottom).toBe("auto");
-    expect(composer.style.transform).toBe("translateY(-100%)");
-  };
-
-  it("hides the tab bar on focus and sits right on the keyboard as it opens and closes (#138)", async () => {
-    const { composer } = await focusedComposer();
+  it("ends at the keyboard while typing, hides the tab bar and resets the document's scroll", async () => {
+    const { input, column, composer } = await coach();
+    Object.defineProperty(window, "scrollY", { value: 120, configurable: true }); // iOS scrolled on focus
+    act(() => input.focus());
     expect(document.documentElement.hasAttribute(KEYBOARD_ATTR)).toBe(true);
-    pinnedAt(composer, 800);
+    expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
+    expect(column.style.height).toBe("calc(800px - var(--top-bar-h))");
+    expect(column.style.paddingBottom).toBe("0px"); // no tab bar room while it's hidden
 
     act(() => viewport.keyboard(320));
-    pinnedAt(composer, 480); // its bottom edge on the keyboard's top: no gap
-    expect(composer.firstElementChild).toHaveClass("pb-3");
+    await nextFrame();
+    expect(column.style.height).toBe("calc(480px - var(--top-bar-h))");
+    expect(composer.firstElementChild).toHaveClass("pb-3"); // right on the keyboard
 
-    act(() => viewport.keyboard(0)); // keyboard down, still focused (e.g. a hardware keyboard)
-    pinnedAt(composer, 800);
+    act(() => viewport.keyboard(0)); // keyboard down, still focused (a hardware keyboard)
+    await nextFrame();
+    expect(column.style.height).toBe("calc(800px - var(--top-bar-h))");
     expect(composer.firstElementChild).toHaveClass("pb-[max(0.75rem,env(safe-area-inset-bottom))]");
   });
 
-  it("follows the visible part when iOS scrolls it, without reading innerHeight", async () => {
-    const { composer } = await focusedComposer();
-    // The home-screen app: innerHeight doesn't match the fixed-position box.
-    Object.defineProperty(window, "innerHeight", { value: 860, configurable: true });
-    viewport.offsetTop = 40;
-    act(() => viewport.keyboard(320));
-    pinnedAt(composer, 40 + 480);
-    expect(keyboardTop()).toBe(520);
+  it("follows resize only, at most once a frame, never scroll", async () => {
+    const { input, column } = await coach();
+    act(() => input.focus());
+    await nextFrame();
+    const before = frames;
+    act(() => {
+      viewport.height = 500;
+      viewport.dispatchEvent(new Event("resize"));
+      viewport.height = 470;
+      viewport.dispatchEvent(new Event("resize"));
+      viewport.height = 460;
+      viewport.dispatchEvent(new Event("resize"));
+    });
+    expect(frames - before).toBe(1); // three resizes, one frame
+    await nextFrame();
+    expect(column.style.height).toBe("calc(460px - var(--top-bar-h))");
+    // iOS panning the document fires scroll, not resize: the height stays.
+    act(() => {
+      viewport.height = 300;
+      viewport.dispatchEvent(new Event("scroll"));
+    });
+    await nextFrame();
+    expect(column.style.height).toBe("calc(460px - var(--top-bar-h))");
   });
 
-  it("keeps its place while focus moves inside it, e.g. to Send", async () => {
-    const { input, composer } = await focusedComposer();
+  it("keeps the last message right above the composer: the messages area scrolls to its end", async () => {
+    const { input, messages } = await coach();
+    let top = 0;
+    Object.defineProperty(messages, "scrollHeight", { configurable: true, get: () => 1200 });
+    Object.defineProperty(messages, "scrollTop", { configurable: true, get: () => top, set: (v: number) => (top = v) });
+    act(() => input.focus());
     act(() => viewport.keyboard(300));
-    const send = screen.getByRole("button", { name: "Send" });
-    fireEvent.blur(input, { relatedTarget: send });
+    await nextFrame();
+    expect(top).toBe(1200);
+  });
+
+  it("keeps its place while focus moves inside the composer, e.g. to Send", async () => {
+    const { input, column } = await coach();
+    act(() => input.focus());
+    act(() => viewport.keyboard(300));
+    await nextFrame();
+    fireEvent.blur(input, { relatedTarget: screen.getByRole("button", { name: "Send" }) });
     await wait(BLUR_GRACE_MS + 50);
     expect(document.documentElement.hasAttribute(KEYBOARD_ATTR)).toBe(true);
-    pinnedAt(composer, 500);
+    expect(column.style.height).toBe("calc(500px - var(--top-bar-h))");
   });
 
-  it("brings the tab bar back shortly after focus leaves, so a tap lands first", async () => {
-    const { input, composer } = await focusedComposer();
+  it("looks as before once focus leaves: 100dvh, tab bar back", async () => {
+    const { input, column } = await coach();
+    act(() => input.focus());
     act(() => viewport.keyboard(300));
+    await nextFrame();
     act(() => input.blur());
-    expect(document.documentElement.hasAttribute(KEYBOARD_ATTR)).toBe(true); // not yet
+    expect(document.documentElement.hasAttribute(KEYBOARD_ATTR)).toBe(true); // not yet: a tap lands first
     await wait(BLUR_GRACE_MS + 50);
     expect(document.documentElement.hasAttribute(KEYBOARD_ATTR)).toBe(false);
-    expect(composer.style.top).toBe("");
-    expect(composer.style.transform).toBe("");
-    // A later resize no longer moves it.
-    act(() => viewport.keyboard(200));
-    expect(composer.style.top).toBe("");
+    expect(column.style.height).toBe("");
+    act(() => viewport.keyboard(200)); // a later resize no longer changes anything
+    await nextFrame();
+    expect(column.style.height).toBe("");
   });
 
   it("does nothing on a larger screen, where there is no tab bar", async () => {
     phone(false);
-    const { composer } = await focusedComposer();
+    const { input, column } = await coach();
+    act(() => input.focus());
     act(() => viewport.keyboard(300));
+    await nextFrame();
     expect(document.documentElement.hasAttribute(KEYBOARD_ATTR)).toBe(false);
-    expect(composer.style.top).toBe("");
-  });
-
-  it("is opaque: nothing of the conversation or the tab bar shows through (#138)", async () => {
-    render(<Chat />);
-    await screen.findByLabelText("Message");
-    const composer = screen.getByTestId("composer");
-    expect(composer).toHaveClass("bg-elevated");
-    expect(composer.className).not.toMatch(/bg-elevated\/|backdrop-blur|opacity-/);
-  });
-
-  it("keeps the last message right above the composer while typing, and resets after", async () => {
-    const { input } = await focusedComposer();
-    const end = screen.getByTestId("conversation-end");
-    const box = end.parentElement!;
-    const scroll = vi.mocked(window.HTMLElement.prototype.scrollIntoView);
-    scroll.mockClear();
-    act(() => viewport.keyboard(320));
-    // jsdom has no layout, so the composer measures 0 px tall here.
-    expect(box.style.paddingBottom).toBe(`${320 + 0 + 16}px`);
-    expect(end.style.scrollMarginBottom).toBe("8px");
-    expect(scroll.mock.contexts).toContain(end);
-    expect(scroll).toHaveBeenLastCalledWith({ block: "end" });
-
-    act(() => input.blur());
-    await wait(BLUR_GRACE_MS + 50);
-    expect(box.style.paddingBottom).toBe(""); // back to the class's padding, as before
-    expect(box).toHaveClass("pb-52");
+    expect(column.style.height).toBe("");
   });
 });
 
 describe("the CSS", () => {
-  it("hides the tab bar below 768 px while the composer has focus", async () => {
+  async function css() {
     const root = join(__dirname, "..");
     const from = join(root, "app", "globals.css");
-    const css = (await postcss([tailwindcss({ base: root })]).process(readFileSync(from, "utf8"), { from })).css;
-    const at = css.indexOf(":root[data-composer-focus] [data-tab-bar] {");
+    return (await postcss([tailwindcss({ base: root })]).process(readFileSync(from, "utf8"), { from })).css;
+  }
+
+  it("hides the tab bar below 768 px while the composer has focus", async () => {
+    const out = await css();
+    const at = out.indexOf(":root[data-composer-focus] [data-tab-bar] {");
     expect(at).toBeGreaterThan(-1);
-    expect(css.slice(at, css.indexOf("}", at))).toMatch(/display:\s*none/);
-    const media = [...css.slice(0, at).matchAll(/@media ([^{]+)\{/g)].at(-1)?.[1].trim();
+    expect(out.slice(at, out.indexOf("}", at))).toMatch(/display:\s*none/);
+    const media = [...out.slice(0, at).matchAll(/@media ([^{]+)\{/g)].at(-1)?.[1].trim();
     expect(media).toMatch(/max-width:\s*47\.99rem|width\s*<\s*48rem|width\s*<=\s*47\.99rem/);
+  });
+
+  it("knows the top bar's height, so the column starts below it", async () => {
+    expect(await css()).toMatch(/--top-bar-h:\s*calc\(3\.5rem \+ 1px\)/);
+    expect(readFileSync(join(__dirname, "..", "components", "nav.tsx"), "utf8")).toMatch(/border-b[^"]*|h-14/);
   });
 
   it("marks the tab bar so the rule can find it", () => {
