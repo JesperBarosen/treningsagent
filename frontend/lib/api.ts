@@ -243,7 +243,48 @@ export type ChatResponse = {
   drafts?: Draft[];
   /** Plans the coach proposed this turn (#119): never stored until Accept (Q5). */
   proposals?: PlanProposal[];
+  /** Profile changes the coach proposed this turn (#137): stored only on Save. */
+  profile_updates?: ProfileUpdate[];
 };
+
+// --- Training profile (#137) -------------------------------------------------------------
+
+export const WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+export type Weekday = (typeof WEEKDAYS)[number];
+
+export type Injury = { body_part: string; pain: number | null; note: string | null };
+
+/** What the user tells the app about themselves; every field optional. */
+export type TrainingProfile = {
+  longest_run_km: number | null;
+  weekly_run_km: number | null;
+  climbing_level: string | null;
+  injuries: Injury[];
+  sessions_per_week: number | null;
+  preferred_days: Weekday[];
+  other_sports: string | null;
+  goals_note: string | null;
+  /** The first-login step: null until shown, then done or skipped. */
+  onboarding: "done" | "skipped" | null;
+};
+
+export type ProfileChanges = Partial<Omit<TrainingProfile, "onboarding">> & { onboarding?: "done" | "skipped" };
+
+/** propose_profile_update's result: shown with Save and Dismiss, stored only on Save. */
+export type ProfileUpdate = {
+  profile_update: true;
+  stored: false;
+  changes: ProfileChanges;
+  before: ProfileChanges;
+};
+
+export function getProfile(signal?: AbortSignal): Promise<TrainingProfile> {
+  return request("/profile", { signal });
+}
+
+export function saveProfile(changes: ProfileChanges): Promise<TrainingProfile> {
+  return request("/profile", { method: "PATCH", body: JSON.stringify(changes) });
+}
 
 // --- Training plans (#116, #118, #119) -------------------------------------------------
 

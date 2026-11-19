@@ -773,12 +773,33 @@ def propose_program(store, today: date | None = None, *, sessions_per_week=None,
         raise ValueError(f"the user is on an {pause['reason']} pause: propose no regular plan. Offer a "
                          "gentle restart for after the pause, never diagnose, and suggest a "
                          "physiotherapist or doctor if pain persists")
+    # The training profile (#137) fills what the coach would otherwise ask. No
+    # injuries counts as "none" only if the user filled in the profile.
+    prof = (store.get_profile() if hasattr(store, "get_profile") else None) or {}
+    from_profile = []
+    if sessions_per_week in (None, "") and prof.get("sessions_per_week"):
+        sessions_per_week = prof["sessions_per_week"]
+        from_profile.append("sessions_per_week")
+    if available_days in (None, []) and prof.get("preferred_days"):
+        available_days = prof["preferred_days"]
+        from_profile.append("available_days")
+    if injury_or_pain in (None, ""):
+        injuries = prof.get("injuries") or []
+        if injuries:
+            injury_or_pain = "; ".join(i["body_part"] + (f" (pain {i['pain']}/10)" if i.get("pain") is not None else "")
+                                       for i in injuries)
+            from_profile.append("injury_or_pain")
+        elif prof.get("onboarding") == "done":
+            injury_or_pain = "none"
+            from_profile.append("injury_or_pain")
     missing = [k for k, v in (("sessions_per_week", sessions_per_week), ("available_days", available_days),
                               ("injury_or_pain", injury_or_pain)) if v in (None, "", [])]
     if missing:
         raise ValueError(f"missing {', '.join(missing)}: ask the user in one short message (how many "
                          "sessions a week, which days, any injury or pain) instead of guessing")
     ctx = _context(sessions_per_week, available_days, injury_or_pain, user_said)
+    if from_profile:
+        ctx["from_profile"] = from_profile
     row, rows = validate_plan({**body, "source": "coach"},
                               goals=store.goals() if hasattr(store, "goals") else [],
                               templates=store.templates() if hasattr(store, "templates") else [],

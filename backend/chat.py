@@ -8,6 +8,7 @@ import anthropic
 
 import pauses
 import tools
+import training_profile
 
 MODEL = "claude-haiku-5-5"  # cheapest current model; fine for logging and lookups
 MAX_STEPS = 10  # max tool rounds per user message, guards against runaway loops
@@ -100,6 +101,8 @@ def run_turn(client: anthropic.Anthropic, store: tools.Store, messages: list,
     # The coach knows about a pause (N5). Stores without pauses (evals) have none.
     active_pause = getattr(store, "active_pause", None)
     system += pauses.coach_context(active_pause() if active_pause else None)
+    # The user's training profile (#137), in every turn. Stores without one (evals) add nothing.
+    system += training_profile.coach_context(training_profile.read(store))
     offered = tools.tools_for(auto_save)
     # In draft mode log_session is defined (old histories call it) but refused.
     refused = set() if auto_save else {"log_session"}

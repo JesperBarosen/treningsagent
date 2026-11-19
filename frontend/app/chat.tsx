@@ -9,6 +9,9 @@ import { WeekGlance } from "@/components/week-glance";
 import { asSession, DraftCard } from "@/components/draft-card";
 import Link from "next/link";
 import { PlanProposalCard } from "@/components/plan-proposal-card";
+import { ProfileStep } from "@/components/profile-step";
+import { ProfileUpdateCard } from "@/components/profile-update-card";
+import { changeLines } from "@/lib/profile";
 import {
   ApiError,
   createPlan,
@@ -19,6 +22,8 @@ import {
   type Draft,
   type Plan,
   type PlanProposal,
+  type ProfileUpdate,
+  saveProfile,
   type Session,
 } from "@/lib/api";
 import { limitMessage, SUPPORT_LABEL, type LimitBody } from "@/lib/limits";
@@ -50,9 +55,20 @@ type DraftItem = { key: string; draft: Draft; status: "open" | "saved" | "dismis
 /** A plan the coach proposed (#119) and what the user did with it. Only Accept stores it. */
 type ProposalItem = { key: string; proposal: PlanProposal; status: "open" | "accepted" | "dismissed" };
 
+/** A profile change the coach proposed (#137) and what the user did with it. Only Save stores it. */
+type ProfileUpdateItem = { key: string; update: ProfileUpdate; status: "open" | "saved" | "dismissed" };
+
 type Item =
   | { id: string; role: "user"; text: string }
-  | { id: string; role: "agent"; text: string; logged: Logged[]; drafts?: DraftItem[]; proposals?: ProposalItem[] }
+  | {
+      id: string;
+      role: "agent";
+      text: string;
+      logged: Logged[];
+      drafts?: DraftItem[];
+      proposals?: ProposalItem[];
+      profileUpdates?: ProfileUpdateItem[];
+    }
   | { id: string; role: "error"; text: string; offline: boolean; retry: string; limit?: LimitBody };
 
 type Conversation = { items: Item[]; history: unknown[]; conversationId: string | null };
@@ -79,6 +95,11 @@ export const dismissedDraftNote = (d: Draft) =>
   `[User dismissed the draft: ${sessionSummary(asSession(d))} on ${d.date}. Nothing was stored.]`;
 export const acceptedPlanNote = (p: Plan) =>
   `[User accepted the plan: ${p.name}, ${p.weeks} weeks from ${p.start_date} (plan id ${p.id}). It is saved.]`;
+const profileChange = (u: ProfileUpdate) =>
+  changeLines(u.changes, u.before).map((l) => `${l.label}: ${l.to}`).join("; ");
+export const savedProfileNote = (u: ProfileUpdate) => `[User saved the profile change: ${profileChange(u)}.]`;
+export const dismissedProfileNote = (u: ProfileUpdate) =>
+  `[User dismissed the profile change: ${profileChange(u)}. Nothing was stored.]`;
 export const dismissedPlanNote = (p: PlanProposal) =>
   `[User dismissed the plan proposal: ${p.plan.name}. Nothing was stored.]`;
 
@@ -175,12 +196,13 @@ export function Chat() {
       const res = await sendChat(message, convo.history, convo.conversationId, undefined, readAutoSave());
       const drafts = (res.drafts ?? []).map((draft) => ({ key: newId(), draft, status: "open" as const }));
       const proposals = (res.proposals ?? []).map((proposal) => ({ key: newId(), proposal, status: "open" as const }));
+      const profileUpdates = (res.profile_updates ?? []).map((update) => ({ key: newId(), update, status: "open" as const }));
       setConvo((c) => ({
         history: res.history,
         conversationId: res.conversation_id,
         items: [
           ...c.items,
-          { id: newId(), role: "agent", text: res.reply, logged: res.logged_sessions ?? [], drafts, proposals },
+          { id: newId(), role: "agent", text: res.reply, logged: res.logged_sessions ?? [], drafts, proposals, profileUpdates },
         ],
       }));
     } catch (e) {
@@ -297,6 +319,36 @@ export function Chat() {
     });
   }
 
+  /** A profile change was saved or dismissed (#137): update its card and tell the coach. */
+  function settleProfileUpdate(ref: DraftRef, update: ProfileUpdate, saved: boolean) {
+    setConvo((c) => {
+      const open = c.items.some(
+        (i) => i.id === ref.itemId && i.role === "agent" && i.profileUpdates?.some((u) => u.key === ref.key && u.status === "open"),
+      );
+      if (!open) return c;
+      return {
+        ...c,
+        history: withNote(c.history, saved ? savedProfileNote(update) : dismissedProfileNote(update)),
+        items: c.items.map((i) =>
+          i.id !== ref.itemId || i.role !== "agent"
+            ? i
+            : {
+                ...i,
+                profileUpdates: i.profileUpdates?.map((u) =>
+                  u.key === ref.key ? { ...u, status: saved ? "saved" : "dismissed" } : u,
+                ),
+              },
+        ),
+      };
+    });
+  }
+
+  async function saveProfileUpdate(ref: DraftRef, update: ProfileUpdate) {
+    // The only way the coach's change is stored: the user's tap.
+    await saveProfile(update.changes);
+    settleProfileUpdate(ref, update, true);
+  }
+
   async function acceptProposal(ref: DraftRef, proposal: PlanProposal) {
     // The only way a proposed plan is stored: the user's tap (Q5).
     const plan = await createPlan(proposal.accept);
@@ -328,6 +380,8 @@ export function Chat() {
       {/* Bottom padding leaves room for the fixed composer; <main> already
           leaves room for the tab bar on phones. */}
       <div ref={listBoxRef} className="pb-52">
+        {/* The optional first-login step (#137): until it's saved or skipped once. */}
+        {userId && <ProfileStep />}
         {userId && <WeekGlance />}
         {empty && <Welcome />}
         <ol aria-label="Conversation" aria-live="polite" className="space-y-4">
@@ -344,6 +398,8 @@ export function Chat() {
                 onSaveDraft={saveDraft}
                 onAcceptProposal={acceptProposal}
                 onDismissProposal={(ref, p) => settleProposal(ref, { dismissed: p })}
+                onSaveProfileUpdate={saveProfileUpdate}
+                onDismissProfileUpdate={(ref, u) => settleProfileUpdate(ref, u, false)}
                 onReviewDraft={handDraftToForm}
                 onDismissDraft={(ref, draft) => {
                   // A dismissed draft must not reappear in the Log form.
@@ -477,6 +533,8 @@ function Message({
   onSaveDraft,
   onAcceptProposal,
   onDismissProposal,
+  onSaveProfileUpdate,
+  onDismissProfileUpdate,
   onReviewDraft,
   onDismissDraft,
 }: {
@@ -488,6 +546,8 @@ function Message({
   onSaveDraft: (ref: DraftRef, d: Draft) => Promise<void>;
   onAcceptProposal: (ref: DraftRef, p: PlanProposal) => Promise<void>;
   onDismissProposal: (ref: DraftRef, p: PlanProposal) => void;
+  onSaveProfileUpdate: (ref: DraftRef, u: ProfileUpdate) => Promise<void>;
+  onDismissProfileUpdate: (ref: DraftRef, u: ProfileUpdate) => void;
   onReviewDraft: (ref: DraftRef, d: Draft) => void;
   onDismissDraft: (ref: DraftRef, d: Draft) => void;
 }) {
@@ -546,6 +606,18 @@ function Message({
             />
           );
         })}
+      {item.profileUpdates?.map(({ key, update, status }) => {
+        const ref = { itemId: item.id, key };
+        return (
+          <ProfileUpdateCard
+            key={key}
+            update={update}
+            status={status}
+            onSave={() => onSaveProfileUpdate(ref, update)}
+            onDismiss={() => onDismissProfileUpdate(ref, update)}
+          />
+        );
+      })}
       {item.proposals?.map(({ key, proposal, status }) => {
         const ref = { itemId: item.id, key };
         return (

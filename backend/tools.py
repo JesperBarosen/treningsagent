@@ -17,6 +17,7 @@ import gyms
 import pauses
 import plans
 import progression
+import training_profile
 
 # Strength and Other (#100) have only the core fields built in; templates shape them.
 SPORTS = forms.SPORTS
@@ -955,8 +956,9 @@ PROPOSE_PROGRAM = {
         "stored: the app shows it as a card with Accept, Dismiss and View plan, and only the "
         "user's Accept saves it, whatever their settings. So call it a proposal; never say it is "
         "saved, scheduled or set up. Start on a Monday. BEFORE calling it you need, from the user "
-        "(never guessed): sessions_per_week, available_days, and injury_or_pain ('none' if they "
-        "said none); check current form with get_training_load or get_history. If any is missing, "
+        "or their training profile (never guessed): sessions_per_week, available_days, and "
+        "injury_or_pain ('none' if they said none). Left out, the profile's values are used, so ask "
+        "only for what neither gives; check current form with get_training_load or get_history. If any is missing, "
         "ask for all of it in one short message instead of calling. Put what the user said that "
         "shaped the plan in user_said (short quotes, e.g. 'I have sore calves', '3 days a week'); "
         "the card shows them, and the rationale must reflect them. With injury or pain, be "
@@ -1023,7 +1025,40 @@ GET_PLAN = {
     "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
 }
 
-TOOLS += [SET_GOAL, GET_GOALS, GET_TAG_PATTERNS, LIST_TEMPLATES, PROPOSE_PROGRAM, GET_PLAN]
+PROPOSE_PROFILE_UPDATE = {
+    "name": "propose_profile_update",
+    "description": (
+        "Propose a change to the user's training profile (shown in the system prompt), e.g. "
+        "after they say 'I can only train twice a week now' or 'my knee hurts, about 4 out of 10'. "
+        "Nothing is stored: the app shows the change with Save and Dismiss, and only the user's "
+        "Save stores it, whatever their settings. Include only the fields that change, with what "
+        "the user said; never guess. injuries replaces the whole list, so include the ones that "
+        "stay. Never diagnose: record the body part, pain 0-10 and their own words. Afterwards "
+        "say the change is ready to save, never that it is saved."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "longest_run_km": {"type": "number"},
+            "weekly_run_km": {"type": "number"},
+            "climbing_level": {"type": "string", "description": "In their words, e.g. 'projecting V5'"},
+            "sessions_per_week": {"type": "integer", "minimum": 1, "maximum": 14},
+            "preferred_days": {"type": "array", "items": {"type": "string"}},
+            "injuries": {"type": "array", "items": {
+                "type": "object",
+                "properties": {"body_part": {"type": "string"},
+                               "pain": {"type": "integer", "minimum": 0, "maximum": 10},
+                               "note": {"type": "string"}},
+                "required": ["body_part"]}},
+            "other_sports": {"type": "string"},
+            "goals_note": {"type": "string"},
+        },
+        "additionalProperties": False,
+    },
+}
+
+TOOLS += [SET_GOAL, GET_GOALS, GET_TAG_PATTERNS, LIST_TEMPLATES, PROPOSE_PROGRAM, GET_PLAN,
+          PROPOSE_PROFILE_UPDATE]
 
 DRAFT_SESSION = {
     "name": "draft_session",
@@ -1082,6 +1117,8 @@ def run_tool(store: Store, name: str, tool_input: dict) -> str:
         result = plans.propose_program(store, **tool_input)
     elif name == "get_plan":
         result = plans.plan_for_coach(store, **tool_input)
+    elif name == "propose_profile_update":
+        result = training_profile.propose_update(store, **tool_input)
     else:
         raise ValueError(f"unknown tool {name!r}")
     return json.dumps(result)

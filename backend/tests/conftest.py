@@ -17,6 +17,7 @@ class FakeStore:
         # Usage limits (#129, #130): request times, everyone else's calls, the
         # invite list, and the clock the fake stamps rows with.
         self.chat_requests: list = []
+        self.profile: dict | None = None  # the training profile (#137)
         self.other_users_calls: list[dict] = []
         self.invited: set[str] = {"me@example.com"}
         self.now = datetime.now(timezone.utc)
@@ -263,6 +264,15 @@ class FakeStore:
         before = len(self.planned_rows)
         self.planned_rows = [p for p in self.planned_rows if p["id"] != planned_id]
         return len(self.planned_rows) < before
+
+    # --- Training profile (#137) ---
+    def get_profile(self) -> dict | None:
+        return json.loads(json.dumps(self.profile)) if self.profile is not None else None
+
+    def save_profile(self, changes: dict) -> dict:
+        import training_profile
+        self.profile = {**training_profile.EMPTY, **(self.profile or {}), **json.loads(json.dumps(changes))}
+        return self.get_profile()
 
     # --- Usage limits (#129, #130) ---
     # Counted like the database does: requests and calls carry a time (`now`,
