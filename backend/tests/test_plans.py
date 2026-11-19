@@ -169,8 +169,17 @@ def test_template_targets_use_the_templates_measures_and_may_be_partial(store):
         plans.validate_planned(item, store.templates())
 
 
-def test_the_load_rules_are_placeholders_until_sourced():
-    assert plans.RULES and all(r == {"value": None, "status": "needs source"} for r in plans.RULES.values())
+def test_only_sourced_load_rules_have_values():
+    """Section 5 after #125: L1a, L1b and L2 are sourced; taper, combining
+    sports and finger load still need a source and have no value."""
+    sourced = {k for k, r in plans.RULES.items() if r["status"] == "sourced"}
+    assert sourced == {"max_run_vs_longest_30d", "max_weekly_run_increase", "deload_every"}
+    assert plans.RULES["max_run_vs_longest_30d"]["value"] == 1.10
+    assert plans.RULES["max_weekly_run_increase"]["value"] == 0.10
+    assert plans.RULES["deload_every"]["value"] == 4
+    for k in ("taper_weeks", "taper_factor", "max_hard_days_in_a_row", "finger_rest_days"):
+        assert plans.RULES[k] == {"value": None, "status": "needs source"}
+    assert all("P" in r["source"] for r in plans.RULES.values() if r["status"] == "sourced")
 
 
 # --- Operations on the store -------------------------------------------------------------

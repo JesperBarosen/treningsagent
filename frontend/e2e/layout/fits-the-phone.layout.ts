@@ -10,6 +10,24 @@ import { sessionCookie } from "./mock-auth";
 const API = "http://127.0.0.1:8099";
 const DATA = JSON.parse(readFileSync(path.join(__dirname, "..", "fixtures", "app-data.json"), "utf8"));
 
+/** A 12-week plan with long titles and targets (#118): the most chips and text the Plan view gets. */
+const PLAN = {
+  id: 1, name: "Twelve weeks towards a first half marathon and a red", goal_id: null,
+  start_date: "2026-11-23", end_date: "2027-02-14", weeks: 12, status: "active", ended_on: null,
+  rationale: null, source: "coach", weekly: [], today: "2026-11-25", current_week: 1,
+  week_meta: Array.from({ length: 12 }, (_, i) => ({ index: i + 1, kind: (i + 1) % 4 === 0 ? "deload" : "build", note: null })),
+  sessions: [
+    { date: "2026-11-23", sport: "climbing", title: "Limit bouldering on the steep wall", state: "done",
+      target: { duration_min: 90, effort: 8, grades: [{ system: "gym", grade: "red", count: 3 }, { system: "v", grade: "V5", count: 2 }] },
+      done: { id: 9, date: "2026-11-23", duration_min: 95, effort: 8, distance_km: null } },
+    { date: "2026-11-24", sport: "running", title: "Easy run", state: "not_done", target: { duration_min: 36, effort: 4, distance_km: 6 } },
+    { date: "2026-11-25", sport: "other", title: "Hangboard max hangs", state: "today",
+      target: { duration_min: 30, effort: 7, values: { hangboard: { kg: 12.5, s: 10, rest: 3, sets: 6 } } } },
+    { date: "2026-11-25", sport: "running", title: "Strides", state: "today", target: { duration_min: 20, effort: 5, distance_km: 3 } },
+  ].map((s, i) => ({ id: i + 1, plan_id: 1, slot: 0, template_id: null, status: "planned", skip_reason: null,
+    session_id: null, week: 1, planned_load: null, done: null, ...s })),
+};
+
 /** Answer every API call from the fixture (made by the backend's own tools). */
 async function mockApi(page: Page) {
   await page.route(`${API}/**`, async (route) => {
@@ -26,6 +44,7 @@ async function mockApi(page: Page) {
       "/pause": { active: null, recent: null },
       "/gyms": DATA.gyms,
       "/templates": DATA.templates,
+      "/plans": { current: PLAN, plans: [] },
     };
     return route.fulfill({ headers: cors, json: body[url.pathname] ?? {} });
   });
@@ -88,6 +107,16 @@ test("Dashboard, every filter", async ({ page }) => {
     await filter.getByRole("radio", { name: sport }).click();
     await expectFits(page, `Dashboard, ${sport}`);
   }
+});
+
+test("Plan, every week and the leave confirm", async ({ page }) => {
+  await open(page, "/plan");
+  await expect(page.getByRole("radiogroup", { name: "Week" })).toBeVisible();
+  await expectFits(page, "Plan");
+  await page.getByRole("radio", { name: "W12 · lighter" }).click();
+  await expectFits(page, "Plan, week 12");
+  await page.getByRole("button", { name: "Leave plan" }).click();
+  await expectFits(page, "Plan, leave confirm");
 });
 
 test("You and Account", async ({ page }) => {

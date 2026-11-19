@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { GradeDot } from "@/components/grade";
-import { ChartIcon, ChevronIcon } from "@/components/icons";
+import { ChartIcon, ChevronIcon, PlanIcon } from "@/components/icons";
 import { GoalsSection } from "@/components/goals-panel";
 import { PauseBanner } from "@/components/pause-panel";
 import { EmptyState, ErrorState, Skeleton } from "@/components/states";
@@ -163,8 +163,19 @@ export function DashboardView() {
 
   return (
     <div className="mx-auto max-w-5xl pt-4 pb-12">
-      <h1 className="font-display text-xl font-semibold">Dashboard</h1>
-      <p className="text-sm text-ink-muted">The last {WEEKS} weeks · the current week is partial</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="font-display text-xl font-semibold">Dashboard</h1>
+          <p className="text-sm text-ink-muted">The last {WEEKS} weeks · the current week is partial</p>
+        </div>
+        {/* The Plan view has no tab of its own (Q2, variant A). */}
+        <Link
+          href="/plan"
+          className="-mr-3 inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-3 text-sm font-semibold text-ink transition hover:bg-sunken"
+        >
+          <PlanIcon size={18} /> Plan
+        </Link>
+      </div>
       <div className="mt-3 flex min-h-11 items-center gap-3">
         <SportFilterControl value={sport} />
         {(pending || firstLoad) && <LoadingIndicator />}

@@ -20,6 +20,7 @@ database, so it is not part of `pytest` or CI.
 
 import argparse
 import json
+import re
 import sys
 import uuid
 from datetime import date, timedelta
@@ -75,9 +76,15 @@ class EvalStore(db.PostgresStore):
 def load_case(path: Path, today: date | None = None) -> dict:
     """Load a case. "{today}" anywhere in it becomes today's date, so a case's
     optional `history` (earlier turns, sent before the question) and
-    `expect.tool_inputs` can refer to sessions logged on the day it runs."""
-    today = (today or date.today()).isoformat()
-    case = json.loads(path.read_text(encoding="utf-8").replace("{today}", today))
+    `expect.tool_inputs` can refer to sessions logged on the day it runs.
+    "{monday+N}" becomes the date N days after next Monday (plans start on a
+    Monday, #119)."""
+    today = today or date.today()
+    next_monday = today + timedelta(days=7 - today.weekday())
+    text = path.read_text(encoding="utf-8").replace("{today}", today.isoformat())
+    text = re.sub(r"\{monday\+(\d+)\}",
+                  lambda m: (next_monday + timedelta(days=int(m.group(1)))).isoformat(), text)
+    case = json.loads(text)
     if "seed_from" in case:
         case["seed"] = json.loads((CASES_DIR / f"{case['seed_from']}.json")
                                   .read_text(encoding="utf-8"))["seed"]
@@ -114,6 +121,8 @@ def seed(store: tools.Store, seed: dict, today: date) -> None:
                                     for c in fields["climbs"]]
             day = (today - timedelta(days=entry["days_ago"])).isoformat()
             tools.log_session(store, sport, day, **fields)
+    for g in seed.get("goals", []):  # after the sessions, so a pace goal gets its start
+        tools.set_goal(store, **g, today=today)
 
 
 def delete_user(conn, user_id: str) -> None:
@@ -235,6 +244,13 @@ class MemoryStore:
                 return dict(g)
         return None
 
+    # Plans (#119): a throwaway user has none, so propose_program can run offline.
+    def plans(self) -> list[dict]:
+        return []
+
+    def planned_sessions(self, plan_id=None, since=None, until=None) -> list[dict]:
+        return []
+
 
 def total_cost(costs: list[float | None]) -> float | None:
     return None if None in costs else sum(costs)
@@ -261,7 +277,10 @@ def run_case(client: anthropic.Anthropic, conn, case: dict,
         seed(store, case["seed"], date.today())
         history = case.get("history", [])
         messages = [*history, {"role": "user", "content": case["question"]}]
-        answer = chat.run_turn(client, store, messages, str(uuid.uuid4()))
+        # A case may turn on "Save without asking" (auto_save), e.g. to show
+        # that a plan still needs Accept (Q5).
+        answer = chat.run_turn(client, store, messages, str(uuid.uuid4()),
+                               auto_save=case.get("auto_save", False))
     finally:
         delete_user(conn, store.user_id)
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronIcon, KeyIcon, ListIcon, PinIcon, SignOutIcon } from "@/components/icons";
+import { ChevronIcon, KeyIcon, ListIcon, PinIcon, PlanIcon, SignOutIcon } from "@/components/icons";
 import { useSignOut } from "@/components/nav";
 import { BreakSection } from "@/components/break-section";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -19,6 +19,17 @@ export function YouView() {
         <li className={row}>
           <span className="flex-1 font-medium">Light or dark</span>
           <ThemeToggle />
+        </li>
+        <li>
+          {/* The Plan view has no tab of its own (Q2, variant A). */}
+          <Link href="/plan" className={`${row} hover:bg-sunken`}>
+            <PlanIcon size={20} />
+            <span className="flex-1">
+              <span className="block font-medium">Plan</span>
+              <span className="block text-sm text-ink-muted">Your training plan, week by week</span>
+            </span>
+            <ChevronIcon size={18} />
+          </Link>
         </li>
         <li>
           <Link href="/templates" className={`${row} hover:bg-sunken`}>

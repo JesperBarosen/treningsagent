@@ -15,6 +15,7 @@ import goals
 import grades
 import gyms
 import pauses
+import plans
 import progression
 
 # Strength and Other (#100) have only the core fields built in; templates shape them.
@@ -798,9 +799,10 @@ TOOLS = [
             "is partial), and the acute:chronic workload ratio (average daily load over "
             "the last 7 days / last 28 days). Use this when the user asks about load, "
             "fatigue, how hard a week was, whether to train harder or rest, or injury "
-            "risk. Ratios around 0.8-1.3 are commonly cited as a moderate range and above "
-            "~1.5 as a sharp spike (Gabbett 2016); treat this as a rough guide, not a "
-            "prediction. ratio_status is \"not_enough_data\" when under 28 days have "
+            "risk. The ratio is only a rough warning signal of how this week compares with "
+            "the last four: never call any range of it safe, never present it as an injury "
+            "risk or prediction, and don't quote a 'sweet spot' as fact (the research behind "
+            "such bands is weak; Impellizzeri 2020). ratio_status is \"not_enough_data\" when under 28 days have "
             "passed since the first logged session (history_days); then don't interpret "
             "the ratio, say there isn't enough history yet. ratio_status is \"paused\" "
             "while the user has paused tracking (`pause`); then don't interpret it either. "
@@ -921,7 +923,83 @@ LIST_TEMPLATES = {
     "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
 }
 
-TOOLS += [SET_GOAL, GET_GOALS, GET_TAG_PATTERNS, LIST_TEMPLATES]
+_TARGET = {
+    "type": "object",
+    "description": "All optional. duration_min and effort (1-10) give planned load; running needs "
+                   "distance_km so the load rules can be checked; climbing may list grades; a "
+                   "templated session puts its field values in `values`, in the template's shape",
+    "properties": {
+        "duration_min": {"type": "integer", "minimum": 1, "maximum": 600},
+        "effort": {"type": "integer", "minimum": 1, "maximum": 10},
+        "distance_km": {"type": "number"},
+        "grades": {"type": "array", "items": {
+            "type": "object",
+            "properties": {"system": {"type": "string", "enum": list(grades.SYSTEMS)},
+                           "grade": {"type": "string"}, "count": {"type": "integer"},
+                           "gym_id": {"type": "integer"}},
+            "required": ["grade"]}},
+        "values": {"type": "object"},
+    },
+    "additionalProperties": False,
+}
+
+PROPOSE_PROGRAM = {
+    "name": "propose_program",
+    "description": (
+        "Propose a training plan of 4-12 weeks, ONLY when the user asks for a plan. Nothing is "
+        "stored: the app shows it as a card with Accept and Dismiss, and only the user's Accept "
+        "saves it, whatever their settings. So call it a proposal; never say it is saved, "
+        "scheduled or set up. Start on a Monday. With a goal_id whose date is 4-12 weeks away, "
+        "leave out weeks: the goal's date sets the end. One plan at a time: if the user has "
+        "one, this fails and they can leave or finish it in the Plan view. The server checks "
+        "the sourced load rules (`rules_applied`: L1a longest run, L1b weekly running increase, "
+        "L2 lighter week every 4th week) and refuses a proposal that breaks one, listing why "
+        "and the `capacity` the rules allow: then change the plan, never the rules. If the "
+        "goal can't be fully built up in time within the rules, say so plainly and propose "
+        "what the rules allow. Put the key reasons in `rationale` (max 300 characters), citing "
+        "the rule and principle, e.g. 'runs grow at most 10% (L1a, P31)'. Rules marked needs "
+        "source (taper, combining sports, finger load) have no number: don't invent one. Call "
+        "list_templates first for templated sessions such as hangboard."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Short, e.g. '6 weeks to a red'"},
+            "start_date": {"type": "string", "description": "A Monday, YYYY-MM-DD, this week or later"},
+            "weeks": {"type": "integer", "minimum": 4, "maximum": 12},
+            "goal_id": {"type": "integer", "description": "From get_goals"},
+            "week_meta": {"type": "array", "items": {
+                "type": "object",
+                "properties": {"index": {"type": "integer"},
+                               "kind": {"type": "string", "enum": ["build", "deload", "taper", "test"]},
+                               "note": {"type": "string"}},
+                "required": ["index", "kind"]},
+                "description": "Weeks left out are build weeks"},
+            "rationale": {"type": "string"},
+            "sessions": {"type": "array", "items": {
+                "type": "object",
+                "properties": {"date": {"type": "string"}, "sport": {"type": "string", "enum": list(SPORTS)},
+                               "title": {"type": "string"}, "template_id": {"type": "integer"},
+                               "target": _TARGET},
+                "required": ["date", "sport", "title"]}},
+        },
+        "required": ["name", "start_date", "rationale", "sessions"],
+        "additionalProperties": False,
+    },
+}
+
+GET_PLAN = {
+    "name": "get_plan",
+    "description": (
+        "Get the user's current plan (active or paused): weeks, planned load per week, and this "
+        "week's and next week's planned sessions with their status (done, today, upcoming, "
+        "not_done, skipped, paused). Use it before answering 'what should I do today?' or "
+        "before proposing a plan. 'not_done' is neutral: never count it against the user."
+    ),
+    "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
+}
+
+TOOLS += [SET_GOAL, GET_GOALS, GET_TAG_PATTERNS, LIST_TEMPLATES, PROPOSE_PROGRAM, GET_PLAN]
 
 DRAFT_SESSION = {
     "name": "draft_session",
@@ -976,6 +1054,10 @@ def run_tool(store: Store, name: str, tool_input: dict) -> str:
         result = tag_patterns(store, **tool_input)
     elif name == "list_templates":
         result = templates_for_coach(store, **tool_input)
+    elif name == "propose_program":
+        result = plans.propose_program(store, **tool_input)
+    elif name == "get_plan":
+        result = plans.plan_for_coach(store, **tool_input)
     else:
         raise ValueError(f"unknown tool {name!r}")
     return json.dumps(result)
