@@ -102,11 +102,27 @@ test("Coach while typing: opaque composer, no tab bar (#138)", async ({ page }) 
   await page.getByLabel("Message").focus();
   await expect(page.getByRole("navigation", { name: "Main" })).toBeHidden(); // Log included
   expect(await alpha()).toBe(1);
-  // Pinned to the visible part's bottom (Chromium has no on-screen keyboard: the window's bottom).
+  // The column ends at the visible part's bottom (Chromium has no on-screen
+  // keyboard: the window's bottom), with the composer as its last child (#144).
   const box = await composer.boundingBox();
   const bottom = await page.evaluate(() => Math.round((visualViewport?.offsetTop ?? 0) + (visualViewport?.height ?? innerHeight)));
-  expect(Math.round(box!.y + box!.height)).toBe(bottom);
+  expect(Math.abs(Math.round(box!.y + box!.height) - bottom)).toBeLessThanOrEqual(1);
   await expectFits(page, "Coach while typing");
+});
+
+test("Coach: the document never scrolls, only the messages do (#144)", async ({ page }) => {
+  await open(page, "/");
+  const docScrolls = () => page.evaluate(() => document.documentElement.scrollHeight > document.documentElement.clientHeight);
+  expect(await docScrolls()).toBe(false);
+  const messages = page.getByTestId("messages");
+  expect(await messages.evaluate((el) => getComputedStyle(el).overflowY)).toBe("auto");
+  expect(await messages.evaluate((el) => getComputedStyle(el).overscrollBehaviorY)).toBe("contain");
+  // The composer is in the column, not fixed on its own.
+  expect(await page.getByTestId("composer").evaluate((el) => getComputedStyle(el).position)).toBe("static");
+  await page.getByLabel("Message").focus();
+  expect(await docScrolls()).toBe(false);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  await expectFits(page, "Coach column while typing");
 });
 
 test("Sessions, every filter", async ({ page }) => {
