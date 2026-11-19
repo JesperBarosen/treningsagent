@@ -71,6 +71,16 @@ def price(model: str) -> tuple[float, float]:
     return next((p for m, p in PRICES.items() if model.startswith(m)), FALLBACK_PRICE)
 
 
+def quota_tokens(usage: dict) -> float:
+    """What one call counts towards CHAT_TOKENS_PER_DAY (#142): input + output,
+    with cache writes and reads weighted like their price, so a turn served
+    from the prompt cache uses less of the daily quota. The database sums the
+    same thing (db.PostgresStore.tokens_since)."""
+    return (usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+            + CACHE_WRITE * usage.get("cache_creation_input_tokens", 0)
+            + CACHE_READ * usage.get("cache_read_input_tokens", 0))
+
+
 def cost(usage: dict) -> float:
     """USD for summed token usage of one model: input_tokens, output_tokens,
     cache_creation_input_tokens, cache_read_input_tokens."""
