@@ -1,7 +1,33 @@
 // Display rules for training plans (#118, #119, docs/training-plans.md). The
 // numbers come from the backend (plans.py); these only decide how to show them.
 
-import type { Goal, PlannedSession, PlannedState, PlanTarget, WeekKind, WeekMeta } from "./api";
+import type { Goal, PlannedSession, PlannedState, PlanTarget, PlanWeek, RunType, WeekKind, WeekMeta } from "./api";
+
+export const RUN_TYPE_LABEL: Record<RunType, string> = {
+  easy: "Easy",
+  long: "Long run",
+  intervals: "Intervals",
+  tempo: "Tempo",
+  recovery: "Recovery",
+};
+
+/** What the proposal card's week bars show (#135 bug: they were flat when no
+ *  session had both duration and effort). Planned load when any week has it,
+ *  else running km, else the number of sessions; one bar height per week, 0-1. */
+export function weekVolume(
+  weekly: PlanWeek[],
+  runningKm?: number[],
+): { unit: "load" | "km" | "sessions"; values: number[]; heights: number[] } {
+  const loads = weekly.map((w) => w.planned_load);
+  const km = runningKm ?? [];
+  const [unit, values]: ["load" | "km" | "sessions", number[]] = loads.some((v) => v > 0)
+    ? ["load", loads]
+    : km.some((v) => v > 0)
+      ? ["km", weekly.map((_, i) => km[i] ?? 0)]
+      : ["sessions", weekly.map((w) => w.sessions)];
+  const top = Math.max(...values, 0);
+  return { unit, values, heights: values.map((v) => (top > 0 ? v / top : 0)) };
+}
 import { BAND_LABELS } from "./dashboard";
 import { formatPace } from "./format";
 
@@ -11,9 +37,12 @@ export function goalLine(g: Goal): string {
   return `${BAND_LABELS[g.band]} at ${formatPace(g.target_pace)} /km`;
 }
 
-/** "35 min · effort 4 · 6 km · 3 × red", from whichever parts the target has. */
+/** "Tempo · 20 min at tempo effort · 50 min · effort 6 · 8 km · 3 × red", from
+ *  whichever parts the target has: the run's type and workout first (#135). */
 export function targetText(t: PlanTarget): string {
   const parts: string[] = [];
+  if (t.session_type) parts.push(RUN_TYPE_LABEL[t.session_type]);
+  if (t.workout) parts.push(t.workout);
   if (t.duration_min) parts.push(`${t.duration_min} min`);
   if (t.effort) parts.push(`effort ${t.effort}`);
   if (t.distance_km) parts.push(`${t.distance_km} km`);
