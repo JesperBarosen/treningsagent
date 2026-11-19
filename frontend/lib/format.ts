@@ -89,6 +89,9 @@ function toIso(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** Today on the user's own calendar, as YYYY-MM-DD. */
+export const todayIso = (): string => toIso(new Date());
+
 /** Monday of the calendar week containing `iso`, as YYYY-MM-DD. */
 export function weekStart(iso: string): string {
   const d = parseDay(iso);

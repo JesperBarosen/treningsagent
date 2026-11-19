@@ -390,9 +390,10 @@ def test_status_done_today_upcoming_not_done_skipped_paused(store):
     history(store)
     plan = plans.create_plan(store, propose(store)["accept"], today=TODAY)
     ids = [s["id"] for s in plan["sessions"]]
-    # Week 1: the Tuesday run done (a run logged that day), Thursday skipped.
-    store.insert_session({"sport": "running", "date": day(1), "duration_min": 40, "effort": 5,
-                          "distance_km": 6.2})
+    # Week 1: the Tuesday run done (a run logged that day, linked), Thursday skipped.
+    done = store.insert_session({"sport": "running", "date": day(1), "duration_min": 40, "effort": 5,
+                                 "distance_km": 6.2})
+    plans.link_planned(store, ids[0], done)
     plans.skip_planned(store, ids[1], "Travel")
     # A pause over week 3's Thursday.
     store.pauses.append({"id": 1, "start_date": day(16), "planned_end": day(18), "ended_on": None,
@@ -409,19 +410,15 @@ def test_status_done_today_upcoming_not_done_skipped_paused(store):
     assert {s["id"]: s["state"] for s in later["sessions"]}[ids[2]] == "not_done"
 
 
-def test_one_logged_session_counts_for_one_planned_session(store):
+def test_only_a_linked_session_makes_a_planned_one_done(store):
+    """#117 replaces the temporary rule (same sport, same day counts as done):
+    a session that isn't linked counts for nothing."""
     history(store)
     plan = plans.create_plan(store, propose(store)["accept"], today=TODAY)
-    plans.add_planned(store, {**run(1, 5), "plan_id": plan["id"], "title": "Strides"})
     store.insert_session({"sport": "running", "date": day(1), "duration_min": 40, "effort": 5,
                           "distance_km": 6})
     out = plans.get_plan(store, plan["id"], today=date.fromisoformat(day(2)))
-    tuesday = [s["state"] for s in out["sessions"] if s["date"] == day(1)]
-    assert sorted(tuesday) == ["done", "not_done"]
-    # Another sport that day counts for nothing.
-    store.insert_session({"sport": "climbing", "date": day(1), "duration_min": 60, "effort": 6})
-    out = plans.get_plan(store, plan["id"], today=date.fromisoformat(day(2)))
-    assert sorted(s["state"] for s in out["sessions"] if s["date"] == day(1)) == ["done", "not_done"]
+    assert [s["state"] for s in out["sessions"] if s["date"] == day(1)] == ["not_done"]
 
 
 def test_get_plan_for_the_coach(store):

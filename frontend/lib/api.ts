@@ -222,6 +222,8 @@ export type Session = {
   template?: string;
   custom_values?: TemplateValues;
   fields?: DescribedValue[];
+  /** After logging (#117): the planned session it counted for, or the ones to ask about. */
+  plan_link?: PlanLink;
   // Derived by the backend (get_history only).
   load?: number;
   pace_min_per_km?: number;
@@ -327,6 +329,21 @@ export type PlannedSession = {
   /** The logged session that did it, when done. */
   done?: { id: number; date: string; duration_min: number; effort: number; distance_km: number | null } | null;
 };
+
+/** How a logged session was matched to the plan (#117, Q6 option A): linked
+ *  (`auto` when the server found the single same-day match, so the app offers
+ *  Undo), or candidates to ask about. Empty when nothing planned matches. */
+export type PlanLink = { linked?: PlannedSession; auto?: boolean; candidates?: PlannedSession[] };
+
+/** Count a logged session as a planned one: "Yes" to "Was this Thursday's Easy run?". */
+export function linkPlanned(plannedId: number, sessionId: number): Promise<PlannedSession> {
+  return request(`/planned-sessions/${plannedId}/link`, { method: "POST", body: JSON.stringify({ session_id: sessionId }) });
+}
+
+/** Undo a link: the planned session is open again, the logged one stays. */
+export function unlinkPlanned(plannedId: number): Promise<PlannedSession> {
+  return request(`/planned-sessions/${plannedId}/link`, { method: "DELETE" });
+}
 
 export type PlanWeek = { index: number; kind: WeekKind; week_start: string; sessions: number; planned_load: number };
 
@@ -501,6 +518,8 @@ export type SessionInput = {
   /** A template (#100) and its values by field key; null on an edit drops the template. */
   template_id?: number | null;
   values?: TemplateValues;
+  /** "Log this" on a planned session (#132): saving links the two. */
+  planned_id?: number;
 };
 
 /** A climb as the Log form sends it. Without gym_id a colour goes to the last gym used. */

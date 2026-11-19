@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ApiError, deleteSession, type Session } from "@/lib/api";
+import { ApiError, deleteSession, type PlanLink, type Session } from "@/lib/api";
 import { REVEAL_UNIT, SENSITIVE } from "@/lib/discreet";
 import {
   dayLabel,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/format";
 import { ClimbChips } from "./grade";
 import { CheckIcon, SportBadge } from "./icons";
+import { PlanLinkNotice, type LinkChange } from "./plan-link-notice";
 import { Button } from "./states";
 
 /** One template value line: "Hangboard 5 kg · 10 s · 6 sets" (#111). In discreet
@@ -50,8 +51,11 @@ export function LoggedSessionCard({
   edited = false,
   onEdit,
   onUndone,
+  onLinkChange,
 }: {
   session: Session;
+  /** The link to a planned session changed from the card (#117). */
+  onLinkChange?: (change: LinkChange, link: PlanLink) => void;
   /** The session was deleted from the card: show it struck through, without actions. */
   undone?: boolean;
   /** The session was changed from the card since the agent logged it. */
@@ -112,6 +116,12 @@ export function LoggedSessionCard({
       {session.climbs && session.climbs.length > 0 && (
         <div className="mt-2.5 pl-11">
           <ClimbChips climbs={session.climbs} max={6} />
+        </div>
+      )}
+      {(session.plan_link?.linked || session.plan_link?.candidates?.length) && (
+        // Counted for a planned session, with Undo, or which one it was (#117).
+        <div className="mt-3">
+          <PlanLinkNotice sessionId={session.id} link={session.plan_link} onChange={onLinkChange} />
         </div>
       )}
       {error && (

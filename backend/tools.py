@@ -703,7 +703,9 @@ TOOLS = [
             "guess numbers. Use running fields only for running. For climbing, list "
             "each climb the user mentions in `climbs`, all in this one call. If the "
             "session fits one of the user's templates (list_templates), pass its "
-            "template_id and the fields they stated in `values`."
+            "template_id and the fields they stated in `values`. The result's plan_link "
+            "says if it counted for a planned session, or lists candidates to ask about "
+            "(see link_planned_session)."
         ),
         "input_schema": {
             "type": "object",
@@ -1076,8 +1078,30 @@ PROPOSE_PROFILE_UPDATE = {
     },
 }
 
+LINK_PLANNED_SESSION = {
+    "name": "link_planned_session",
+    "description": (
+        "Count a logged session as one of the user's planned sessions, or undo that (#117). "
+        "log_session links a single same-day match itself (its result's plan_link.linked, "
+        "auto true: tell the user, e.g. 'counted as today's Easy run'). When plan_link has "
+        "candidates instead, ask the user which planned session it was (e.g. 'Was this "
+        "Thursday's Easy run?') and call this with their answer; if none, do nothing. To undo "
+        "a link, pass session_id null. Never link without a match or the user's answer."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "planned_id": {"type": "integer", "description": "The planned session's id"},
+            "session_id": {"type": ["integer", "null"],
+                           "description": "The logged session's id, or null to undo the link"},
+        },
+        "required": ["planned_id", "session_id"],
+        "additionalProperties": False,
+    },
+}
+
 TOOLS += [SET_GOAL, GET_GOALS, GET_TAG_PATTERNS, LIST_TEMPLATES, PROPOSE_PROGRAM, GET_PLAN,
-          PROPOSE_PROFILE_UPDATE]
+          PROPOSE_PROFILE_UPDATE, LINK_PLANNED_SESSION]
 
 DRAFT_SESSION = {
     "name": "draft_session",
@@ -1116,6 +1140,17 @@ def run_tool(store: Store, name: str, tool_input: dict) -> str:
     """Dispatch a tool call from Claude and return the result as JSON text."""
     if name == "log_session":
         result = log_session(store, **tool_input)
+        # A single same-day planned match is linked; several come back to ask about (#117).
+        link = plans.link_after_logging(store, result)
+        if link:
+            result["plan_link"] = link
+    elif name == "link_planned_session":
+        session_id = tool_input.get("session_id")
+        try:
+            result = (plans.unlink_planned(store, tool_input["planned_id"]) if session_id is None
+                      else plans.link_planned(store, tool_input["planned_id"], session_id))
+        except LookupError as e:  # shown to the coach as a tool error, like a ValueError
+            raise ValueError(str(e)) from None
     elif name == "draft_session":
         result = draft_session(store, **tool_input)
     elif name == "get_history":

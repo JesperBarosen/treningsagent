@@ -549,7 +549,89 @@ def list_planned(store, since: str, until: str) -> list[dict]:
             store.planned_sessions(since=start.isoformat(), until=end.isoformat())]
 
 
-# --- Derived status (read only; storing links is #117) -------------------------------
+# --- Linking logged sessions to planned ones (#117, section 6, Q6 option A) -----------
+
+# A session counts for a planned one logged from the day before to two days after it.
+LINK_DAYS_BEFORE, LINK_DAYS_AFTER = 1, 2
+
+
+def _linked_to(store, session_id: int) -> dict | None:
+    """The planned session a logged one is linked to, if any."""
+    return next((p for p in store.planned_sessions() if p.get("session_id") == session_id), None)
+
+
+def check_linkable(store, planned_id: int, sport: str, session_id: int | None = None) -> dict:
+    """The planned session `planned_id`, if a `sport` session may be linked to
+    it. LookupError if it doesn't exist; ValueError if it is another sport or
+    already done by another session."""
+    p = _planned(store, planned_id)
+    if p["sport"] != sport:
+        raise ValueError(f"{p['title']} on {p['date']} is planned as {p['sport']}, not {sport}")
+    if p.get("session_id") and p["session_id"] != session_id:
+        raise ValueError(f"{p['title']} on {p['date']} is already done by another session; unlink that one first")
+    return p
+
+
+def link_planned(store, planned_id: int, session_id: int) -> dict:
+    """Link a logged session to a planned one: the planned session is done.
+    A skipped one counts as done again. A session does one planned session."""
+    session = store.get_session(session_id)
+    if session is None:
+        raise LookupError(f"session {session_id} not found")
+    p = check_linkable(store, planned_id, session["sport"], session_id)
+    other = _linked_to(store, session_id)
+    if other is not None and other["id"] != planned_id:
+        raise ValueError(f"that session already counts for {other['title']} on {other['date']}; unlink it first")
+    changes = {"session_id": session_id}
+    if p.get("status") == "skipped":
+        changes |= {"status": "planned", "skip_reason": None}
+    return decorate(store.update_planned(planned_id, changes), _plan_of(store, p.get("plan_id")))
+
+
+def unlink_planned(store, planned_id: int) -> dict:
+    """Undo a link: the planned session is open again; the logged one stays."""
+    p = _planned(store, planned_id)
+    return decorate(store.update_planned(planned_id, {"session_id": None}), _plan_of(store, p.get("plan_id")))
+
+
+def link_candidates(store, session: dict) -> list[dict]:
+    """Open planned sessions a logged one may be: same sport (and template, if
+    one is planned), not done or skipped, in a current plan or a one-off, from
+    two days before to the day after the session (so the session falls from the
+    day before to two days after the planned day)."""
+    if not hasattr(store, "planned_sessions"):
+        return []
+    day = _date(session["date"], "date")
+    rows = store.planned_sessions(since=(day - timedelta(days=LINK_DAYS_AFTER)).isoformat(),
+                                  until=(day + timedelta(days=LINK_DAYS_BEFORE)).isoformat())
+    plans = {p["id"]: p for p in store.plans()}
+    out = []
+    for p in rows:
+        plan = plans.get(p.get("plan_id"))
+        if p.get("plan_id") is not None and (plan is None or plan["status"] not in CURRENT):
+            continue
+        if (p.get("session_id") or p.get("status") == "skipped" or p["sport"] != session["sport"]
+                or (p.get("template_id") is not None and p["template_id"] != session.get("template_id"))):
+            continue
+        out.append(decorate(p, plan))
+    return sorted(out, key=lambda p: (abs((_date(p["date"], "date") - day).days), p["date"], p["slot"]))
+
+
+def link_after_logging(store, session: dict, planned_id: int | None = None) -> dict:
+    """After a session is logged (form, chat or later imports). With
+    `planned_id` ("Log this" in the Plan view) it links that one. Otherwise,
+    exactly one candidate on the same day is linked automatically, and the app
+    offers Undo; one on another day, or several, come back as `candidates` for
+    the app or the coach to ask about. Nothing matching: {}."""
+    if planned_id is not None:
+        return {"linked": link_planned(store, planned_id, session["id"]), "auto": False}
+    found = link_candidates(store, session)
+    if len(found) == 1 and found[0]["date"] == session["date"]:
+        return {"linked": link_planned(store, found[0]["id"], session["id"]), "auto": True}
+    return {"candidates": found} if found else {}
+
+
+# --- Derived status (read only) ------------------------------------------------------
 
 def _paused(day: date, pause_rows: list[dict]) -> bool:
     """Whether `day` falls inside a pause: from its start to the day before it
@@ -569,22 +651,16 @@ def _paused(day: date, pause_rows: list[dict]) -> bool:
 
 def with_status(planned: list[dict], logged: list[dict], pause_rows: list[dict], today: date) -> list[dict]:
     """Give each planned session (in place) its status and the session that
-    did it. A planned session is done when it is linked (session_id) or, until
-    #117 stores links, when a session of the same sport (and template, if
-    planned) was logged that day and isn't already counted for another planned
-    session. Never judgemental: "not done" is only a past day with nothing
-    logged, and nothing about it is stored (P17, P24, Q7)."""
+    did it. A planned session is done only when a logged session is linked to
+    it (session_id, #117); the link is made when logging, never guessed here.
+    Never judgemental: "not done" is only a past day with nothing linked, and
+    nothing about it is stored (P17, P24, Q7)."""
     by_id = {s["id"]: s for s in logged}
-    used = {p["session_id"] for p in planned if p.get("session_id")}
-    for p in sorted(planned, key=lambda p: (p["date"], p["slot"])):
-        done = by_id.get(p.get("session_id"))
-        if done is None and not p.get("session_id"):
-            done = next((s for s in logged if s["id"] not in used and s["date"] == p["date"]
-                         and s["sport"] == p["sport"]
-                         and (p.get("template_id") is None or s.get("template_id") == p["template_id"])),
-                        None)
-            if done is not None:
-                used.add(done["id"])
+    for p in planned:
+        done = None
+        if p.get("session_id"):
+            # A session logged before the plan's start isn't in `logged`; it still did it.
+            done = by_id.get(p["session_id"], {"id": p["session_id"], "date": None})
         day = _date(p["date"], "date")
         if done is not None:
             status = "done"
