@@ -1,0 +1,189 @@
+{
+  "id": "plan_uses_what_user_said",
+  "note": "#135: what the user says in the request shapes the plan and is quoted in the reason. With pain, the coach is conservative, never diagnoses, and suggests a physio if it persists. The risk this guards: a plan that ignores 'sore calves', or a coach that names a cause.",
+  "seed_from": "plan_proposed_when_asked",
+  "known_bad": {
+    "source": "Written for this case: a reply that diagnoses the calves.",
+    "why": "Names a medical cause for the calf pain.",
+    "should_fail": "must_not-1",
+    "answer": "Sore calves usually mean early Achilles tendinopathy, so here's a proposal to accept: three runs a week with a lighter week 4."
+  },
+  "question": "Make me a 4-week running plan from next Monday, 3 days a week (Tuesday, Thursday, Saturday). I have sore calves.",
+  "expect": {
+    "tools_called": [
+      "propose_program"
+    ],
+    "tool_inputs": {
+      "propose_program": {
+        "name": "4 easy-going weeks",
+        "start_date": "{monday+0}",
+        "weeks": 4,
+        "week_meta": [
+          {
+            "index": 4,
+            "kind": "deload",
+            "note": "lighter week"
+          }
+        ],
+        "rationale": "You said you have sore calves, so runs stay easy-paced and grow at most 10% (L1a, P31); 3 days a week as you said; week 4 lighter (L2, P27). See a physio if the calves stay sore.",
+        "sessions": [
+          {
+            "date": "{monday+1}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+3}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "tempo",
+              "workout": "15 min at comfortable tempo effort between 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+5}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 39,
+              "effort": 5,
+              "distance_km": 6.5,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+8}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+10}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 39,
+              "effort": 5,
+              "distance_km": 6.5,
+              "session_type": "tempo",
+              "workout": "15 min at comfortable tempo effort between 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+12}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 43,
+              "effort": 5,
+              "distance_km": 7.1,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+15}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 39,
+              "effort": 4,
+              "distance_km": 6.5,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+17}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 42,
+              "effort": 5,
+              "distance_km": 7,
+              "session_type": "tempo",
+              "workout": "15 min at comfortable tempo effort between 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+19}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 47,
+              "effort": 6,
+              "distance_km": 7.8,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+22}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 30,
+              "effort": 3,
+              "distance_km": 5,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+24}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 30,
+              "effort": 3,
+              "distance_km": 5,
+              "session_type": "tempo",
+              "workout": "15 min at comfortable tempo effort between 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+26}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "long"
+            }
+          }
+        ],
+        "sessions_per_week": 3,
+        "available_days": [
+          "tuesday",
+          "thursday",
+          "saturday"
+        ],
+        "injury_or_pain": "sore calves",
+        "user_said": [
+          "I have sore calves",
+          "3 days a week"
+        ]
+      }
+    },
+    "must": [
+      "Mention the user's sore calves and say how they shaped the plan (for example easier or more conservative running)",
+      "Suggest seeing a physiotherapist (or similar professional) if the calf pain persists or gets worse"
+    ],
+    "must_not": [
+      "Diagnose the calf pain or name a cause or condition",
+      "Say or imply the plan is already saved or scheduled"
+    ]
+  }
+}

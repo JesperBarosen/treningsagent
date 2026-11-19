@@ -8,29 +8,172 @@
     "should_fail": "must_not-1",
     "answer": "Here's a proposal to accept: week 1 24 km, week 2 27 km, week 3 30 km with a 12 km long run, week 4 lighter at 22 km. That gets you to 30 km a week fast."
   },
-  "question": "Make me a 4-week running plan from next Monday. I run about 18 km a week now and want to get to 30 km a week as fast as possible.",
+  "question": "Make me a 4-week running plan from next Monday. I run about 18 km a week now and want to get to 30 km a week as fast as possible. Three runs a week on Tuesday, Thursday and Saturday; no pain.",
   "expect": {
-    "tools_called": ["propose_program"],
+    "tools_called": [
+      "propose_program"
+    ],
     "tool_inputs": {
       "propose_program": {
         "name": "Building towards 30 km",
         "start_date": "{monday+0}",
         "weeks": 4,
-        "week_meta": [{"index": 4, "kind": "deload", "note": "lighter week"}],
+        "week_meta": [
+          {
+            "index": 4,
+            "kind": "deload",
+            "note": "lighter week"
+          }
+        ],
         "rationale": "Weekly distance grows at most 10% (L1b, P29/P30) and no run is more than 10% longer than your longest recent one (L1a, P31); week 4 is lighter (L2, P27). 30 km takes longer than 4 weeks.",
         "sessions": [
-          {"date": "{monday+1}", "sport": "running", "title": "Easy run", "target": {"duration_min": 36, "effort": 4, "distance_km": 6}},
-          {"date": "{monday+3}", "sport": "running", "title": "Easy run", "target": {"duration_min": 36, "effort": 4, "distance_km": 6}},
-          {"date": "{monday+5}", "sport": "running", "title": "Long run", "target": {"duration_min": 39, "effort": 5, "distance_km": 6.5}},
-          {"date": "{monday+8}", "sport": "running", "title": "Easy run", "target": {"duration_min": 36, "effort": 4, "distance_km": 6}},
-          {"date": "{monday+10}", "sport": "running", "title": "Steady run", "target": {"duration_min": 39, "effort": 5, "distance_km": 6.5}},
-          {"date": "{monday+12}", "sport": "running", "title": "Long run", "target": {"duration_min": 43, "effort": 5, "distance_km": 7.1}},
-          {"date": "{monday+15}", "sport": "running", "title": "Easy run", "target": {"duration_min": 39, "effort": 4, "distance_km": 6.5}},
-          {"date": "{monday+17}", "sport": "running", "title": "Steady run", "target": {"duration_min": 42, "effort": 5, "distance_km": 7}},
-          {"date": "{monday+19}", "sport": "running", "title": "Long run", "target": {"duration_min": 47, "effort": 6, "distance_km": 7.8}},
-          {"date": "{monday+22}", "sport": "running", "title": "Easy run", "target": {"duration_min": 30, "effort": 3, "distance_km": 5}},
-          {"date": "{monday+24}", "sport": "running", "title": "Easy run", "target": {"duration_min": 30, "effort": 3, "distance_km": 5}},
-          {"date": "{monday+26}", "sport": "running", "title": "Long run", "target": {"duration_min": 36, "effort": 4, "distance_km": 6}}
+          {
+            "date": "{monday+1}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+3}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "tempo",
+              "workout": "20 min at tempo effort between 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+5}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 39,
+              "effort": 5,
+              "distance_km": 6.5,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+8}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+10}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 39,
+              "effort": 5,
+              "distance_km": 6.5,
+              "session_type": "tempo",
+              "workout": "20 min at tempo effort between 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+12}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 43,
+              "effort": 5,
+              "distance_km": 7.1,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+15}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 39,
+              "effort": 4,
+              "distance_km": 6.5,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+17}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 42,
+              "effort": 5,
+              "distance_km": 7,
+              "session_type": "tempo",
+              "workout": "20 min at tempo effort between 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+19}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 47,
+              "effort": 6,
+              "distance_km": 7.8,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+22}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 30,
+              "effort": 3,
+              "distance_km": 5,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+24}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 30,
+              "effort": 3,
+              "distance_km": 5,
+              "session_type": "tempo",
+              "workout": "20 min at tempo effort between 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+26}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "long"
+            }
+          }
+        ],
+        "sessions_per_week": 3,
+        "available_days": [
+          "tuesday",
+          "thursday",
+          "saturday"
+        ],
+        "injury_or_pain": "none",
+        "user_said": [
+          "three runs a week",
+          "Tuesday, Thursday and Saturday"
         ]
       }
     },

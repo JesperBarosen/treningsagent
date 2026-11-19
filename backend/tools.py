@@ -932,6 +932,11 @@ _TARGET = {
         "duration_min": {"type": "integer", "minimum": 1, "maximum": 600},
         "effort": {"type": "integer", "minimum": 1, "maximum": 10},
         "distance_km": {"type": "number"},
+        "session_type": {"type": "string", "enum": list(plans.RUN_TYPES),
+                         "description": "Running: easy, long, intervals, tempo or recovery"},
+        "workout": {"type": "string", "description": "Concrete content, required for intervals and tempo, "
+                                                     "e.g. '6 x 800 m at 10 km pace, 90 s jog rest' or "
+                                                     "'20 min at tempo effort between 10 min easy'"},
         "grades": {"type": "array", "items": {
             "type": "object",
             "properties": {"system": {"type": "string", "enum": list(grades.SYSTEMS)},
@@ -947,9 +952,19 @@ PROPOSE_PROGRAM = {
     "name": "propose_program",
     "description": (
         "Propose a training plan of 4-12 weeks, ONLY when the user asks for a plan. Nothing is "
-        "stored: the app shows it as a card with Accept and Dismiss, and only the user's Accept "
-        "saves it, whatever their settings. So call it a proposal; never say it is saved, "
-        "scheduled or set up. Start on a Monday. With a goal_id whose date is 4-12 weeks away, "
+        "stored: the app shows it as a card with Accept, Dismiss and View plan, and only the "
+        "user's Accept saves it, whatever their settings. So call it a proposal; never say it is "
+        "saved, scheduled or set up. Start on a Monday. BEFORE calling it you need, from the user "
+        "(never guessed): sessions_per_week, available_days, and injury_or_pain ('none' if they "
+        "said none); check current form with get_training_load or get_history. If any is missing, "
+        "ask for all of it in one short message instead of calling. Put what the user said that "
+        "shaped the plan in user_said (short quotes, e.g. 'I have sore calves', '3 days a week'); "
+        "the card shows them, and the rationale must reflect them. With injury or pain, be "
+        "conservative, never diagnose, and suggest a physiotherapist if it persists. Every session "
+        "needs duration_min and effort; every run a session_type. A running plan of 3+ runs a week "
+        "mixes most volume easy, one long run and one or two quality sessions (intervals or tempo) "
+        "with a concrete workout; no quality session in the last days before a goal date. (This "
+        "intensity rule, L8, has no sourced numbers yet: don't quote any.) With a goal_id whose date is 4-12 weeks away, "
         "leave out weeks: the goal's date sets the end. One plan at a time: if the user has "
         "one, this fails and they can leave or finish it in the Plan view. The server checks "
         "the sourced load rules (`rules_applied`: L1a longest run, L1b weekly running increase, "
@@ -976,6 +991,15 @@ PROPOSE_PROGRAM = {
                 "required": ["index", "kind"]},
                 "description": "Weeks left out are build weeks"},
             "rationale": {"type": "string"},
+            "sessions_per_week": {"type": "integer", "minimum": 1, "maximum": 14,
+                                  "description": "As the user said; ask if unknown"},
+            "available_days": {"type": "array", "items": {"type": "string"},
+                               "description": "Weekday names the user can train, e.g. ['tuesday', 'thursday', 'saturday']"},
+            "injury_or_pain": {"type": "string",
+                               "description": "What the user said about injury or pain, or 'none'; an "
+                                              "active injury pause is checked automatically"},
+            "user_said": {"type": "array", "items": {"type": "string"}, "maxItems": 5,
+                          "description": "Short quotes from the user that shaped the plan"},
             "sessions": {"type": "array", "items": {
                 "type": "object",
                 "properties": {"date": {"type": "string"}, "sport": {"type": "string", "enum": list(SPORTS)},

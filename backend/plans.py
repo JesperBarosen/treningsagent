@@ -30,6 +30,10 @@ PER_DAY = 2                     # planned sessions on one day
 MAX_SESSIONS = 7 * MAX_WEEKS * PER_DAY
 MAX_TARGET_BYTES = 8192
 MAX_GRADE_TARGETS = 10
+# Kinds of run (#135): most volume easy, a long run, and a few quality sessions.
+RUN_TYPES = ("easy", "long", "intervals", "tempo", "recovery")
+QUALITY = ("intervals", "tempo")
+WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 
 # Load rules (docs/training-plans.md section 5, principles P25-P33 in
 # docs/design-research.md section 1.7). Sourced values are cautious defaults:
@@ -50,7 +54,9 @@ _SOURCED = {
 }
 _UNSOURCED = ("max_weekly_increase", "deload_factor", "taper_weeks", "taper_factor",
               "max_hard_days_in_a_row", "finger_rest_days", "return_start_factor",
-              "replan_threshold")
+              "replan_threshold",
+              # L8 intensity distribution (#135): no paper in research/ gives these numbers.
+              "easy_share_min", "quality_sessions_per_week_max", "taper_quality_free_days")
 RULES: dict[str, dict] = {
     **{k: {**v, "status": "sourced"} for k, v in _SOURCED.items()},
     **{k: {"value": None, "status": "needs source"} for k in _UNSOURCED},
@@ -152,13 +158,15 @@ def _optional_fields(template: dict) -> dict:
 def validate_target(sport: str, target, template: dict | None = None,
                     gym_list: list[dict] | None = None) -> dict:
     """A planned session's target, or ValueError. Keys, all optional:
-    duration_min, effort (1-10); distance_km (running); grades (climbing,
-    a list of grade targets); values (template field values, as in a session)."""
+    duration_min, effort (1-10); distance_km and session_type (running);
+    workout (a concrete description, e.g. "6 x 800 m at 10 km pace, 90 s jog
+    rest"); grades (climbing, a list of grade targets); values (template field
+    values, as in a session)."""
     target = {} if target is None else target
     if not isinstance(target, dict):
         raise ValueError("target must be an object")
-    allowed = {"duration_min", "effort"}
-    allowed |= {"distance_km"} if sport == "running" else set()
+    allowed = {"duration_min", "effort", "workout"}
+    allowed |= {"distance_km", "session_type"} if sport == "running" else set()
     allowed |= {"grades"} if sport == "climbing" else set()
     allowed |= {"values"} if template is not None else set()
     unknown = set(target) - allowed
@@ -174,6 +182,12 @@ def validate_target(sport: str, target, template: dict | None = None,
         if isinstance(d, bool) or not isinstance(d, (int, float)) or not 0 < d <= 200:
             raise ValueError("target distance_km must be between 0 and 200")
         out["distance_km"] = round(float(d), 2)
+    if target.get("session_type") is not None:
+        if target["session_type"] not in RUN_TYPES:
+            raise ValueError(f"session_type must be one of {RUN_TYPES}, got {target['session_type']!r}")
+        out["session_type"] = target["session_type"]
+    if target.get("workout") is not None:
+        out["workout"] = _text(target["workout"], "workout", 160)
     if target.get("grades") is not None:
         items = target["grades"]
         if not isinstance(items, list) or len(items) > MAX_GRADE_TARGETS:
@@ -665,19 +679,113 @@ def check_rules(row: dict, rows: list[dict], history: list[dict], today: date) -
 
 # --- The coach's tools (#119) -----------------------------------------------------------
 
-def propose_program(store, today: date | None = None, **body) -> dict:
+def _context(sessions_per_week, available_days, injury_or_pain, user_said) -> dict:
+    """What the coach must know before proposing (#135): how often and on which
+    days the user can train, and any injury or pain, in their words. Missing
+    parts mean the coach should have asked first."""
+    spw = _int(sessions_per_week, "sessions_per_week", 1, 14)
+    if not isinstance(available_days, list) or not available_days:
+        raise ValueError("available_days is required: ask the user which days they can train")
+    days = []
+    for d in available_days:
+        name = str(d).strip().lower()
+        match = next((w for w in WEEKDAYS if w.startswith(name[:3])), None) if len(name) >= 3 else None
+        if match is None:
+            raise ValueError(f"available_days must be weekday names, got {d!r}")
+        days.append(match)
+    pain = _text(injury_or_pain, "injury_or_pain", 200)  # "none" when the user said so
+    said = user_said or []
+    if not isinstance(said, list) or len(said) > 5:
+        raise ValueError("user_said must be a list of at most 5 short quotes")
+    said = [_text(s, "a user_said quote", 80) for s in said]
+    return {"sessions_per_week": spw, "available_days": sorted(set(days), key=WEEKDAYS.index),
+            "injury_or_pain": pain, "user_said": said}
+
+
+def _check_proposal(rows: list[dict], ctx: dict, plan: dict) -> list[str]:
+    """Stricter than a plan the user edits (#135): every session has duration
+    and effort, so planned load can be shown; every run has a type; a quality
+    run has a concrete workout; sessions fall on the user's days and don't
+    exceed how many they said a week."""
+    problems = []
+    per_week: dict[int, int] = {}
+    for r in rows:
+        t = r["target"]
+        if t.get("duration_min") is None or t.get("effort") is None:
+            problems.append(f"{r['date']} {r['title']}: needs duration_min and effort, so planned load can be shown")
+        if r["sport"] == "running":
+            if t.get("session_type") is None:
+                problems.append(f"{r['date']} {r['title']}: needs a session_type ({', '.join(RUN_TYPES)})")
+            elif t["session_type"] in QUALITY and not t.get("workout"):
+                problems.append(f"{r['date']} {r['title']}: a {t['session_type']} session needs a concrete "
+                                "workout, e.g. '6 x 800 m at 10 km pace, 90 s jog rest'")
+        weekday = WEEKDAYS[_date(r["date"], "date").weekday()]
+        if weekday not in ctx["available_days"]:
+            problems.append(f"{r['date']} is a {weekday.title()}, not one of the user's days "
+                            f"({', '.join(d.title() for d in ctx['available_days'])})")
+        week = week_index(plan, r["date"])
+        per_week[week] = per_week.get(week, 0) + 1
+    for week, n in sorted(per_week.items()):
+        if n > ctx["sessions_per_week"]:
+            problems.append(f"week {week} has {n} sessions; the user said {ctx['sessions_per_week']} a week")
+    return problems
+
+
+def intensity(rows: list[dict], plan: dict) -> dict:
+    """L8, intensity distribution (needs source): per week, running km by
+    session type, the easy share and the quality sessions. Reported, with
+    notes, but not enforced: no paper in research/ gives the numbers."""
+    weeks = []
+    notes = []
+    kinds = [w["kind"] for w in plan["week_meta"]]
+    for i in range(int(plan["weeks"])):
+        runs = [r for r in rows if r["sport"] == "running" and week_index(plan, r["date"]) == i + 1]
+        km = sum(_km(r) for r in runs)
+        quality = [r for r in runs if r["target"].get("session_type") in QUALITY]
+        easy_km = sum(_km(r) for r in runs if r["target"].get("session_type") in ("easy", "long", "recovery"))
+        weeks.append({"week": i + 1, "runs": len(runs), "quality_sessions": len(quality),
+                      "easy_share": round(easy_km / km, 2) if km else None})
+        if len(runs) >= 3 and not quality and kinds[i] == "build":
+            notes.append(f"week {i + 1}: 3+ runs and no quality session (intervals or tempo); "
+                         "consider one, unless the user's form or pain says otherwise")
+        if kinds[i] == "taper" and quality:
+            notes.append(f"week {i + 1} is a taper week with a quality session: keep it well before "
+                         "the goal date (L8 needs source: no number for how many days)")
+    return {"weeks": weeks, "notes": notes}
+
+
+def propose_program(store, today: date | None = None, *, sessions_per_week=None, available_days=None,
+                    injury_or_pain=None, user_said=None, **body) -> dict:
     """A plan the coach proposes: validated and checked against the load rules,
     never stored. The app shows it as a card; only the user's Accept stores it
-    (POST /plans), whatever the "Save without asking" setting (Q5)."""
+    (POST /plans), whatever the "Save without asking" setting (Q5).
+
+    The coach must first know the user's sessions per week, available days and
+    any injury or pain (#135): without them the tool refuses, so the coach asks.
+    During an active injury or illness pause it proposes no regular plan."""
     today = today or date.today()
     current = current_plan(store) if hasattr(store, "plans") else None
     if current:
         raise ValueError(f"the user already has a plan ({current['name']!r}, {current['status']}); "
                          "they can leave or finish it in the Plan view before a new one (Q3)")
+    pause = store.active_pause() if hasattr(store, "active_pause") else None
+    if pause and pause.get("reason") in ("injury", "illness"):
+        raise ValueError(f"the user is on an {pause['reason']} pause: propose no regular plan. Offer a "
+                         "gentle restart for after the pause, never diagnose, and suggest a "
+                         "physiotherapist or doctor if pain persists")
+    missing = [k for k, v in (("sessions_per_week", sessions_per_week), ("available_days", available_days),
+                              ("injury_or_pain", injury_or_pain)) if v in (None, "", [])]
+    if missing:
+        raise ValueError(f"missing {', '.join(missing)}: ask the user in one short message (how many "
+                         "sessions a week, which days, any injury or pain) instead of guessing")
+    ctx = _context(sessions_per_week, available_days, injury_or_pain, user_said)
     row, rows = validate_plan({**body, "source": "coach"},
                               goals=store.goals() if hasattr(store, "goals") else [],
                               templates=store.templates() if hasattr(store, "templates") else [],
                               gym_list=store.gyms() if hasattr(store, "gyms") else [], today=today)
+    problems = _check_proposal(rows, ctx, row)
+    if problems:
+        raise ValueError("fix the proposal: " + "; ".join(problems))
     history = store.sessions_since((today - timedelta(days=45)).isoformat())
     checks = check_rules(row, rows, history, today)
     if checks["violations"]:
@@ -698,10 +806,15 @@ def propose_program(store, today: date | None = None, **body) -> dict:
               "source": "coach",
               "sessions": [{k: r[k] for k in ("date", "sport", "template_id", "title", "target")}
                            for r in rows]}
+    mix = intensity(rows, row)
+    notes = checks["notes"] + mix["notes"]
+    if ctx["injury_or_pain"].strip().lower() not in ("none", "no", "nothing"):
+        notes.append("the user mentioned injury or pain: keep the plan conservative, never diagnose, "
+                     "and suggest a physiotherapist if the pain persists or gets worse")
     return {"proposal": True, "stored": False, "plan": shown, "accept": accept,
-            "goal": goal, "rules_applied": [f"{v['rule']}: {v['text']} [{v['source']}]"
-                                            for v in _SOURCED.values()],
-            "needs_source": list(_UNSOURCED), "notes": checks["notes"], "capacity": checks["capacity"]}
+            "goal": goal, "context": ctx, "intensity": mix["weeks"],
+            "rules_applied": [f"{v['rule']}: {v['text']} [{v['source']}]" for v in _SOURCED.values()],
+            "needs_source": list(_UNSOURCED), "notes": notes, "capacity": checks["capacity"]}
 
 
 def plan_for_coach(store, today: date | None = None) -> dict:
