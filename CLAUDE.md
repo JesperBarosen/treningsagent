@@ -3,6 +3,7 @@
 ## Branches
 - Every change goes on its own branch from the latest `main`, named after the feature (e.g. `dashboard`, `auth`, `deploy`).
 - Never commit or push directly to `main`.
+- Create every git worktree inside `C:\Users\jespe\kode\treningsagent-worktrees\<branch-name>` (e.g. `...\treningsagent-worktrees\fix\coach-scroll-jank`), never next to the repo. Don't switch branches in the main folder while the user may be testing there; use a worktree instead.
 
 ## Commits
 - Small commits with clear messages.
