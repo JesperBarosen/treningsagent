@@ -292,7 +292,7 @@ export type WeekKind = "build" | "deload" | "taper" | "test";
 export type WeekMeta = { index: number; kind: WeekKind; note: string | null };
 
 /** A planned session's target: every part optional (docs/training-plans.md 3). */
-export type RunType = "easy" | "long" | "intervals" | "tempo" | "recovery";
+export type RunType = "easy" | "long" | "strides" | "intervals" | "tempo" | "recovery";
 
 export type PlanTarget = {
   duration_min?: number;
