@@ -1,0 +1,22 @@
+{
+  "id": "plan_asks_first",
+  "note": "#135: before propose_program the coach must know sessions per week, available days and any injury or pain. Asked for 'a plan' with none of that, it asks for all of it in one short message instead of guessing a plan. The risk this guards: a plan built on invented days and frequency, or a string of separate questions.",
+  "seed_from": "plan_proposed_when_asked",
+  "known_bad": {
+    "source": "Written for this case: a coach that guesses instead of asking.",
+    "why": "Proposes a plan with invented days and frequency instead of asking.",
+    "should_fail": "must_not-1",
+    "answer": "Here's a proposal to accept: four runs a week on Monday, Wednesday, Friday and Sunday, with a long run on Sundays and a tempo run on Wednesdays."
+  },
+  "question": "Make me a running plan.",
+  "expect": {
+    "tools_called": [],
+    "must": [
+      "Ask, in one short message, how many sessions a week the user can train, on which days, and whether they have any injury or pain"
+    ],
+    "must_not": [
+      "Propose or describe a plan, or name training days the user didn't give",
+      "Diagnose anything or mention an injury the user didn't report"
+    ]
+  }
+}
