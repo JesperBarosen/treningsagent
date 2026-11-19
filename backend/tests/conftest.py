@@ -296,7 +296,8 @@ class FakeStore:
         return out
 
     def tokens_since(self, since) -> int:
-        return sum(c["input_tokens"] + c["output_tokens"] for c in self._calls_since(self.model_calls, since))
+        import limits
+        return round(sum(limits.quota_tokens(c) for c in self._calls_since(self.model_calls, since)))
 
     def claim_chat_request(self, limit: int, since):
         recent = sorted(t for t in self.chat_requests if t > since)
@@ -330,10 +331,16 @@ class FakeClient:
         self.requests: list[dict] = []
         self.systems: list[str] = []
         self.tools: list[list[str]] = []
+        # Every request's arguments, snapshotted (system blocks, tools with
+        # their cache_control, the top-level cache_control): prompt caching #142.
+        self.calls: list[dict] = []
         self.messages = self  # so client.messages.create(...) works
 
     def create(self, **kwargs):
         self.requests.append(json.loads(json.dumps(kwargs["messages"])))  # snapshot
-        self.systems.append(kwargs["system"])
+        system = kwargs["system"]
+        # The prompt as text, whether it is a string or a list of blocks.
+        self.systems.append(system if isinstance(system, str) else "".join(b["text"] for b in system))
         self.tools.append([t["name"] for t in kwargs["tools"]])
+        self.calls.append(json.loads(json.dumps({k: v for k, v in kwargs.items() if k != "messages"})))
         return self.responses.pop(0)
