@@ -108,9 +108,17 @@ export const dismissedPlanNote = (p: PlanProposal) =>
 const withNote = (history: unknown[], note: string) =>
   history.length ? [...history, { role: "user", content: note }] : history;
 
+/** The conversation without error bubbles (limit notices included): they
+ *  describe a moment, not the chat, so they're neither saved nor restored (#144). */
+export const withoutErrors = (c: Conversation): Conversation => ({
+  ...c,
+  items: c.items.filter((i) => i.role !== "error"),
+});
+
 function loadConversation(userId: string): Conversation {
   const saved = loadChat(userId);
-  return saved && typeof saved === "object" ? { ...EMPTY, ...saved } : EMPTY;
+  // Chats saved before #144 may still hold a notice: drop it on the way in.
+  return saved && typeof saved === "object" ? withoutErrors({ ...EMPTY, ...(saved as Conversation) }) : EMPTY;
 }
 
 const newId = () => Math.random().toString(36).slice(2);
@@ -125,10 +133,8 @@ export function Chat() {
   // The logged session whose sheet is open in edit mode, from its card's Edit.
   const [editing, setEditing] = useState<Session | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const endRef = useRef<HTMLDivElement>(null);
-  const lastRef = useRef<HTMLDivElement>(null);
-  const listBoxRef = useRef<HTMLDivElement>(null);
-  const composerRef = useRef<HTMLDivElement>(null);
+  // The messages area: the only thing on Coach that scrolls (#144).
+  const scrollRef = useRef<HTMLDivElement>(null);
   const keyboard = useComposerKeyboard();
 
   // Restore after mount (the server render has no localStorage), for the signed-in user only.
@@ -155,32 +161,18 @@ export function Chat() {
   }, []);
 
   useEffect(() => {
-    if (restored && userId) saveChat(userId, convo);
+    // Limit notices and other error bubbles are temporary (#144): never saved,
+    // so a reload doesn't bring back a notice that may no longer apply.
+    if (restored && userId) saveChat(userId, withoutErrors(convo));
   }, [convo, restored, userId]);
 
+  // The last message sits right above the composer: keep the messages area
+  // scrolled to its end on a new message and when the keyboard opens or the
+  // visible height changes (#144). The document itself never scrolls.
   useEffect(() => {
-    if (keyboard.active) return; // while typing, the effect below places the conversation
-    endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [convo.items.length, sending, keyboard.active]);
-
-  // While typing on a phone (#138): room under the conversation for the keyboard
-  // and the composer, and its last message right above the composer. Set on the
-  // elements directly (no re-render); cleared when the keyboard closes, so the
-  // page looks exactly as before.
-  useEffect(() => {
-    const box = listBoxRef.current;
-    const last = lastRef.current;
-    if (!box || !last) return;
-    if (!keyboard.active) {
-      box.style.paddingBottom = "";
-      last.style.scrollMarginBottom = "";
-      return;
-    }
-    const composer = composerRef.current?.offsetHeight ?? 0;
-    box.style.paddingBottom = `${keyboard.inset + composer + 16}px`;
-    last.style.scrollMarginBottom = `${composer + 8}px`;
-    last.scrollIntoView({ block: "end" });
-  }, [keyboard.active, keyboard.inset, keyboard.top, convo.items.length, sending]);
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [convo.items.length, sending, keyboard.active, keyboard.height]);
 
   async function send(text: string) {
     const message = text.trim();
@@ -358,8 +350,17 @@ export function Chat() {
   const empty = restored && convo.items.length === 0;
 
   return (
-    <>
-      <div className="flex items-center justify-between pt-4 pb-2">
+    // Coach is a fixed-height column (#144): the document never scrolls; only the
+    // messages area does, and the composer is its last child, not position: fixed.
+    // 100dvh minus the top bar normally (with room for the tab bar below md);
+    // while typing on a phone, the visible height above the keyboard.
+    <div
+      data-testid="coach"
+      style={keyboard.height !== null ? { height: `calc(${keyboard.height}px - var(--top-bar-h))`, paddingBottom: 0 } : undefined}
+      className="fixed inset-x-0 top-(--top-bar-h) z-10 flex h-[calc(100dvh-var(--top-bar-h))] flex-col bg-canvas pb-tab-bar md:pb-0"
+    >
+      <div className="mx-auto flex min-h-0 w-full max-w-content flex-1 flex-col">
+      <div className="flex flex-none items-center justify-between px-4 pt-4 pb-2 sm:px-6">
         <h1 className="font-display text-xl font-semibold">Coach</h1>
         <div className="-mr-3 flex items-center">
           {/* The Plan view has no tab of its own (Q2, variant A). */}
@@ -377,9 +378,13 @@ export function Chat() {
         </div>
       </div>
 
-      {/* Bottom padding leaves room for the fixed composer; <main> already
-          leaves room for the tab bar on phones. */}
-      <div ref={listBoxRef} className="pb-52">
+      {/* The only scroll container on Coach; contain keeps a fling from
+          scrolling the page behind it. */}
+      <div
+        ref={scrollRef}
+        data-testid="messages"
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 sm:px-6"
+      >
         {/* The optional first-login step (#137): until it's saved or skipped once. */}
         {userId && <ProfileStep />}
         {userId && <WeekGlance />}
@@ -415,9 +420,6 @@ export function Chat() {
             </li>
           )}
         </ol>
-        {/* The last message's bottom: kept just above the composer while typing. */}
-        <div ref={lastRef} data-testid="conversation-end" />
-        <div ref={endRef} />
       </div>
 
       <SessionSheet
@@ -436,22 +438,20 @@ export function Chat() {
         }}
       />
 
-      {/* While typing on a phone the tab bar hides and the composer sits on the
-          keyboard (lib/keyboard.ts); otherwise it sits on the tab bar. */}
-      {/* Opaque (#138): nothing of the conversation or the tab bar shows through.
-          With the keyboard open, its bottom edge is pinned to the keyboard's top. */}
+      {/* The column's last child (#144): on the tab bar normally; while typing on
+          a phone the tab bar hides and the column ends at the keyboard, so the
+          composer sits right on it. Opaque (#138): nothing shows through. */}
       <div
-        ref={composerRef}
         data-testid="composer"
         onFocus={keyboard.onFocus}
         onBlur={keyboard.onBlur}
-        style={keyboard.active ? { top: keyboard.top, bottom: "auto", transform: "translateY(-100%)" } : undefined}
-        className="fixed inset-x-0 bottom-tab-bar z-20 border-t border-line bg-elevated shadow-sheet md:bottom-0"
+        className="flex-none border-t border-line bg-elevated shadow-sheet"
       >
         <div
-          className={`mx-auto max-w-content px-4 pt-3 sm:px-6 ${
-            // No keyboard on screen (e.g. a hardware one): keep clear of the home indicator.
-            keyboard.active && keyboard.inset === 0 ? "pb-[max(0.75rem,env(safe-area-inset-bottom))]" : "pb-3"
+          className={`px-4 pt-3 sm:px-6 ${
+            // Focused with no on-screen keyboard (e.g. a hardware one): the tab bar
+            // is hidden, so keep clear of the home indicator.
+            keyboard.active && !keyboard.keyboardUp ? "pb-[max(0.75rem,env(safe-area-inset-bottom))]" : "pb-3"
           }`}
         >
           <LogShortcuts />
@@ -497,7 +497,8 @@ export function Chat() {
           </form>
         </div>
       </div>
-    </>
+      </div>
+    </div>
   );
 }
 

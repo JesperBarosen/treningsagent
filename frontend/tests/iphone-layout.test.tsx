@@ -85,7 +85,10 @@ describe("tab bar room", () => {
   });
 
   it("keeps the Coach composer above the tab bar and the home indicator", () => {
-    expect(src("app/chat.tsx")).toMatch(/fixed inset-x-0 bottom-tab-bar\b[^"]*\bmd:bottom-0\b/);
+    // #144: Coach's fixed column leaves room for the tab bar below md; the
+    // composer is its last child, not a fixed element of its own.
+    expect(src("app/chat.tsx")).toMatch(/fixed inset-x-0 top-\(--top-bar-h\)[^"]*\bpb-tab-bar\b[^"]*\bmd:pb-0\b/);
+    expect(src("app/chat.tsx")).not.toMatch(/bottom-tab-bar/);
   });
 
   it("matches the tab bar's own row height", () => {
