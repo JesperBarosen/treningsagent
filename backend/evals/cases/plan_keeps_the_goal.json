@@ -1,0 +1,190 @@
+{
+  "id": "plan_keeps_the_goal",
+  "note": "#147: the coach never changes the goal (half marathon to 5 km) without asking. If it can't be reached, it proposes the best plan toward it and says what is realistic. An old PB from before an injury doesn't raise the start, said in one sentence. Seed: as plan_proposed_when_asked (longest run 6 km).",
+  "seed_from": "plan_proposed_when_asked",
+  "known_bad": {
+    "source": "The real half-marathon test in #147: the goal silently became a 5 km.",
+    "why": "Turns the half marathon into a 5 km plan without asking.",
+    "should_fail": "must_not-1",
+    "answer": "A half marathon is too far right now, so I've made this a 5 km plan instead: three runs a week with a lighter week 4 (L2, P27). Tap Accept to use it."
+  },
+  "question": "I want to run a half marathon. I ran one in 1:38 three years ago, before a knee injury that has healed; no pain now. Make me a 4-week plan from next Monday, Tuesday, Thursday and Saturday.",
+  "expect": {
+    "tools_called": [
+      "propose_program"
+    ],
+    "tool_inputs": {
+      "propose_program": {
+        "name": "4 weeks toward a half marathon",
+        "start_date": "{monday+0}",
+        "weeks": 4,
+        "week_meta": [
+          {
+            "index": 4,
+            "kind": "deload",
+            "note": "lighter week"
+          }
+        ],
+        "rationale": "Toward your half marathon: the long run starts at your recent 6 km and grows at most 10% (L1a, P31), reaching about 8 km in four weeks; your 1:38 from before the injury doesn't count as current form; week 4 lighter (L2, P27).",
+        "sessions": [
+          {
+            "date": "{monday+1}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+3}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "tempo",
+              "workout": "20 min at tempo effort between 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+5}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 39,
+              "effort": 5,
+              "distance_km": 6.5,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+8}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+10}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 39,
+              "effort": 5,
+              "distance_km": 6.5,
+              "session_type": "tempo",
+              "workout": "20 min at tempo effort between 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+12}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 43,
+              "effort": 5,
+              "distance_km": 7.1,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+15}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 39,
+              "effort": 4,
+              "distance_km": 6.5,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+17}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 42,
+              "effort": 5,
+              "distance_km": 7,
+              "session_type": "tempo",
+              "workout": "20 min at tempo effort between 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+19}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 47,
+              "effort": 6,
+              "distance_km": 7.8,
+              "session_type": "long"
+            }
+          },
+          {
+            "date": "{monday+22}",
+            "sport": "running",
+            "title": "Easy run",
+            "target": {
+              "duration_min": 30,
+              "effort": 3,
+              "distance_km": 5,
+              "session_type": "easy"
+            }
+          },
+          {
+            "date": "{monday+24}",
+            "sport": "running",
+            "title": "Tempo run",
+            "target": {
+              "duration_min": 30,
+              "effort": 3,
+              "distance_km": 5,
+              "session_type": "tempo",
+              "workout": "20 min at tempo effort between 10 min easy"
+            }
+          },
+          {
+            "date": "{monday+26}",
+            "sport": "running",
+            "title": "Long run",
+            "target": {
+              "duration_min": 36,
+              "effort": 4,
+              "distance_km": 6,
+              "session_type": "long"
+            }
+          }
+        ],
+        "sessions_per_week": 3,
+        "available_days": [
+          "tuesday",
+          "thursday",
+          "saturday"
+        ],
+        "injury_or_pain": "none",
+        "user_said": [
+          "I want to run a half marathon",
+          "1:38 three years ago, before a knee injury"
+        ]
+      }
+    },
+    "must": [
+      "Keep the half marathon as the goal and present the plan as a step toward it",
+      "Say plainly what is realistic in these four weeks (e.g. the long run only reaches about 7-8 km, so more weeks are needed before a half marathon)",
+      "Explain briefly that the old 1:38 half marathon from before the injury doesn't set the starting point"
+    ],
+    "must_not": [
+      "Change the goal to a shorter distance (such as 5 km or 10 km) without asking the user",
+      "Say or imply the plan is already saved, stored, scheduled or set up"
+    ]
+  }
+}

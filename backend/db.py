@@ -27,7 +27,7 @@ TEMPLATE_COLUMNS = ("id", "name", "sport", "core_fields", "fields", "position", 
 # jsonb columns: psycopg needs their Python values wrapped (text[] lists such as tags are not).
 JSON_COLUMNS = {"custom_values", "fields", "week_meta", "target", "injuries"}
 PROFILE_COLUMNS = ("longest_run_km", "weekly_run_km", "climbing_level", "injuries", "sessions_per_week",
-                   "preferred_days", "other_sports", "goals_note", "onboarding")
+                   "preferred_days", "other_sports", "goals_note", "onboarding", "updated_at")
 PLAN_COLUMNS = ("id", "name", "goal_id", "start_date", "weeks", "week_meta", "status", "ended_on",
                 "rationale", "source", "created_at")
 PLANNED_COLUMNS = ("id", "plan_id", "date", "slot", "sport", "template_id", "title", "target",
@@ -585,6 +585,8 @@ class PostgresStore:
         for k in ("longest_run_km", "weekly_run_km"):  # numeric -> float for JSON
             if out.get(k) is not None:
                 out[k] = float(out[k])
+        if out.get("updated_at") is not None:  # when the user last said it (#147)
+            out["updated_at"] = out["updated_at"].isoformat()
         return out
 
     def get_profile(self) -> dict | None:

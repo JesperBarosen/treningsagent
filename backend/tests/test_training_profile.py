@@ -13,7 +13,7 @@ import plans
 import tools
 import training_profile as tp
 from conftest import FakeClient, make_message
-from test_propose_program import GOOD, START, TODAY, history
+from test_propose_program import GOOD, START, TODAY, all_easy, history
 
 FULL = {"longest_run_km": 8.4, "weekly_run_km": 22, "climbing_level": "projecting V5",
         "injuries": [{"body_part": "Calf", "pain": 3, "note": "sore after long runs"}],
@@ -147,8 +147,11 @@ def test_the_profile_fills_what_the_coach_would_ask(store):
     assert out["context"]["from_profile"] == ["sessions_per_week", "available_days", "injury_or_pain"]
     # Listed injuries are used, and keep the plan conservative.
     store.save_profile(tp.validate_changes({"injuries": [{"body_part": "calf", "pain": 3}]}))
-    out = _propose(store)
-    assert out["context"]["injury_or_pain"] == "calf (pain 3/10)"
+    # Pain 3/10 from the profile: no quality session at all (#147).
+    with pytest.raises(ValueError, match=r"quality session with reported pain \(pain at 3/10\)"):
+        _propose(store, sessions=all_easy(GOOD[:3]) + GOOD[3:])
+    out = _propose(store, sessions=all_easy())
+    assert out["context"]["injury_or_pain"] == "calf (pain 3/10)" and out["context"]["pain_level"] == 3
     assert any("physiotherapist" in n for n in out["notes"])
     # What the user says in the chat wins over the profile.
     assert _propose(store, injury_or_pain="none")["context"]["injury_or_pain"] == "none"

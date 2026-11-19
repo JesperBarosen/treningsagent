@@ -41,13 +41,12 @@
           {
             "date": "{monday+3}",
             "sport": "running",
-            "title": "Tempo run",
+            "title": "Easy run",
             "target": {
               "duration_min": 36,
               "effort": 4,
               "distance_km": 6,
-              "session_type": "tempo",
-              "workout": "15 min at comfortable tempo effort between 10 min easy"
+              "session_type": "easy"
             }
           },
           {

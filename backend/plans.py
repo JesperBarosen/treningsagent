@@ -31,8 +31,17 @@ MAX_SESSIONS = 7 * MAX_WEEKS * PER_DAY
 MAX_TARGET_BYTES = 8192
 MAX_GRADE_TARGETS = 10
 # Kinds of run (#135): most volume easy, a long run, and a few quality sessions.
-RUN_TYPES = ("easy", "long", "intervals", "tempo", "recovery")
-QUALITY = ("intervals", "tempo")
+RUN_TYPES = ("easy", "long", "strides", "intervals", "tempo", "recovery")
+# Quality sessions (#147): strides (an easy run with short fast pick-ups), tempo, intervals.
+QUALITY = ("strides", "intervals", "tempo")
+# The starting point (#147): week 1 starts near current form, then grows within
+# L1a/L1b. App defaults, not research: the load rules are ceilings on increases,
+# and nothing says to start below what the user already does. With reported
+# pain or injury the floor is lower, and quality waits.
+START_FLOOR = {"long_run": 0.8, "weekly": 0.7}
+START_FLOOR_WITH_PAIN = {"long_run": 0.6, "weekly": 0.5}
+MAX_PAIN_FOR_QUALITY = 2  # quality sessions only while pain stays at or below 2/10
+STATED_RUN_DAYS = 30      # a run the user mentions counts for P31 only within 30 days
 WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 
 # Load rules (docs/training-plans.md section 5, principles P25-P33 in
@@ -60,6 +69,10 @@ _UNSOURCED = ("max_weekly_increase", "deload_factor", "taper_weeks", "taper_fact
 RULES: dict[str, dict] = {
     **{k: {**v, "status": "sourced"} for k, v in _SOURCED.items()},
     **{k: {"value": None, "status": "needs source"} for k in _UNSOURCED},
+    # Not a load rule, so never cited as research (#147): where week 1 starts.
+    "start_floor": {"value": START_FLOOR, "with_pain": START_FLOOR_WITH_PAIN, "status": "app default",
+                    "text": "week 1 starts near current form: long run at least 80% of the recent longest, "
+                            "weekly running at least 70% of the 4-week average (60% and 50% with pain)"},
 }
 ROUNDING_KM = 0.05  # tolerance for distances rounded to 0.1 km
 
@@ -597,13 +610,15 @@ def _km(p: dict) -> float:
     return float((p.get("target") or {}).get("distance_km") or 0)
 
 
-def check_rules(row: dict, rows: list[dict], history: list[dict], today: date) -> dict:
-    """Check a proposed plan against the sourced load rules. Returns the
-    violations (the proposal is refused while there are any), notes, and what
-    the rules allow by the plan's end (`capacity`), so the coach can say
+def check_rules(row: dict, rows: list[dict], history: list[dict], today: date, pain: bool = False) -> dict:
+    """Check a proposed plan against the sourced load rules and the starting
+    floor. Returns the violations (the proposal is refused while there are
+    any), notes, and what the rules allow (`capacity`), so the coach can say
     plainly when a goal can't be reached in time.
 
-    `history`: the user's logged sessions from at least 30 days before the plan."""
+    `history`: the user's sessions from at least 30 days before the plan,
+    including runs they stated but didn't log (#147). `pain`: injury or pain
+    was reported, which lowers the starting floor."""
     violations: list[str] = []
     notes: list[str] = []
     plan = {**row, "id": 0}
@@ -634,16 +649,38 @@ def check_rules(row: dict, rows: list[dict], history: list[dict], today: date) -
             seen.append((day, km))
 
     # L1b: weekly running distance against the last full (not lighter) week.
+    # Week 1 compares with the higher of the last 7 days and the 4-week average,
+    # so one light week doesn't drag the start below the user's usual (#147).
     base_end = min(today, start - timedelta(days=1))
-    base = sum(d for when, d in past_runs if base_end - timedelta(days=6) <= when <= base_end)
+    last_7 = sum(d for when, d in past_runs if base_end - timedelta(days=6) <= when <= base_end)
+    avg_28 = sum(d for when, d in past_runs if today - timedelta(days=27) <= when <= today) / 4
+    base = max(last_7, avg_28)
     weekly_km = [0.0] * int(row["weeks"])
     for p in runs:
         weekly_km[week_index(plan, p["date"]) - 1] += _km(p)
     kinds = [w["kind"] for w in row["week_meta"]]
     step = RULES["max_weekly_run_increase"]["value"]
+
+    # The starting point (#147): week 1 near current form, not below it. The
+    # rules above are ceilings on increases, never a reason to start lower.
+    longest_30 = max((d for when, d in past_runs if when > today - timedelta(days=30)), default=0.0)
+    floor = START_FLOOR_WITH_PAIN if pain else START_FLOOR
+    week1 = [p for p in runs if week_index(plan, p["date"]) == 1]
+    if week1 and kinds[0] == "build":
+        long1 = max(_km(p) for p in week1)
+        if longest_30 and long1 + ROUNDING_KM < longest_30 * floor["long_run"]:
+            violations.append(
+                f"week 1's longest run ({long1:g} km) starts far below the recent longest ({longest_30:g} km): "
+                f"start near current form, at least {longest_30 * floor['long_run']:.1f} km, and grow from there "
+                "(the load rules cap increases; they don't ask for a lower start)")
+        if avg_28 and weekly_km[0] + ROUNDING_KM < avg_28 * floor["weekly"]:
+            violations.append(
+                f"week 1 plans {weekly_km[0]:g} km of running, far below the recent weekly average "
+                f"({avg_28:.1f} km): start at least at {avg_28 * floor['weekly']:.1f} km")
+
     for i, km in enumerate(weekly_km):
         if km and not base:
-            notes.append(f"week {i + 1}: no running in the last 7 days to compare with; only L1a applies")
+            notes.append(f"week {i + 1}: no running in the last 4 weeks to compare with; only L1a applies")
         elif km > base * (1 + step) + ROUNDING_KM:
             violations.append(f"week {i + 1} plans {km:g} km of running, more than 10% above "
                               f"{base:g} km (L1b, P29/P30)")
@@ -662,16 +699,19 @@ def check_rules(row: dict, rows: list[dict], history: list[dict], today: date) -
     if "taper" in kinds:
         notes.append("taper has no sourced rule yet (L3, needs source): don't claim a number for it")
 
-    # What the rules allow by the end: one 10% step per full week.
-    longest = max((d for when, d in past_runs if when > today - timedelta(days=30)), default=0.0)
+    # Where to start, and what the rules allow by the end: one 10% step per full week.
+    longest = longest_30
     last_week = sum(d for when, d in past_runs if when > today - timedelta(days=7))
     build_weeks = sum(1 for k in kinds if k == "build")
     capacity = {
         "longest_run_30d_km": round(longest, 1),
         "running_last_7d_km": round(last_week, 1),
+        "running_weekly_avg_28d_km": round(avg_28, 1),
+        "start_long_run_km_at_least": round(longest * floor["long_run"], 1),
+        "start_weekly_km_at_least": round(avg_28 * floor["weekly"], 1),
         "max_long_run_by_end_km": round(longest * rule["value"] ** build_weeks, 1),
-        "max_weekly_running_by_end_km": round(last_week * (1 + step) ** build_weeks, 1),
-        "note": "upper limits under L1a and L1b, not targets",
+        "max_weekly_running_by_end_km": round(max(last_week, avg_28) * (1 + step) ** build_weeks, 1),
+        "note": "start near the 'at least' values, then grow within the 'max' limits (L1a, L1b)",
     }
     return {"violations": violations, "notes": notes, "capacity": capacity,
             "weekly_running_km": [round(k, 1) for k in weekly_km]}
@@ -745,17 +785,65 @@ def intensity(rows: list[dict], plan: dict) -> dict:
         easy_km = sum(_km(r) for r in runs if r["target"].get("session_type") in ("easy", "long", "recovery"))
         weeks.append({"week": i + 1, "runs": len(runs), "quality_sessions": len(quality),
                       "easy_share": round(easy_km / km, 2) if km else None})
-        if len(runs) >= 3 and not quality and kinds[i] == "build":
-            notes.append(f"week {i + 1}: 3+ runs and no quality session (intervals or tempo); "
-                         "consider one, unless the user's form or pain says otherwise")
         if kinds[i] == "taper" and quality:
             notes.append(f"week {i + 1} is a taper week with a quality session: keep it well before "
                          "the goal date (L8 needs source: no number for how many days)")
     return {"weeks": weeks, "notes": notes}
 
 
+def quality_check(rows: list[dict], plan: dict, pain: bool, pain_level: int | None) -> tuple[list[str], list[str]]:
+    """Quality sessions (#147, L8): without pain, every build week with 3+ runs
+    has at least one (strides, tempo or intervals). With pain or injury: none
+    in week 1, and none at all above MAX_PAIN_FOR_QUALITY/10; later ones only
+    while pain stays at or below it, which the reason must say. Returns
+    (problems that refuse the proposal, notes)."""
+    problems, notes = [], []
+    kinds = [w["kind"] for w in plan["week_meta"]]
+    for i in range(int(plan["weeks"])):
+        runs = [r for r in rows if r["sport"] == "running" and week_index(plan, r["date"]) == i + 1]
+        quality = [r for r in runs if r["target"].get("session_type") in QUALITY]
+        if not pain and kinds[i] == "build" and len(runs) >= 3 and not quality:
+            problems.append(f"week {i + 1} has {len(runs)} runs and no quality session: add one (strides, tempo "
+                            "or intervals) with a concrete workout (L8); most volume stays easy")
+        if pain and quality and (i == 0 or (pain_level is not None and pain_level > MAX_PAIN_FOR_QUALITY)):
+            why = "the first week" if i == 0 else f"pain at {pain_level}/10"
+            problems.append(f"week {i + 1} has a quality session with reported pain ({why}): start without hard "
+                            f"sessions, and add them later only while pain stays at or below {MAX_PAIN_FOR_QUALITY}/10")
+    if pain:
+        notes.append(f"pain or injury reported: no hard sessions at the start; any later quality session only while "
+                     f"pain stays at or below {MAX_PAIN_FOR_QUALITY}/10 — say this in the reason")
+    return problems, notes
+
+
+def stated_runs(recent_runs, profile: dict, today: date) -> tuple[list[dict], list[str]]:
+    """Runs the user said they did in the last 30 days but didn't log (#147):
+    from the chat (`recent_runs`) and the profile's longest recent run when the
+    profile was updated within 30 days. They count for the P31 baseline like
+    logged runs. Older achievements (PBs, races before an injury) never do."""
+    runs, said = [], []
+    items = recent_runs or []
+    if not isinstance(items, list) or len(items) > 10:
+        raise ValueError("recent_runs must be a list of at most 10 runs the user stated")
+    for r in items:
+        if not isinstance(r, dict) or set(r) - {"km", "days_ago"}:
+            raise ValueError("each recent run has km and days_ago (how many days ago, 0-30)")
+        km = r.get("km")
+        if isinstance(km, bool) or not isinstance(km, (int, float)) or not 0 < km <= 100:
+            raise ValueError("a recent run's km must be between 0 and 100")
+        days = _int(r.get("days_ago"), "days_ago", 0, STATED_RUN_DAYS)
+        runs.append({"sport": "running", "date": (today - timedelta(days=days)).isoformat(), "distance_km": float(km)})
+        said.append(f"{km:g} km {days} days ago (stated in chat)")
+    longest, updated = profile.get("longest_run_km"), profile.get("updated_at")
+    if longest and updated:
+        when = _date(str(updated)[:10], "updated_at")
+        if today - when <= timedelta(days=STATED_RUN_DAYS):
+            runs.append({"sport": "running", "date": when.isoformat(), "distance_km": float(longest)})
+            said.append(f"{float(longest):g} km longest recent run (from the profile, updated {when.isoformat()})")
+    return runs, said
+
+
 def propose_program(store, today: date | None = None, *, sessions_per_week=None, available_days=None,
-                    injury_or_pain=None, user_said=None, **body) -> dict:
+                    injury_or_pain=None, user_said=None, pain_level=None, recent_runs=None, **body) -> dict:
     """A plan the coach proposes: validated and checked against the load rules,
     never stored. The app shows it as a card; only the user's Accept stores it
     (POST /plans), whatever the "Save without asking" setting (Q5).
@@ -804,11 +892,24 @@ def propose_program(store, today: date | None = None, *, sessions_per_week=None,
                               goals=store.goals() if hasattr(store, "goals") else [],
                               templates=store.templates() if hasattr(store, "templates") else [],
                               gym_list=store.gyms() if hasattr(store, "gyms") else [], today=today)
+    pain = ctx["injury_or_pain"].strip().lower() not in ("none", "no", "nothing")
+    if pain_level is None and prof.get("injuries") and "injury_or_pain" in from_profile:
+        known = [i["pain"] for i in prof["injuries"] if i.get("pain") is not None]
+        pain_level = max(known) if known else None
+    if pain_level is not None:
+        pain_level = _int(pain_level, "pain_level", 0, 10)
+        ctx["pain_level"] = pain_level
     problems = _check_proposal(rows, ctx, row)
+    quality_problems, quality_notes = quality_check(rows, row, pain, pain_level)
+    problems += quality_problems
     if problems:
         raise ValueError("fix the proposal: " + "; ".join(problems))
-    history = store.sessions_since((today - timedelta(days=45)).isoformat())
-    checks = check_rules(row, rows, history, today)
+    # Logged runs, plus runs the user stated for the last 30 days (#147).
+    extra, baseline_from_user = stated_runs(recent_runs, prof, today)
+    if baseline_from_user:
+        ctx["baseline_from_user"] = baseline_from_user
+    history = store.sessions_since((today - timedelta(days=45)).isoformat()) + extra
+    checks = check_rules(row, rows, history, today, pain=pain)
     if checks["violations"]:
         raise ValueError("the proposal breaks the load rules; change it or tell the user "
                          "plainly what can't be reached in time: " + "; ".join(checks["violations"])
@@ -828,8 +929,11 @@ def propose_program(store, today: date | None = None, *, sessions_per_week=None,
               "sessions": [{k: r[k] for k in ("date", "sport", "template_id", "title", "target")}
                            for r in rows]}
     mix = intensity(rows, row)
-    notes = checks["notes"] + mix["notes"]
-    if ctx["injury_or_pain"].strip().lower() not in ("none", "no", "nothing"):
+    notes = checks["notes"] + mix["notes"] + quality_notes
+    if baseline_from_user:
+        notes.append("the baseline includes runs the user stated (" + "; ".join(baseline_from_user)
+                     + "): say so in the reason")
+    if pain:
         notes.append("the user mentioned injury or pain: keep the plan conservative, never diagnose, "
                      "and suggest a physiotherapist if the pain persists or gets worse")
     return {"proposal": True, "stored": False, "plan": shown, "accept": accept,
