@@ -120,7 +120,8 @@ export function SessionForm({
   // `keepDate`) keeps the session's own date.
   const [pickedDate, setDate] = useState<string | null>((editing || keepDate) && session ? session.date : null);
   const date = pickedDate ?? todayIso;
-  const [duration, setDuration] = useState(session ? String(session.duration_min) : "");
+  // A planned session's target may have no duration (#132): the field starts empty.
+  const [duration, setDuration] = useState(session?.duration_min != null ? String(session.duration_min) : "");
   const [distance, setDistance] = useState(session?.distance_km ? String(session.distance_km) : "");
   const [elevation, setElevation] = useState(session?.elevation_m != null ? String(session.elevation_m) : "");
   const [effort, setEffort] = useState(session?.effort ?? 5);

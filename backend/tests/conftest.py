@@ -66,6 +66,9 @@ class FakeStore:
         before = len(self.rows)
         self.rows = [r for r in self.rows if r["id"] != session_id]
         self.climbs = [c for c in self.climbs if c["session_id"] != session_id]
+        for p in self.planned_rows:  # planned_sessions.session_id: on delete set null
+            if p.get("session_id") == session_id:
+                p["session_id"] = None
         return len(self.rows) < before
 
     def pauses_since(self, since: str) -> list[dict]:
@@ -257,6 +260,9 @@ class FakeStore:
         p = next((p for p in self.planned_rows if p["id"] == planned_id), None)
         if p is None:
             return None
+        linked = changes.get("session_id")
+        if linked is not None and any(x["session_id"] == linked and x["id"] != planned_id for x in self.planned_rows):
+            raise AssertionError("session_id is unique")  # plans.link_planned must prevent it
         p.update(json.loads(json.dumps(changes)))
         return json.loads(json.dumps(p))
 

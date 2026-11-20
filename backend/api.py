@@ -197,12 +197,14 @@ class SessionIn(SessionChanges):
     date: str
     duration_min: int
     effort: int
+    # "Log this" on a planned session (#132): saving links the two (#117).
+    planned_id: int | None = None
 
 
 def _fields(body: SessionChanges) -> dict:
     """The fields the client sent. A null `notes` clears it; other nulls are
     treated as not sent, so a running field can't be set on a climb by null."""
-    fields = body.model_dump(exclude_unset=True, exclude={"climbs"})
+    fields = body.model_dump(exclude_unset=True, exclude={"climbs", "planned_id"})
     fields = {k: v for k, v in fields.items() if v is not None or k in ("notes", "template_id")}
     if body.climbs is not None:
         fields["climbs"] = [c.model_dump(exclude_none=True) for c in body.climbs]
@@ -211,11 +213,19 @@ def _fields(body: SessionChanges) -> dict:
 
 @app.post("/sessions", status_code=201)
 def post_session(body: SessionIn, store: db.PostgresStore = Depends(get_store)) -> dict:
-    """Log a session from the form, with log_session's validation."""
+    """Log a session from the form, with log_session's validation, and link it
+    to a planned session (#117): the one it was logged from (`planned_id`), or
+    a single same-day match automatically. `plan_link` says which, for the
+    app's Undo, or lists the candidates for it to ask about."""
     try:
-        return tools.log_session(store, **_fields(body))
+        if body.planned_id is not None:  # checked before anything is stored
+            plans.check_linkable(store, body.planned_id, body.sport)
+        session = tools.log_session(store, **_fields(body))
+    except LookupError:
+        raise HTTPException(404, "Planned session not found.") from None
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
+    return {**session, "plan_link": plans.link_after_logging(store, session, body.planned_id)}
 
 
 @app.patch("/sessions/{session_id}")
@@ -689,6 +699,25 @@ def delete_skip_planned(planned_id: int, store: db.PostgresStore = Depends(get_s
     """Undo a skip."""
     return _plans_call(lambda s, i: plans.skip_planned(s, i, skip=False), store, planned_id,
                        missing="Planned session not found.")
+
+
+class PlannedLink(BaseModel):
+    session_id: int
+
+
+@app.post("/planned-sessions/{planned_id}/link")
+def post_link_planned(planned_id: int, body: PlannedLink,
+                      store: db.PostgresStore = Depends(get_store)) -> dict:
+    """Count a logged session as this planned one: the answer to "Was this
+    Thursday's Easy run?", or a link changed from the session sheet (#117)."""
+    return _plans_call(plans.link_planned, store, planned_id, body.session_id,
+                       missing="Planned session or session not found.")
+
+
+@app.delete("/planned-sessions/{planned_id}/link")
+def delete_link_planned(planned_id: int, store: db.PostgresStore = Depends(get_store)) -> dict:
+    """Undo a link: the planned session is open again, the logged one stays."""
+    return _plans_call(plans.unlink_planned, store, planned_id, missing="Planned session not found.")
 
 
 @app.delete("/planned-sessions/{planned_id}", status_code=204)

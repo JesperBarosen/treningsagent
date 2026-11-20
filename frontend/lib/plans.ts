@@ -1,7 +1,17 @@
 // Display rules for training plans (#118, #119, docs/training-plans.md). The
 // numbers come from the backend (plans.py); these only decide how to show them.
 
-import type { Goal, PlannedSession, PlannedState, PlanTarget, PlanWeek, RunType, WeekKind, WeekMeta } from "./api";
+import type {
+  Goal,
+  PlannedSession,
+  PlannedState,
+  PlanTarget,
+  PlanWeek,
+  RunType,
+  Session,
+  WeekKind,
+  WeekMeta,
+} from "./api";
 
 export const RUN_TYPE_LABEL: Record<RunType, string> = {
   easy: "Easy",
@@ -98,6 +108,39 @@ export function weeksLeft(endDate: string, today: string): number {
 export function weekDays(startDate: string, index: number): string[] {
   const start = Date.parse(`${startDate}T00:00:00Z`) + (index - 1) * 7 * 86_400_000;
   return Array.from({ length: 7 }, (_, i) => new Date(start + i * 86_400_000).toISOString().slice(0, 10));
+}
+
+// --- Logging a planned session (#117, #132) ------------------------------------------
+
+/** "Log this" shows on a planned session that isn't done, skipped or paused. */
+export const LOGGABLE: PlannedState[] = ["today", "upcoming", "not_done"];
+
+/** "today's Easy run", "Thursday's Tempo run": how the app names a planned session. */
+export function plannedName(p: Pick<PlannedSession, "date" | "title">, today: string): string {
+  if (p.date === today) return `today's ${p.title}`;
+  const weekday = new Date(`${p.date}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "long", timeZone: "UTC" });
+  return `${weekday}'s ${p.title}`;
+}
+
+/** The Log form's starting values from a planned session's target: sport,
+ *  template, duration, distance, effort, and the workout (intervals and the
+ *  like) as a note. Dated its own day, or today if that is still ahead. */
+export function plannedAsSession(p: PlannedSession, today: string): Session {
+  const t = p.target ?? {};
+  // "Tempo run: 6 x 800 m at 10 km pace": the workout, so the user sees what was planned.
+  const note = t.workout ? `${p.title}: ${t.workout}` : null;
+  return {
+    id: 0,
+    sport: p.sport,
+    date: p.date > today ? today : p.date,
+    // The form starts empty where the plan set no number.
+    duration_min: t.duration_min as number,
+    effort: t.effort as number,
+    distance_km: t.distance_km ?? null,
+    notes: note,
+    template_id: p.template_id,
+    custom_values: t.values,
+  };
 }
 
 /** "23 Nov – 20 Dec". */

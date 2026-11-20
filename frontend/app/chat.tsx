@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import { ChatIcon, PlanIcon, PlusIcon, SendIcon } from "@/components/icons";
 import { LogShortcuts } from "@/components/log-shortcuts";
 import { LoggedSessionCard } from "@/components/session-card";
+import type { LinkChange } from "@/components/plan-link-notice";
 import { Button, OfflineHint } from "@/components/states";
 import { WeekGlance } from "@/components/week-glance";
 import { asSession, DraftCard } from "@/components/draft-card";
@@ -21,6 +22,7 @@ import {
   sendChat,
   type Draft,
   type Plan,
+  type PlanLink,
   type PlanProposal,
   type ProfileUpdate,
   saveProfile,
@@ -100,6 +102,13 @@ const profileChange = (u: ProfileUpdate) =>
 export const savedProfileNote = (u: ProfileUpdate) => `[User saved the profile change: ${profileChange(u)}.]`;
 export const dismissedProfileNote = (u: ProfileUpdate) =>
   `[User dismissed the profile change: ${profileChange(u)}. Nothing was stored.]`;
+/** The link between a logged session and a planned one changed on its card (#117). */
+export const linkNote = (s: Session, change: LinkChange) =>
+  change.kind === "linked"
+    ? `[User counted the session ${describe(s)} as the planned ${change.planned.title} on ${change.planned.date}.]`
+    : change.kind === "unlinked"
+      ? `[User undid the link: the session ${describe(s)} no longer counts as the planned ${change.planned.title} on ${change.planned.date}.]`
+      : `[User said the session ${describe(s)} wasn't one of their planned sessions.]`;
 export const dismissedPlanNote = (p: PlanProposal) =>
   `[User dismissed the plan proposal: ${p.plan.name}. Nothing was stored.]`;
 
@@ -400,6 +409,9 @@ export function Chat() {
                 onUndone={(s) =>
                   updateLogged(s.id, (old) => ({ ...old, undone: true }), removedNote(s))
                 }
+                onLinkChange={(s, change, link) =>
+                  updateLogged(s.id, (old) => ({ ...old, plan_link: link }), linkNote(s, change))
+                }
                 onSaveDraft={saveDraft}
                 onAcceptProposal={acceptProposal}
                 onDismissProposal={(ref, p) => settleProposal(ref, { dismissed: p })}
@@ -531,6 +543,7 @@ function Message({
   disabled,
   onEdit,
   onUndone,
+  onLinkChange,
   onSaveDraft,
   onAcceptProposal,
   onDismissProposal,
@@ -544,6 +557,7 @@ function Message({
   disabled: boolean;
   onEdit: (s: Session) => void;
   onUndone: (s: Session) => void;
+  onLinkChange: (s: Session, change: LinkChange, link: PlanLink) => void;
   onSaveDraft: (ref: DraftRef, d: Draft) => Promise<void>;
   onAcceptProposal: (ref: DraftRef, p: PlanProposal) => Promise<void>;
   onDismissProposal: (ref: DraftRef, p: PlanProposal) => void;
@@ -591,6 +605,7 @@ function Message({
           undone={s.undone}
           onEdit={() => onEdit(s)}
           onUndone={() => onUndone(s)}
+          onLinkChange={(change, link) => onLinkChange(s, change, link)}
         />
       ))}
       {item.drafts

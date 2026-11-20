@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { PlanIcon, SportBadge } from "@/components/icons";
 import { Button, EmptyState, ErrorState, Skeleton } from "@/components/states";
@@ -16,7 +17,18 @@ import {
   type WeekMeta,
 } from "@/lib/api";
 import { SENSITIVE } from "@/lib/discreet";
-import { dateRange, goalLine, STATE_LABEL, targetText, weekChip, weekCount, weekDays, weeksLeft } from "@/lib/plans";
+import { handPlannedToForm } from "@/lib/log-planned";
+import {
+  dateRange,
+  goalLine,
+  LOGGABLE,
+  STATE_LABEL,
+  targetText,
+  weekChip,
+  weekCount,
+  weekDays,
+  weeksLeft,
+} from "@/lib/plans";
 
 type Load =
   | { kind: "loading" }
@@ -58,6 +70,7 @@ function failed(e: unknown): Load {
  *  done sessions show the logged session that did them; "not done" is grey,
  *  never red, and never counted against the user (P17, P24, Q7). */
 export function PlanView() {
+  const router = useRouter();
   const [load, setLoad] = useState<Load>({ kind: "loading" });
   const [confirming, setConfirming] = useState<Action | null>(null);
   const [busy, setBusy] = useState(false);
@@ -172,6 +185,11 @@ export function PlanView() {
         sessions={plan.sessions}
         today={today}
         current={current}
+        onLog={(s) => {
+          // "Log this" (#132): the Log form opens prefilled and links the two on save.
+          handPlannedToForm(s);
+          router.push("/log");
+        }}
       />
 
       {actionError && (
@@ -223,6 +241,7 @@ export function PlanCalendar({
   sessions,
   today,
   current,
+  onLog,
 }: {
   startDate: string;
   weeks: number;
@@ -230,6 +249,8 @@ export function PlanCalendar({
   sessions: PlannedSession[];
   today: string;
   current: number | null;
+  /** "Log this" on a planned session; left out in the proposal preview, where nothing is stored yet. */
+  onLog?: (s: PlannedSession) => void;
 }) {
   const [week, setWeek] = useState<number | null>(null);
   const shown = week ?? current ?? (today < startDate ? 1 : weeks);
@@ -259,14 +280,24 @@ export function PlanCalendar({
 
       <ol aria-label={`Week ${shown}`} className="mt-3 divide-y divide-line rounded-lg border border-line bg-surface px-3">
         {days.map((d) => (
-          <DayRow key={d} day={d} today={d === today} sessions={sessions.filter((s) => s.date === d)} />
+          <DayRow key={d} day={d} today={d === today} sessions={sessions.filter((s) => s.date === d)} onLog={onLog} />
         ))}
       </ol>
     </>
   );
 }
 
-function DayRow({ day, today, sessions }: { day: string; today: boolean; sessions: PlannedSession[] }) {
+function DayRow({
+  day,
+  today,
+  sessions,
+  onLog,
+}: {
+  day: string;
+  today: boolean;
+  sessions: PlannedSession[];
+  onLog?: (s: PlannedSession) => void;
+}) {
   const date = new Date(`${day}T00:00:00Z`);
   return (
     <li
@@ -283,15 +314,16 @@ function DayRow({ day, today, sessions }: { day: string; today: boolean; session
         {sessions.length === 0 ? (
           <p className="pt-2 text-sm text-ink-muted">{today ? "Today · rest" : "Rest"}</p>
         ) : (
-          sessions.map((s) => <PlannedRow key={s.id ?? `${s.date}-${s.slot}`} s={s} />)
+          sessions.map((s) => <PlannedRow key={s.id ?? `${s.date}-${s.slot}`} s={s} onLog={onLog} />)
         )}
       </div>
     </li>
   );
 }
 
-function PlannedRow({ s }: { s: PlannedSession }) {
+function PlannedRow({ s, onLog }: { s: PlannedSession; onLog?: (s: PlannedSession) => void }) {
   const state = s.state ?? "upcoming";
+  const loggable = onLog && s.id != null && LOGGABLE.includes(state);
   const label = STATE_LABEL[state];
   const target = targetText(s.target);
   // Not done and skipped are grey, like everything neutral; only done and today use the accent.
@@ -324,6 +356,16 @@ function PlannedRow({ s }: { s: PlannedSession }) {
         <span className={`inline-flex h-6 shrink-0 items-center rounded-full px-2.5 text-xs font-semibold whitespace-nowrap ${look}`}>
           {label}
         </span>
+      )}
+      {loggable && (
+        <button
+          type="button"
+          onClick={() => onLog(s)}
+          aria-label={`Log this: ${s.title}`}
+          className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-control px-3 text-xs font-semibold whitespace-nowrap text-accent hover:bg-sunken"
+        >
+          Log this
+        </button>
       )}
     </div>
   );
