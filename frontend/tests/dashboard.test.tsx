@@ -3,7 +3,16 @@ import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it } from "vitest";
 import { Dashboard } from "@/app/dashboard/dashboard-view";
 import type { Progression, TrainingLoad, Trend } from "@/lib/api";
-import { mainPaceBand, ratioGap, ratioView, summarySentence, trendGap } from "@/lib/dashboard";
+import {
+  changeText,
+  changeWord,
+  mainPaceBand,
+  RATIO_CAVEAT,
+  ratioGap,
+  ratioView,
+  summarySentence,
+  trendGap,
+} from "@/lib/dashboard";
 
 beforeAll(() => {
   // Recharts' ResponsiveContainer needs ResizeObserver, which jsdom lacks.
@@ -110,10 +119,17 @@ describe("trendGap and ratioGap (#126)", () => {
 });
 
 describe("ratioView", () => {
-  it("shows the backend's ratio once about 4 weeks are logged", () => {
-    expect(ratioView(load())).toEqual({ kind: "ok", ratio: 1.07, zone: "moderate" });
-    expect(ratioView(load({ acute_chronic_ratio: 1.6 }))).toMatchObject({ zone: "spike" });
-    expect(ratioView(load({ acute_chronic_ratio: 0.5 }))).toMatchObject({ zone: "below" });
+  it("shows the backend's ratio once about 4 weeks are logged, as plain arithmetic (#150)", () => {
+    expect(ratioView(load())).toEqual({ kind: "ok", ratio: 1.07, change: 7 });
+    expect(ratioView(load({ acute_chronic_ratio: 1.6 }))).toMatchObject({ change: 60 });
+    expect(ratioView(load({ acute_chronic_ratio: 0.5 }))).toMatchObject({ change: -50 });
+    expect(ratioView(load({ acute_chronic_ratio: 1.004 }))).toMatchObject({ change: 0 });
+    expect([changeWord(7), changeWord(-50), changeWord(0)]).toEqual(["+7% vs usual", "−50% vs usual", "same as usual"]);
+    expect([changeText(7), changeText(-50), changeText(0)]).toEqual([
+      "7% above your 4-week average",
+      "50% below your 4-week average",
+      "the same as your 4-week average",
+    ]);
   });
 
   it("follows the backend's ratio_status, whatever the ratio", () => {
@@ -131,11 +147,25 @@ describe("ratioView", () => {
 });
 
 describe("Dashboard", () => {
-  it("labels the ratio as a rough guide", () => {
+  it("describes the ratio as a rough warning signal only, with no band or citation (#150)", () => {
     render(<Dashboard load={load()} progression={progression()} />);
     const card = screen.getByRole("region", { name: "Acute:chronic ratio" });
-    expect(within(card).getByText("Rough guide")).toBeInTheDocument();
+    expect(within(card).getByText("Rough signal")).toBeInTheDocument();
     expect(within(card).getByText("1.07")).toBeInTheDocument();
+    expect(within(card).getByText("Your last 7 days are 7% above your 4-week average.")).toBeInTheDocument();
+    expect(within(card).getByText(RATIO_CAVEAT)).toBeInTheDocument();
+    expect(RATIO_CAVEAT).toMatch(/^Only a rough warning signal of how this week compares with the last four\./);
+    expect(within(card).getByRole("img")).toHaveAccessibleName(
+      "Ratio 1.07 on a scale from 0 to 2, where 1 means the same as your 4-week average",
+    );
+    // What #133 took out of the coach's wording stays out of the dashboard too.
+    for (const ratio of [0.5, 1.07, 1.4, 1.8]) {
+      const { container, unmount } = render(
+        <Dashboard load={load({ acute_chronic_ratio: ratio })} progression={progression()} />,
+      );
+      expect(container.textContent).not.toMatch(/Gabbett|moderate|sweet spot|safe range|usual range|0\.8|1\.3|spike/i);
+      unmount();
+    }
   });
 
   it("says what a young ratio still needs instead of showing it (#126)", () => {
@@ -199,9 +229,9 @@ describe("Dashboard", () => {
 
 // #59 (design-visual V-M3): summary first on phones, charts as rows.
 describe("summary first on mobile", () => {
-  it("builds one sentence from the backend's ratio zone and trend words only", () => {
+  it("builds one sentence from the backend's ratio and trend words only", () => {
     expect(summarySentence(load(), progression())).toBe(
-      "Your load is in your usual range. Pace on 7–15 km runs is getting faster. Your hardest sends are going up.",
+      "Your load over the last 7 days is 7% above your 4-week average. Pace on 7–15 km runs is getting faster. Your hardest sends are going up.",
     );
   });
 
@@ -227,7 +257,7 @@ describe("summary first on mobile", () => {
     const summary = screen.getByRole("region", { name: "Summary" });
     const numbers = within(summary).getAllByRole("definition").map((d) => d.textContent);
     // Sessions this week, with the average over the complete weeks (#46).
-    expect(numbers).toEqual(["2", "4/wk avg", "400", "900 last wk", "1.07", "moderate"]);
+    expect(numbers).toEqual(["2", "4/wk avg", "400", "900 last wk", "1.07", "+7% vs usual"]);
     expect(summary.querySelector("dl")).toHaveAttribute("data-sensitive");
     expect(summary).toHaveClass("md:hidden");
   });

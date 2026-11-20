@@ -21,10 +21,11 @@ import {
 import { fetchDashboard, fetchSportLoad, missingSports, shownFilter, type DashboardData } from "@/lib/dashboard-data";
 import {
   BAND_LABELS,
+  changeText,
+  changeWord,
   mainPaceBand,
+  RATIO_CAVEAT,
   RATIO_MIN_HISTORY_DAYS,
-  RATIO_MODERATE,
-  RATIO_SPIKE,
   ratioGap,
   ratioView,
   sessionsPerWeek,
@@ -32,7 +33,6 @@ import {
   TOO_EARLY,
   trendGap,
   type TrendNoun,
-  ZONE_WORD,
 } from "@/lib/dashboard";
 import {
   saveSportFilter,
@@ -326,7 +326,7 @@ function SummaryTiles({ load, progression, sport }: SummaryProps) {
       // The tile is narrow: just how far along, e.g. "1 week so far" (#126).
       sub:
         view.kind === "ok"
-          ? ZONE_WORD[view.zone]
+          ? changeWord(view.change)
           : view.kind === "paused"
             ? "paused"
             : (ratioGap(view.historyDays).sofar ?? `after ${RATIO_MIN_HISTORY_DAYS / 7} weeks`),
@@ -597,13 +597,6 @@ function LoadCard({ load, sport, className }: { load: TrainingLoad; sport: Sport
   );
 }
 
-const ZONE_TEXT = {
-  below: `Below the ${RATIO_MODERATE[0]}–${RATIO_MODERATE[1]} range: lighter than your recent usual.`,
-  moderate: `Inside the ${RATIO_MODERATE[0]}–${RATIO_MODERATE[1]} range often called moderate.`,
-  above: `Above ${RATIO_MODERATE[1]}: more than your recent usual.`,
-  spike: `At or above ${RATIO_SPIKE}: a sharp spike compared with your recent usual.`,
-} as const;
-
 const SCALE_MAX = 2;
 
 function RatioCard({ load, sport = "all" }: { load: TrainingLoad; sport?: SportFilter }) {
@@ -616,7 +609,7 @@ function RatioCard({ load, sport = "all" }: { load: TrainingLoad; sport?: SportF
       subtitle={sport === "all" ? "Last 7 days vs last 28 days, all sports" : `Last 7 days vs last 28 days, ${sport} only`}
       aside={
         <span className="inline-flex h-6 shrink-0 items-center rounded-full border border-line px-2.5 text-xs font-medium whitespace-nowrap text-ink-muted">
-          Rough guide
+          Rough signal
         </span>
       }
     >
@@ -638,31 +631,35 @@ function RatioCard({ load, sport = "all" }: { load: TrainingLoad; sport?: SportF
           <p {...SENSITIVE} className="font-display text-[3rem] leading-none font-semibold">
             {view.ratio.toFixed(2)}
           </p>
+          {/* No band is shaded (#150): only 1, where the last 7 days match the last 28. */}
           <div
             role="img"
-            aria-label={`Ratio ${view.ratio.toFixed(2)} on a scale from 0 to ${SCALE_MAX}, with ${RATIO_MODERATE[0]} to ${RATIO_MODERATE[1]} marked as the moderate range`}
+            aria-label={`Ratio ${view.ratio.toFixed(2)} on a scale from 0 to ${SCALE_MAX}, where 1 means the same as your 4-week average`}
             className="relative mt-5 mb-6 h-2 rounded-full bg-sunken"
           >
-            <div
-              className="absolute inset-y-0 rounded-full bg-accent-soft ring-1 ring-accent/40"
-              style={{ left: pct(RATIO_MODERATE[0]), right: `calc(100% - ${pct(RATIO_MODERATE[1])})` }}
-            />
+            <div aria-hidden="true" className="absolute inset-y-[-3px] w-px bg-control" style={{ left: pct(1) }} />
             <div
               className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-ink"
               style={{ left: pct(view.ratio) }}
             />
-            {[0, RATIO_MODERATE[0], RATIO_MODERATE[1], SCALE_MAX].map((t) => (
+            {[
+              { at: 0, text: "0" },
+              { at: 1, text: "1 · usual" },
+              { at: SCALE_MAX, text: String(SCALE_MAX) },
+            ].map((t) => (
               <span
-                key={t}
+                key={t.at}
                 aria-hidden="true"
-                className="absolute top-3 -translate-x-1/2 text-xs text-ink-muted tabular-nums"
-                style={{ left: pct(t) }}
+                className="absolute top-3 -translate-x-1/2 text-xs whitespace-nowrap text-ink-muted tabular-nums"
+                style={{ left: pct(t.at) }}
               >
-                {t}
+                {t.text}
               </span>
             ))}
           </div>
-          <p className="text-sm">{ZONE_TEXT[view.zone]}</p>
+          <p {...SENSITIVE} className="text-sm">
+            Your last 7 days are {changeText(view.change)}.
+          </p>
         </div>
       )}
       <dl {...SENSITIVE} className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3 text-sm">
@@ -675,10 +672,7 @@ function RatioCard({ load, sport = "all" }: { load: TrainingLoad; sport?: SportF
           <dd className="font-medium tabular-nums">{nf.format(load.chronic_28d_avg)}</dd>
         </div>
       </dl>
-      <p className="mt-3 text-xs text-ink-muted">
-        Ranges from sports science (Gabbett 2016). A rough guide to how this week compares with your
-        usual, not a prediction of injury.
-      </p>
+      <p className="mt-3 text-xs text-ink-muted">{RATIO_CAVEAT}</p>
     </Card>
   );
 }
