@@ -17,7 +17,7 @@ describe("ClimbChips", () => {
     );
     expect(screen.getAllByRole("img").map((el) => el.getAttribute("aria-label"))).toEqual([
       "red boulder, not sent",
-      "purple boulder, sent, 3 attempts",
+      "purple boulder, sent, 3 tries",
       "blue boulder, flashed",
     ]);
   });

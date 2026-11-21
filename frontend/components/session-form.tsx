@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { DateInput } from "@/components/date-input";
-import { climbLabel, GradeDot } from "@/components/grade";
+import { climbLabel, GradeDot, triesWord } from "@/components/grade";
 import { BoltIcon, CheckIcon, ChevronIcon, CloseIcon, PinIcon, PlusIcon, SportBadge } from "@/components/icons";
 import { Button, HIT_AREA_Y } from "@/components/states";
 import {
@@ -785,18 +785,29 @@ function ClimbsField({
                 <button
                   type="button"
                   onClick={() => onAttempts(i, -1)}
-                  aria-label={`Fewer attempts on ${c.grade}`}
+                  aria-label={`Fewer tries on ${c.grade}`}
                   className="grid size-11 place-items-center rounded-full text-lg hover:bg-sunken"
                 >
                   −
                 </button>
-                <span className="w-5 text-center text-sm tabular-nums" aria-label="attempts">
-                  {c.attempts ?? "–"}
-                </span>
+                {/* The unit sits under the number, so the counter can't be read as a grade
+                    or a set count, and the row stays one line at 375 px. <output> also
+                    announces the new count after − or +. */}
+                <output
+                  aria-label={c.attempts == null ? "Tries not set" : `${c.attempts} ${triesWord(c.attempts)}`}
+                  className="flex w-6 flex-col items-center leading-none"
+                >
+                  <span aria-hidden="true" className="text-sm tabular-nums">
+                    {c.attempts ?? "–"}
+                  </span>
+                  <span aria-hidden="true" className="mt-0.5 text-[10px] text-ink-muted">
+                    {triesWord(c.attempts)}
+                  </span>
+                </output>
                 <button
                   type="button"
                   onClick={() => onAttempts(i, 1)}
-                  aria-label={`More attempts on ${c.grade}`}
+                  aria-label={`More tries on ${c.grade}`}
                   className="grid size-11 place-items-center rounded-full text-lg hover:bg-sunken"
                 >
                   +
