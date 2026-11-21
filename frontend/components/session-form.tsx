@@ -307,7 +307,7 @@ export function SessionForm({
                 setSport(s.value);
                 setTemplateId(null);
               }}
-              className={tile}
+              className={`${tile} py-2`}
             >
               <SportBadge sport={s.value} size="sm" />
               {s.label}
@@ -328,7 +328,7 @@ export function SessionForm({
             >
               <SportBadge sport={t.sport} size="sm" />
               {/* Long names wrap to a second line instead of ending in "…". */}
-              <span className="line-clamp-2 min-w-0 py-2 leading-tight break-words">{t.name}</span>
+              <span className="min-w-0 leading-tight break-words">{t.name}</span>
             </button>
           ))}
           {!templatesLoaded && (
