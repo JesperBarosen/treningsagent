@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { ChatIcon, PlanIcon, PlusIcon, SendIcon } from "@/components/icons";
-import { LogShortcuts } from "@/components/log-shortcuts";
 import { LoggedSessionCard } from "@/components/session-card";
 import type { LinkChange } from "@/components/plan-link-notice";
 import { Button, OfflineHint } from "@/components/states";
@@ -466,7 +465,6 @@ export function Chat() {
             keyboard.active && !keyboard.keyboardUp ? "pb-[max(0.75rem,env(safe-area-inset-bottom))]" : "pb-3"
           }`}
         >
-          <LogShortcuts />
           <div
             className="scrollbar-none -mx-4 mb-2 flex gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6"
             role="group"
