@@ -58,14 +58,14 @@ describe("SessionForm", () => {
     expect(row().getAttribute("aria-label")).toMatch(/not sent/);
     fireEvent.click(row());
     // A send starts at 2 attempts (1 would be a flash), never blank (#111).
-    expect(row().getAttribute("aria-label")).toMatch(/sent, 2 attempts/);
-    expect(within(list).getByLabelText("attempts")).toHaveTextContent("2");
-    fireEvent.click(screen.getByRole("button", { name: "More attempts on blue" }));
-    expect(row().getAttribute("aria-label")).toMatch(/sent, 3 attempts/);
+    expect(row().getAttribute("aria-label")).toMatch(/sent, 2 tries/);
+    expect(within(list).getByRole("status", { name: "2 tries" })).toHaveTextContent("2");
+    fireEvent.click(screen.getByRole("button", { name: "More tries on blue" }));
+    expect(row().getAttribute("aria-label")).toMatch(/sent, 3 tries/);
     // − stops at 2: it never turns the send into a flash.
-    fireEvent.click(screen.getByRole("button", { name: "Fewer attempts on blue" }));
-    fireEvent.click(screen.getByRole("button", { name: "Fewer attempts on blue" }));
-    expect(row().getAttribute("aria-label")).toMatch(/sent, 2 attempts/);
+    fireEvent.click(screen.getByRole("button", { name: "Fewer tries on blue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Fewer tries on blue" }));
+    expect(row().getAttribute("aria-label")).toMatch(/sent, 2 tries/);
     fireEvent.click(row());
     expect(row().getAttribute("aria-label")).toMatch(/flashed/);
 
@@ -83,7 +83,25 @@ describe("SessionForm", () => {
     const list = screen.getByRole("list", { name: "Logged climbs" });
     fireEvent.click(within(list).getByRole("button", { name: /^black/ }));
     expect(within(list).getByText("Sent")).toBeInTheDocument();
-    expect(within(list).getByLabelText("attempts")).toHaveTextContent("2");
+    expect(within(list).getByRole("status", { name: "2 tries" })).toHaveTextContent("2");
+  });
+
+  it("labels the climb counter with its unit, for the eye and for screen readers", () => {
+    render(<SessionForm onSubmit={vi.fn()} />);
+    pick("Climb");
+    pick("Kilter");
+    fireEvent.click(screen.getByRole("button", { name: "Add blue" }));
+    const list = screen.getByRole("list", { name: "Logged climbs" });
+
+    // Not sent: one try, singular.
+    const counter = within(list).getByRole("status", { name: "1 try" });
+    expect(counter).toHaveTextContent(/^1try$/);
+    expect(within(counter).getByText("try")).toHaveClass("text-ink-muted");
+    expect(within(list).getByRole("button", { name: "Fewer tries on blue" })).toHaveClass("size-11");
+    expect(within(list).getByRole("button", { name: "More tries on blue" })).toHaveClass("size-11");
+
+    fireEvent.click(within(list).getByRole("button", { name: "More tries on blue" }));
+    expect(within(list).getByRole("status", { name: "2 tries" })).toHaveTextContent(/^2tries$/);
   });
 
   it("shows a drafted send without a count as 2 attempts, and keeps an edit's own value (#123)", () => {
@@ -92,11 +110,11 @@ describe("SessionForm", () => {
       climbs: [{ grade: "black", style: "boulder", sent: true, attempts: null }],
     } as unknown as Session;
     const { unmount } = render(<SessionForm session={draft} keepDate onSubmit={vi.fn()} />);
-    expect(within(screen.getByRole("list", { name: "Logged climbs" })).getByLabelText("attempts")).toHaveTextContent("2");
+    expect(within(screen.getByRole("list", { name: "Logged climbs" })).getByRole("status", { name: "2 tries" })).toHaveTextContent("2");
     unmount();
 
     render(<SessionForm session={{ ...draft, id: 5 }} editing onSubmit={vi.fn()} />);
-    expect(within(screen.getByRole("list", { name: "Logged climbs" })).getByLabelText("attempts")).toHaveTextContent("–");
+    expect(within(screen.getByRole("list", { name: "Logged climbs" })).getByRole("status", { name: "Tries not set" })).toHaveTextContent("–");
   });
 
   it("sends a run's elevation gain in whole metres, only when given (#84)", () => {

@@ -31,8 +31,14 @@ export function GradeDot({ grade, colour, size = 10 }: { grade: Grade; colour?: 
 
 const OUTCOME_LABEL = { flash: "flashed", sent: "sent", tried: "not sent" } as const;
 
+/** The word the app uses for a climb's attempts: "try" for one, "tries" otherwise.
+ *  One short word everywhere, so the Log form's counter fits a 375 px row. */
+export function triesWord(n: number | null | undefined): string {
+  return n === 1 ? "try" : "tries";
+}
+
 export function climbLabel(c: Pick<Climb, "grade" | "style" | "sent" | "attempts"> & { gym?: string }): string {
-  const attempts = c.attempts && c.attempts > 1 ? `, ${c.attempts} attempts` : "";
+  const attempts = c.attempts && c.attempts > 1 ? `, ${c.attempts} ${triesWord(c.attempts)}` : "";
   return `${gradeWithGym(c)} ${c.style}, ${OUTCOME_LABEL[climbOutcome(c)]}${attempts}`;
 }
 
