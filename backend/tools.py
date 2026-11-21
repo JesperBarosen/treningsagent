@@ -980,7 +980,7 @@ PROPOSE_PROGRAM = {
         "if it can't be fully reached, propose the best plan toward it and say what is realistic. "
         "With a goal_id whose date is 4-12 weeks away, "
         "leave out weeks: the goal's date sets the end. One plan at a time: if the user has "
-        "one, this fails and they can leave or finish it in the Plan view. The server checks "
+        "one, this fails; to change their plan, use propose_plan_change instead. The server checks "
         "the sourced load rules (`rules_applied`: L1a longest run, L1b weekly running increase, "
         "L2 lighter week every 4th week) and refuses a proposal that breaks one, listing why "
         "and the `capacity` the rules allow: then change the plan, never the rules. If the "
@@ -1035,13 +1035,84 @@ PROPOSE_PROGRAM = {
     },
 }
 
+_CHANGE = {
+    "type": "object",
+    "properties": {
+        "type": {"type": "string", "enum": ["move", "remove", "add", "edit", "lighter", "shift"]},
+        "planned_id": {"type": "integer", "description": "move, remove, edit: the planned session's id from get_plan"},
+        "date": {"type": "string", "description": "move: the new day, YYYY-MM-DD"},
+        "slot": {"type": "integer", "minimum": 0, "maximum": 1,
+                 "description": "move: 0 first or 1 second that day; left out, the first free one"},
+        "reason": {"type": "string", "description": "remove: why, in the user's words (optional)"},
+        "title": {"type": "string", "description": "edit: the new title"},
+        "target": {**_TARGET, "description": "edit: the whole new target"},
+        "session": {"type": "object", "description": "add: the new planned session",
+                    "properties": {"date": {"type": "string"}, "sport": {"type": "string", "enum": list(SPORTS)},
+                                   "title": {"type": "string"}, "template_id": {"type": "integer"},
+                                   "target": _TARGET},
+                    "required": ["date", "sport", "title"]},
+        "week": {"type": "integer", "description": "lighter: the plan week to make lighter"},
+        "sessions": {"type": "array", "description": "lighter: per session, remove it or lower "
+                                                     "duration_min, distance_km or effort (never raise any)",
+                     "items": {"type": "object",
+                               "properties": {"planned_id": {"type": "integer"}, "remove": {"type": "boolean"},
+                                              "duration_min": {"type": "integer"},
+                                              "distance_km": {"type": "number"}, "effort": {"type": "integer"}},
+                               "required": ["planned_id"]}},
+        "days": {"type": "integer", "minimum": 1, "maximum": 28,
+                 "description": "shift: move every remaining open session this many days later"},
+        "from_date": {"type": "string", "description": "shift: only sessions from this day (default today)"},
+    },
+    "required": ["type"],
+    "additionalProperties": False,
+}
+
+PROPOSE_PLAN_CHANGE = {
+    "name": "propose_plan_change",
+    "description": (
+        "Propose changes to the user's CURRENT plan, when they ask to change it ('move Thursday's run "
+        "to Friday', 'make this week lighter', 'I was ill, push the plan back a week'). Never a new "
+        "plan: include ONLY the changes the user asked for, nothing else. Call get_plan first for the "
+        "planned session ids. Change types: move (planned_id, date, optional slot), remove (planned_id: "
+        "it is kept as skipped), add (session), edit (planned_id, title and/or target), lighter (week, "
+        "and per session remove or a lower duration_min, distance_km or effort: fewer or shorter "
+        "sessions at the same or lower effort, no number for how much lighter), shift (days: every "
+        "remaining open session that many days later, e.g. after a pause). Done sessions (a logged "
+        "session counts for them) can't be moved, removed or made lighter. Nothing is stored: the app "
+        "shows only the changes with Accept, Review (pick some) and Not now, and only the user's Accept "
+        "applies them, whatever their settings. So call it a proposal; never say it is changed, moved "
+        "or saved. The server runs the new plan's guardrails (L1a, L1b, L2, days, sessions a week) on "
+        "the plan after the changes and refuses a change that adds a rule break: then tell the user "
+        "plainly what can't be done, or propose a smaller change, never change the rules. If the user "
+        "names a day that isn't in their usual days, pass available_days including it. NEVER change "
+        "their goal without asking. Put a calm one-line reason in `reason` (it is shown on the card), "
+        "never judgemental: no 'behind', 'missed' or 'failed'."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "changes": {"type": "array", "items": _CHANGE, "minItems": 1, "maxItems": 20},
+            "reason": {"type": "string", "description": "One calm line shown on the card, max 200 characters"},
+            "plan_id": {"type": "integer", "description": "The current plan's id (optional)"},
+            "available_days": {"type": "array", "items": {"type": "string"},
+                               "description": "The user's training days, if they said; the profile's otherwise"},
+            "sessions_per_week": {"type": "integer", "minimum": 1, "maximum": 14},
+            "injury_or_pain": {"type": "string", "description": "What the user said about pain, or 'none'"},
+            "pain_level": {"type": "integer", "minimum": 0, "maximum": 10},
+            "user_said": {"type": "array", "items": {"type": "string"}, "maxItems": 5},
+        },
+        "required": ["changes", "reason"],
+        "additionalProperties": False,
+    },
+}
+
 GET_PLAN = {
     "name": "get_plan",
     "description": (
         "Get the user's current plan (active or paused): weeks, planned load per week, and this "
         "week's and next week's planned sessions with their status (done, today, upcoming, "
-        "not_done, skipped, paused). Use it before answering 'what should I do today?' or "
-        "before proposing a plan. 'not_done' is neutral: never count it against the user."
+        "not_done, skipped, paused) and their ids. Use it before answering 'what should I do today?' "
+        "and before proposing a plan or a change. 'not_done' is neutral: never count it against the user."
     ),
     "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
 }
@@ -1100,8 +1171,8 @@ LINK_PLANNED_SESSION = {
     },
 }
 
-TOOLS += [SET_GOAL, GET_GOALS, GET_TAG_PATTERNS, LIST_TEMPLATES, PROPOSE_PROGRAM, GET_PLAN,
-          PROPOSE_PROFILE_UPDATE, LINK_PLANNED_SESSION]
+TOOLS += [SET_GOAL, GET_GOALS, GET_TAG_PATTERNS, LIST_TEMPLATES, PROPOSE_PROGRAM, PROPOSE_PLAN_CHANGE,
+          GET_PLAN, PROPOSE_PROFILE_UPDATE, LINK_PLANNED_SESSION]
 
 DRAFT_SESSION = {
     "name": "draft_session",
@@ -1169,6 +1240,8 @@ def run_tool(store: Store, name: str, tool_input: dict) -> str:
         result = templates_for_coach(store, **tool_input)
     elif name == "propose_program":
         result = plans.propose_program(store, **tool_input)
+    elif name == "propose_plan_change":
+        result = plans.propose_plan_change(store, **tool_input)
     elif name == "get_plan":
         result = plans.plan_for_coach(store, **tool_input)
     elif name == "propose_profile_update":

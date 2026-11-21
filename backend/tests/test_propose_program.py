@@ -149,7 +149,7 @@ def test_a_goal_date_sets_the_end_and_a_plan_starts_on_monday(store):
 def test_one_plan_at_a_time(store):
     history(store)
     plans.create_plan(store, propose(store)["accept"], today=TODAY)
-    with pytest.raises(ValueError, match="already has a plan .* leave or finish it"):
+    with pytest.raises(ValueError, match="already has a plan .* propose_plan_change .* leave or finish this one"):
         propose(store)
 
 

@@ -35,6 +35,7 @@ import env
 import grades
 import gyms
 import limits
+import plans
 import tools
 
 CASES_DIR = Path(__file__).parent / "cases"
@@ -86,8 +87,8 @@ def load_case(path: Path, today: date | None = None) -> dict:
                   lambda m: (next_monday + timedelta(days=int(m.group(1)))).isoformat(), text)
     case = json.loads(text)
     if "seed_from" in case:
-        case["seed"] = json.loads((CASES_DIR / f"{case['seed_from']}.json")
-                                  .read_text(encoding="utf-8"))["seed"]
+        # Through load_case, so the other case's placeholders are filled in too.
+        case["seed"] = load_case(CASES_DIR / f"{case['seed_from']}.json", today)["seed"]
     return case
 
 
@@ -123,6 +124,8 @@ def seed(store: tools.Store, seed: dict, today: date) -> None:
             tools.log_session(store, sport, day, **fields)
     for g in seed.get("goals", []):  # after the sessions, so a pace goal gets its start
         tools.set_goal(store, **g, today=today)
+    if "plan" in seed:  # an accepted plan (#131), e.g. to propose changes to
+        plans.create_plan(store, {"source": "coach", **seed["plan"]}, today=today)
 
 
 def delete_user(conn, user_id: str) -> None:
@@ -244,12 +247,24 @@ class MemoryStore:
                 return dict(g)
         return None
 
-    # Plans (#119): a throwaway user has none, so propose_program can run offline.
+    # Plans (#119, #131): none unless the case seeds one, so propose_program,
+    # get_plan and propose_plan_change can run offline.
     def plans(self) -> list[dict]:
-        return []
+        return [json.loads(json.dumps(p)) for p in getattr(self, "_plans", [])]
+
+    def insert_plan(self, row: dict, sessions: list[dict]) -> dict:
+        plan = {"id": len(self.plans()) + 1, "status": "active", "ended_on": None, **row}
+        self._plans = [*self.plans(), plan]
+        for s in sessions:
+            self._planned = [*self.planned_sessions(), {
+                "id": len(self.planned_sessions()) + 1, "plan_id": plan["id"], "status": "planned",
+                "skip_reason": None, "session_id": None, **s}]
+        return json.loads(json.dumps(plan))
 
     def planned_sessions(self, plan_id=None, since=None, until=None) -> list[dict]:
-        return []
+        return [json.loads(json.dumps(p)) for p in getattr(self, "_planned", [])
+                if (plan_id is None or p["plan_id"] == plan_id) and (since is None or p["date"] >= since)
+                and (until is None or p["date"] <= until)]
 
 
 def total_cost(costs: list[float | None]) -> float | None:
@@ -294,6 +309,7 @@ def run_case(client: anthropic.Anthropic, conn, case: dict,
     if missing:
         checks.insert(0, Check(id="tools_called", passed=False,
                                reason=f"not called: {missing}; called: {called}"))
+    checks[:0] = structural_checks(case, blocks)
     passed = all(c.passed for c in checks)
     amount = total_cost([cost(c) for c in store.calls] + [cost(judge_usage)])
     print(f"  {'PASS' if passed else 'FAIL'}  ({len(store.calls)} agent calls + 1 judge call, "
@@ -301,6 +317,27 @@ def run_case(client: anthropic.Anthropic, conn, case: dict,
     if verbose or not passed:
         print_checks(checks, None if passed else answer)
     return passed, amount
+
+
+def structural_checks(case: dict, blocks: list[dict]) -> list[Check]:
+    """Checks that need no judge (#131): tools that must not be called, and
+    the change types the last successful propose_plan_change proposed (e.g.
+    exactly ["move"] for "move Thursday's run to Friday", not a new plan)."""
+    out = []
+    called = [b["name"] for b in blocks if b["type"] == "tool_use"]
+    banned = [t for t in case["expect"].get("tools_not_called", []) if t in called]
+    if banned:
+        out.append(Check(id="tools_not_called", passed=False, reason=f"called: {banned}"))
+    want = case["expect"].get("change_types")
+    if want is not None:
+        ids = {b["id"] for b in blocks if b["type"] == "tool_use" and b["name"] == "propose_plan_change"}
+        got = [json.loads(b["content"]) for b in blocks if b["type"] == "tool_result"
+               and b["tool_use_id"] in ids and not b.get("is_error")]
+        types = [c["type"] for c in got[-1]["changes"]] if got else None
+        if types != want:
+            out.append(Check(id="change_types", passed=False,
+                             reason=f"proposed {types}, expected exactly {want}"))
+    return out
 
 
 def judge_check(client: anthropic.Anthropic, case: dict) -> tuple[bool, float | None]:
