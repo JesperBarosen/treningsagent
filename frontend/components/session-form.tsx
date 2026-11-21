@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { DateInput } from "@/components/date-input";
 import { climbLabel, GradeDot } from "@/components/grade";
 import { BoltIcon, CheckIcon, ChevronIcon, CloseIcon, PinIcon, PlusIcon, SportBadge } from "@/components/icons";
-import { Button, HIT_AREA_Y } from "@/components/states";
+import { Button, HIT_AREA_Y, Skeleton } from "@/components/states";
 import {
   ApiError,
   climbInput,
@@ -144,6 +144,9 @@ export function SessionForm({
   // Templates (#101): picked as tiles next to the sports (T4 variant A). An
   // edit starts with the session's own template, archived or not.
   const [templates, setTemplates] = useState<Template[]>([]);
+  // Until the templates arrive, a placeholder tile shows where they will be,
+  // and the "Make a log form" hint waits, so it doesn't flash for users who have one.
+  const [templatesLoaded, setTemplatesLoaded] = useState(false);
   const [templateId, setTemplateId] = useState<number | null>(session?.template_id ?? null);
   const [values, setValues] = useState<FormValues>(session?.custom_values ?? {});
   const [moreTemplates, setMoreTemplates] = useState(false);
@@ -151,7 +154,10 @@ export function SessionForm({
     const ctrl = new AbortController();
     getTemplates(ctrl.signal)
       .then((r) => setTemplates(r.templates))
-      .catch(() => {}); // without templates the form is the built-in one, as before
+      .catch(() => {}) // without templates the form is the built-in one, as before
+      .finally(() => {
+        if (!ctrl.signal.aborted) setTemplatesLoaded(true);
+      });
     return () => ctrl.abort();
   }, []);
   const template = templates.find((t) => t.id === templateId) ?? null;
@@ -321,9 +327,15 @@ export function SessionForm({
               className={tile}
             >
               <SportBadge sport={t.sport} size="sm" />
-              <span className="min-w-0 truncate">{t.name}</span>
+              {/* Long names wrap to a second line instead of ending in "…". */}
+              <span className="line-clamp-2 min-w-0 py-2 leading-tight break-words">{t.name}</span>
             </button>
           ))}
+          {!templatesLoaded && (
+            <div role="status" aria-label="Loading your log forms" className="min-h-14">
+              <Skeleton className="h-full min-h-14" />
+            </div>
+          )}
           {picker.length > 4 && (
             <button
               type="button"
@@ -335,7 +347,7 @@ export function SessionForm({
             </button>
           )}
         </div>
-        {templates.length === 0 && (
+        {templatesLoaded && templates.length === 0 && (
           <p className="mt-2 text-sm text-ink-muted">
             Want your own fields?{" "}
             <Link href="/templates" className="font-medium text-accent underline-offset-2 hover:underline">
