@@ -8,12 +8,14 @@ import { Button, OfflineHint } from "@/components/states";
 import { WeekGlance } from "@/components/week-glance";
 import { asSession, DraftCard } from "@/components/draft-card";
 import Link from "next/link";
+import { PlanChangeCard, type ChangeStatus } from "@/components/plan-change-card";
 import { PlanProposalCard } from "@/components/plan-proposal-card";
 import { ProfileStep } from "@/components/profile-step";
 import { ProfileUpdateCard } from "@/components/profile-update-card";
 import { changeLines } from "@/lib/profile";
 import {
   ApiError,
+  applyPlanChange,
   createPlan,
   createSession,
   draftInput,
@@ -21,6 +23,7 @@ import {
   sendChat,
   type Draft,
   type Plan,
+  type PlanChangeProposal,
   type PlanLink,
   type PlanProposal,
   type ProfileUpdate,
@@ -56,6 +59,10 @@ type DraftItem = { key: string; draft: Draft; status: "open" | "saved" | "dismis
 /** A plan the coach proposed (#119) and what the user did with it. Only Accept stores it. */
 type ProposalItem = { key: string; proposal: PlanProposal; status: "open" | "accepted" | "dismissed" };
 
+/** Changes the coach proposed to the current plan (#131); `applied` holds the
+ *  indexes Accept applied (all, or the ones ticked in Review). */
+type ChangeItem = { key: string; proposal: PlanChangeProposal; status: ChangeStatus; applied?: number[] };
+
 /** A profile change the coach proposed (#137) and what the user did with it. Only Save stores it. */
 type ProfileUpdateItem = { key: string; update: ProfileUpdate; status: "open" | "saved" | "dismissed" };
 
@@ -68,6 +75,7 @@ type Item =
       logged: Logged[];
       drafts?: DraftItem[];
       proposals?: ProposalItem[];
+      changes?: ChangeItem[];
       profileUpdates?: ProfileUpdateItem[];
     }
   | { id: string; role: "error"; text: string; offline: boolean; retry: string; limit?: LimitBody };
@@ -110,6 +118,18 @@ export const linkNote = (s: Session, change: LinkChange) =>
       : `[User said the session ${describe(s)} wasn't one of their planned sessions.]`;
 export const dismissedPlanNote = (p: PlanProposal) =>
   `[User dismissed the plan proposal: ${p.plan.name}. Nothing was stored.]`;
+/** A change proposal accepted in full or in part (#131): what changed, and what the user left out. */
+export const acceptedChangeNote = (p: PlanChangeProposal, applied: number[]) => {
+  const lines = (keep: boolean) =>
+    p.changes.filter((c) => applied.includes(c.index) === keep).map((c) => c.description);
+  const left = lines(false);
+  return (
+    `[User accepted the plan change: ${lines(true).join("; ")} (plan id ${p.plan.id}). It is saved.` +
+    (left.length ? ` They left out: ${left.join("; ")}.]` : "]")
+  );
+};
+export const dismissedChangeNote = (p: PlanChangeProposal) =>
+  `[User dismissed the plan change: ${p.changes.map((c) => c.description).join("; ")}. Nothing was changed.]`;
 
 /** Append a note for the coach to the stored history (the API merges it with the
  *  next user message into one turn). Not before the first reply: nothing to note. */
@@ -196,13 +216,14 @@ export function Chat() {
       const res = await sendChat(message, convo.history, convo.conversationId, undefined, readAutoSave());
       const drafts = (res.drafts ?? []).map((draft) => ({ key: newId(), draft, status: "open" as const }));
       const proposals = (res.proposals ?? []).map((proposal) => ({ key: newId(), proposal, status: "open" as const }));
+      const changes = (res.change_proposals ?? []).map((proposal) => ({ key: newId(), proposal, status: "open" as const }));
       const profileUpdates = (res.profile_updates ?? []).map((update) => ({ key: newId(), update, status: "open" as const }));
       setConvo((c) => ({
         history: res.history,
         conversationId: res.conversation_id,
         items: [
           ...c.items,
-          { id: newId(), role: "agent", text: res.reply, logged: res.logged_sessions ?? [], drafts, proposals, profileUpdates },
+          { id: newId(), role: "agent", text: res.reply, logged: res.logged_sessions ?? [], drafts, proposals, changes, profileUpdates },
         ],
       }));
     } catch (e) {
@@ -319,6 +340,40 @@ export function Chat() {
     });
   }
 
+  /** A change proposal was accepted (all or some of it, applied now) or dismissed
+   *  (#131): update its card and tell the coach. */
+  function settleChange(ref: DraftRef, proposal: PlanChangeProposal, applied: number[] | null) {
+    setConvo((c) => {
+      const open = c.items.some(
+        (i) => i.id === ref.itemId && i.role === "agent" && i.changes?.some((p) => p.key === ref.key && p.status === "open"),
+      );
+      if (!open) return c; // already settled, or a cleared chat
+      return {
+        ...c,
+        history: withNote(c.history, applied ? acceptedChangeNote(proposal, applied) : dismissedChangeNote(proposal)),
+        items: c.items.map((i) =>
+          i.id !== ref.itemId || i.role !== "agent"
+            ? i
+            : {
+                ...i,
+                changes: i.changes?.map((p) =>
+                  p.key === ref.key
+                    ? { ...p, status: applied ? ("accepted" as const) : ("dismissed" as const), applied: applied ?? undefined }
+                    : p,
+                ),
+              },
+        ),
+      };
+    });
+  }
+
+  async function acceptChange(ref: DraftRef, proposal: PlanChangeProposal, indexes: number[]) {
+    // The only way the coach's changes are applied: the user's tap (Q5).
+    const { accept } = proposal;
+    await applyPlanChange(proposal.plan.id, { ...accept, changes: indexes.map((i) => accept.changes[i]) });
+    settleChange(ref, proposal, indexes);
+  }
+
   /** A profile change was saved or dismissed (#137): update its card and tell the coach. */
   function settleProfileUpdate(ref: DraftRef, update: ProfileUpdate, saved: boolean) {
     setConvo((c) => {
@@ -414,6 +469,8 @@ export function Chat() {
                 onSaveDraft={saveDraft}
                 onAcceptProposal={acceptProposal}
                 onDismissProposal={(ref, p) => settleProposal(ref, { dismissed: p })}
+                onAcceptChange={acceptChange}
+                onDismissChange={(ref, p) => settleChange(ref, p, null)}
                 onSaveProfileUpdate={saveProfileUpdate}
                 onDismissProfileUpdate={(ref, u) => settleProfileUpdate(ref, u, false)}
                 onReviewDraft={handDraftToForm}
@@ -545,6 +602,8 @@ function Message({
   onSaveDraft,
   onAcceptProposal,
   onDismissProposal,
+  onAcceptChange,
+  onDismissChange,
   onSaveProfileUpdate,
   onDismissProfileUpdate,
   onReviewDraft,
@@ -559,6 +618,8 @@ function Message({
   onSaveDraft: (ref: DraftRef, d: Draft) => Promise<void>;
   onAcceptProposal: (ref: DraftRef, p: PlanProposal) => Promise<void>;
   onDismissProposal: (ref: DraftRef, p: PlanProposal) => void;
+  onAcceptChange: (ref: DraftRef, p: PlanChangeProposal, indexes: number[]) => Promise<void>;
+  onDismissChange: (ref: DraftRef, p: PlanChangeProposal) => void;
   onSaveProfileUpdate: (ref: DraftRef, u: ProfileUpdate) => Promise<void>;
   onDismissProfileUpdate: (ref: DraftRef, u: ProfileUpdate) => void;
   onReviewDraft: (ref: DraftRef, d: Draft) => void;
@@ -642,6 +703,19 @@ function Message({
             onAccept={() => onAcceptProposal(ref, proposal)}
             onDismiss={() => onDismissProposal(ref, proposal)}
             onView={() => handProposalToPreview(ref, proposal)}
+          />
+        );
+      })}
+      {item.changes?.map(({ key, proposal, status, applied }) => {
+        const ref = { itemId: item.id, key };
+        return (
+          <PlanChangeCard
+            key={key}
+            proposal={proposal}
+            status={status}
+            applied={applied}
+            onAccept={(indexes) => onAcceptChange(ref, proposal, indexes)}
+            onDismiss={() => onDismissChange(ref, proposal)}
           />
         );
       })}
