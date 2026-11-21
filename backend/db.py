@@ -524,6 +524,33 @@ class PostgresStore:
         except psycopg.errors.IntegrityError as e:
             raise ValueError(e.diag.message_primary) from None
 
+    def apply_plan_changes(self, plan_id: int, version: str, fingerprint, plan_changes: dict,
+                           updates: list[tuple[int, dict]], inserts: list[dict]) -> dict:
+        """An accepted change proposal (#131) in one transaction: all or nothing.
+        The plan row is locked and its fingerprint (`fingerprint(plan,
+        sessions)`) checked again inside the transaction, so a change made in
+        between (the Plan view, a link) refuses it (RuntimeError) instead of
+        being overwritten."""
+        try:
+            with self._as_user() as conn:
+                row = conn.execute(self._select("training_plans", PLAN_COLUMNS, sql.SQL("where id = %s"),
+                                                "id for update"), (plan_id,)).fetchone()
+                if row is None:
+                    raise LookupError(f"plan {plan_id} not found")
+                planned = [self._iso(r) for r in conn.execute(self._select(
+                    "planned_sessions", PLANNED_COLUMNS, sql.SQL("where plan_id = %s"), "date, slot, id"),
+                    (plan_id,)).fetchall()]
+                if fingerprint(self._iso(row), planned) != version:
+                    raise RuntimeError("the plan has changed since this proposal; ask the coach again")
+                for planned_id, changes in updates:
+                    if self._update(conn, "planned_sessions", PLANNED_COLUMNS, planned_id, changes) is None:
+                        raise RuntimeError("the plan has changed since this proposal; ask the coach again")
+                for s in inserts:
+                    self._insert(conn, "planned_sessions", {**s, "plan_id": plan_id})
+                return self._update(conn, "training_plans", PLAN_COLUMNS, plan_id, plan_changes)
+        except psycopg.errors.IntegrityError as e:
+            raise ValueError(e.diag.message_primary) from None
+
     def planned_sessions(self, plan_id: int | None = None, since: str | None = None,
                          until: str | None = None) -> list[dict]:
         """Planned sessions of one plan, or between two dates (plans and one-offs)."""

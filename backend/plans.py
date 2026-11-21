@@ -14,7 +14,10 @@ Status: only the user's own choices are stored ("planned", "skipped"). Done,
 not done and paused are derived when read, in #117.
 """
 
+import hashlib
 import json
+import re
+from collections import Counter
 from datetime import date, timedelta
 
 import forms
@@ -686,7 +689,8 @@ def _km(p: dict) -> float:
     return float((p.get("target") or {}).get("distance_km") or 0)
 
 
-def check_rules(row: dict, rows: list[dict], history: list[dict], today: date, pain: bool = False) -> dict:
+def check_rules(row: dict, rows: list[dict], history: list[dict], today: date, pain: bool = False, *,
+                reduced: dict[int, float] | None = None, l2_in_a_row: bool = False) -> dict:
     """Check a proposed plan against the sourced load rules and the starting
     floor. Returns the violations (the proposal is refused while there are
     any), notes, and what the rules allow (`capacity`), so the coach can say
@@ -694,7 +698,14 @@ def check_rules(row: dict, rows: list[dict], history: list[dict], today: date, p
 
     `history`: the user's sessions from at least 30 days before the plan,
     including runs they stated but didn't log (#147). `pain`: injury or pain
-    was reported, which lowers the starting floor."""
+    was reported, which lowers the starting floor.
+
+    For a change to a plan underway (#131): `reduced` weeks (made lighter,
+    or with a session skipped or moved out; week -> its running km as planned
+    before) count as lighter weeks and keep their planned km as the base, so
+    less in one week never makes the next look like a jump; and `l2_in_a_row`
+    reads L2 as "no more than 3 full weeks in a row", so a break week after
+    a pause counts as the lighter week it is."""
     violations: list[str] = []
     notes: list[str] = []
     plan = {**row, "id": 0}
@@ -735,6 +746,8 @@ def check_rules(row: dict, rows: list[dict], history: list[dict], today: date, p
     for p in runs:
         weekly_km[week_index(plan, p["date"]) - 1] += _km(p)
     kinds = [w["kind"] for w in row["week_meta"]]
+    reduced = reduced or {}
+    lighter = [k in ("deload", "taper") or i + 1 in reduced for i, k in enumerate(kinds)]
     step = RULES["max_weekly_run_increase"]["value"]
 
     # The starting point (#147): week 1 near current form, not below it. The
@@ -742,7 +755,7 @@ def check_rules(row: dict, rows: list[dict], history: list[dict], today: date, p
     longest_30 = max((d for when, d in past_runs if when > today - timedelta(days=30)), default=0.0)
     floor = START_FLOOR_WITH_PAIN if pain else START_FLOOR
     week1 = [p for p in runs if week_index(plan, p["date"]) == 1]
-    if week1 and kinds[0] == "build":
+    if week1 and kinds[0] == "build" and not lighter[0]:
         long1 = max(_km(p) for p in week1)
         if longest_30 and long1 + ROUNDING_KM < longest_30 * floor["long_run"]:
             violations.append(
@@ -760,18 +773,28 @@ def check_rules(row: dict, rows: list[dict], history: list[dict], today: date, p
         elif km > base * (1 + step) + ROUNDING_KM:
             violations.append(f"week {i + 1} plans {km:g} km of running, more than 10% above "
                               f"{base:g} km (L1b, P29/P30)")
-        if kinds[i] == "build" and km:
+        if i + 1 in reduced:
+            base = reduced[i + 1] or base  # the week as it was planned before the change
+        elif kinds[i] == "build" and not lighter[i] and km:
             base = km  # lighter weeks don't reset the base
 
     # L2: every 4th week is lighter, with less planned load than the week before.
     loads = [w["planned_load"] for w in weekly_load(plan, rows)]
     every = RULES["deload_every"]["value"]
-    for i in range(every - 1, int(row["weeks"]), every):
-        if kinds[i] not in ("deload", "taper"):
+    in_a_row = 0  # full weeks in a row, for l2_in_a_row
+    for i in range(int(row["weeks"])):
+        marked = kinds[i] in ("deload", "taper")
+        due = in_a_row == every - 1 if l2_in_a_row else i % every == every - 1
+        if due and not marked and not (l2_in_a_row and lighter[i]):
             violations.append(f"week {i + 1} must be a lighter week (kind deload) (L2, P27)")
-        elif i and loads[i] >= loads[i - 1] and loads[i - 1]:
+            in_a_row = 0
+            continue
+        # A week a change made lighter, or a break, is checked by the change itself.
+        checked = due or (l2_in_a_row and i + 1 not in reduced and row["week_meta"][i].get("note") != "break")
+        if marked and checked and i and loads[i] >= loads[i - 1] and loads[i - 1]:
             violations.append(f"week {i + 1} is marked lighter but its planned load ({loads[i]}) isn't "
                               f"below week {i}'s ({loads[i - 1]}) (L2, P27)")
+        in_a_row = 0 if lighter[i] else in_a_row + 1
     if "taper" in kinds:
         notes.append("taper has no sourced rule yet (L3, needs source): don't claim a number for it")
 
@@ -802,20 +825,26 @@ def _context(sessions_per_week, available_days, injury_or_pain, user_said) -> di
     spw = _int(sessions_per_week, "sessions_per_week", 1, 14)
     if not isinstance(available_days, list) or not available_days:
         raise ValueError("available_days is required: ask the user which days they can train")
-    days = []
-    for d in available_days:
-        name = str(d).strip().lower()
-        match = next((w for w in WEEKDAYS if w.startswith(name[:3])), None) if len(name) >= 3 else None
-        if match is None:
-            raise ValueError(f"available_days must be weekday names, got {d!r}")
-        days.append(match)
+    days = _weekdays(available_days)
     pain = _text(injury_or_pain, "injury_or_pain", 200)  # "none" when the user said so
     said = user_said or []
     if not isinstance(said, list) or len(said) > 5:
         raise ValueError("user_said must be a list of at most 5 short quotes")
     said = [_text(s, "a user_said quote", 80) for s in said]
-    return {"sessions_per_week": spw, "available_days": sorted(set(days), key=WEEKDAYS.index),
+    return {"sessions_per_week": spw, "available_days": days,
             "injury_or_pain": pain, "user_said": said}
+
+
+def _weekdays(values: list) -> list[str]:
+    """Weekday names ("tue", "Thursday") as full lowercase names, Monday first."""
+    days = []
+    for d in values:
+        name = str(d).strip().lower()
+        match = next((w for w in WEEKDAYS if w.startswith(name[:3])), None) if len(name) >= 3 else None
+        if match is None:
+            raise ValueError(f"available_days must be weekday names, got {d!r}")
+        days.append(match)
+    return sorted(set(days), key=WEEKDAYS.index)
 
 
 def _check_proposal(rows: list[dict], ctx: dict, plan: dict) -> list[str]:
@@ -930,8 +959,9 @@ def propose_program(store, today: date | None = None, *, sessions_per_week=None,
     today = today or date.today()
     current = current_plan(store) if hasattr(store, "plans") else None
     if current:
-        raise ValueError(f"the user already has a plan ({current['name']!r}, {current['status']}); "
-                         "they can leave or finish it in the Plan view before a new one (Q3)")
+        raise ValueError(f"the user already has a plan ({current['name']!r}, {current['status']}): to "
+                         "change it, use propose_plan_change with only the changes they asked for; for "
+                         "a new plan they can leave or finish this one in the Plan view first (Q3)")
     pause = store.active_pause() if hasattr(store, "active_pause") else None
     if pause and pause.get("reason") in ("injury", "illness"):
         raise ValueError(f"the user is on an {pause['reason']} pause: propose no regular plan. Offer a "
@@ -1026,7 +1056,534 @@ def plan_for_coach(store, today: date | None = None) -> dict:
         return {"plan": None}
     plan = get_plan(store, current["id"], today)
     week = plan["current_week"]
+    if week is None and plan["today"] < plan["start_date"]:
+        week = 1  # not started yet: its first two weeks, so a change can name their ids (#131)
     near = [s for s in plan["sessions"] if week and s["week"] in (week, week + 1)]
     return {"plan": {k: plan[k] for k in ("id", "name", "status", "start_date", "end_date", "weeks",
                                           "week_meta", "goal_id", "current_week", "weekly")},
             "this_and_next_week": near}
+
+
+# --- Change proposals (#131, sections 4 and 6, mockup 4) ----------------------------------
+# The coach proposes changes to the current plan, never a whole new plan: move,
+# remove (skip), add, edit, make a week lighter, or shift what's left after a
+# pause. Nothing is stored until the user's Accept (Q5), which may apply all of
+# the changes or the ones they picked. The same guardrails as a new plan run
+# on the plan as it would be afterwards; a change may not add a rule break
+# that wasn't there before (a plan underway is judged against today's history,
+# so old weeks can look different from when it was accepted).
+
+CHANGE_TYPES = ("move", "remove", "add", "edit", "lighter", "shift")
+CHANGE_LABEL = {"move": "Move", "remove": "Skip", "add": "Add", "edit": "Edit",
+                "lighter": "Lighter", "shift": "Shift"}
+MAX_CHANGES = 20
+MAX_SHIFT_DAYS = 28
+_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+_WRITABLE = ("date", "slot", "title", "target", "status", "skip_reason")
+_VERSION_KEYS = ("id", "date", "slot", "sport", "template_id", "title", "target", "status", "session_id")
+
+
+def plan_version(plan: dict, planned: list[dict]) -> str:
+    """A fingerprint of the plan and its planned sessions, so Accept can refuse
+    a proposal made for a plan that has changed since (a session moved in the
+    Plan view, one logged and linked, the plan paused). The plan's updated_at
+    alone wouldn't see edits to its sessions, which live in their own table."""
+    data = {"plan": {k: plan.get(k) for k in ("id", "start_date", "weeks", "week_meta", "status")},
+            "sessions": sorted(([p.get(k) for k in _VERSION_KEYS] for p in planned
+                                if p.get("plan_id") == plan["id"]), key=lambda r: r[0])}
+    return hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()[:16]
+
+
+def _when(day, today: date) -> str:
+    """"Thursday" within the coming week, else "Thursday 3 Dec"."""
+    d = _date(day, "date")
+    name = WEEKDAYS[d.weekday()].title()
+    return name if 0 <= (d - today).days < 7 else f"{name} {d.day} {_MONTHS[d.month - 1]}"
+
+
+def _target_text(t: dict) -> str:
+    parts = []
+    if t.get("duration_min") is not None:
+        parts.append(f"{t['duration_min']} min")
+    if t.get("distance_km") is not None:
+        parts.append(f"{t['distance_km']:g} km")
+    if t.get("effort") is not None:
+        parts.append(f"effort {t['effort']}")
+    if t.get("workout"):
+        parts.append(t["workout"])
+    return ", ".join(parts) or "no target"
+
+
+def _change_context(store, available_days=None, sessions_per_week=None, injury_or_pain=None,
+                    pain_level=None, user_said=None) -> dict:
+    """What the guardrails check a change against: the user's days, sessions a
+    week and pain, from the coach (what the user just said) or the profile.
+    Unlike a new plan, nothing is required: moving one run shouldn't need a
+    questionnaire. Without days, the days check is skipped; without sessions a
+    week, no week may grow past the plan's busiest week."""
+    prof = (store.get_profile() if hasattr(store, "get_profile") else None) or {}
+    days = available_days or prof.get("preferred_days") or None
+    if days is not None:
+        if not isinstance(days, list):
+            raise ValueError("available_days must be a list of weekday names")
+        days = _weekdays(days)
+    spw = sessions_per_week if sessions_per_week not in (None, "") else prof.get("sessions_per_week")
+    spw = _int(spw, "sessions_per_week", 1, 14) if spw is not None else None
+    if injury_or_pain in (None, ""):
+        injuries = prof.get("injuries") or []
+        injury_or_pain = "; ".join(i["body_part"] for i in injuries) if injuries else "none"
+        if pain_level is None:
+            known = [i["pain"] for i in injuries if i.get("pain") is not None]
+            pain_level = max(known) if known else None
+    pain_text = _text(injury_or_pain, "injury_or_pain", 200)
+    said = user_said or []
+    if not isinstance(said, list) or len(said) > 5:
+        raise ValueError("user_said must be a list of at most 5 short quotes")
+    return {"available_days": days, "sessions_per_week": spw, "injury_or_pain": pain_text,
+            "pain_level": _int(pain_level, "pain_level", 0, 10) if pain_level is not None else None,
+            "user_said": [_text(s, "a user_said quote", 80) for s in said]}
+
+
+def _has_pain(ctx: dict) -> bool:
+    return ctx["injury_or_pain"].strip().lower() not in ("none", "no", "nothing")
+
+
+class _Draft:
+    """The plan as it would be after the changes, built in memory one change
+    at a time, so each change sees the ones before it (a day freed by one
+    move can take the next)."""
+
+    def __init__(self, store, plan: dict, today: date):
+        self.plan, self.today = plan, today
+        self.start = _date(plan["start_date"], "start_date")
+        self.weeks = int(plan["weeks"])
+        self.meta = _week_meta(plan.get("week_meta"), self.weeks)
+        self.original = store.planned_sessions(plan_id=plan["id"])
+        self.rows = {p["id"]: json.loads(json.dumps(p)) for p in self.original}
+        self.added: list[dict] = []
+        self.reduced: dict[int, int] = {}  # weeks the changes made lighter: week now -> week before
+        self.gaps: set[int] = set()  # break weeks a shift inserted, as numbered now
+        # One-offs share the days: they hold slots too.
+        last = (self.start + timedelta(days=7 * MAX_WEEKS - 1)).isoformat()
+        self.others = [p for p in store.planned_sessions(since=self.start.isoformat(), until=last)
+                       if p.get("plan_id") != plan["id"]]
+        pause = store.active_pause() if hasattr(store, "active_pause") else None
+        self.blocking = [pause] if pause and pause.get("reason") in ("injury", "illness") else []
+        self.templates = store.templates() if hasattr(store, "templates") else []
+        self.gyms = store.gyms() if hasattr(store, "gyms") else []
+
+    # -- helpers --
+    def view(self) -> dict:
+        return {**self.plan, "weeks": self.weeks, "week_meta": self.meta}
+
+    def all(self) -> list[dict]:
+        return [*self.rows.values(), *self.added]
+
+    def label(self, r: dict) -> str:
+        """"Thursday's Easy run" in the coming week, else "the Easy run on Thursday 3 Dec"."""
+        when = _when(r["date"], self.today)
+        return f"{when}'s {r['title']}" if " " not in when else f"the {r['title']} on {when}"
+
+    def session(self, planned_id, verb: str, *, open_only: bool = True) -> dict:
+        r = self.rows.get(planned_id)
+        if r is None:
+            raise ValueError(f"planned session {planned_id!r} isn't in this plan (get_plan has the ids)")
+        if open_only and r.get("session_id"):
+            raise ValueError(f"{r['title']} on {r['date']} is done (a logged session counts for it), "
+                             f"so it can't be {verb}")
+        if open_only and r.get("status") == "skipped":
+            raise ValueError(f"{r['title']} on {r['date']} is already skipped")
+        return r
+
+    def lightened(self, week: int) -> None:
+        """`week` (as numbered now) has less than before the changes."""
+        if week not in self.reduced:
+            self.reduced[week] = week - sum(1 for g in self.gaps if g < week)
+
+    def check_day(self, day: str) -> None:
+        d = _date(day, "date")
+        if d < self.today:
+            raise ValueError(f"{day} is in the past: plan only today or later")
+        if week_index(self.view(), d) is None:
+            raise ValueError(f"{day} is outside the plan ({self.plan['start_date']} to "
+                             f"{plan_end(self.view()).isoformat()})")
+        if self.blocking and _paused(d, self.blocking):
+            raise ValueError(f"{day} falls inside the user's {self.blocking[0]['reason']} pause: plan nothing "
+                             "there, and never diagnose")
+
+    def slot(self, day: str, row: dict | None = None, prefer: int | None = None, strict: bool = False) -> int:
+        used = {r["slot"] for r in [*self.all(), *self.others] if r["date"] == day and r is not row}
+        if prefer is not None:
+            prefer = _int(prefer, "slot", 0, PER_DAY - 1)
+            if prefer not in used:
+                return prefer
+            if strict:
+                raise ValueError(f"slot {prefer} on {day} is taken")
+        free = [s for s in range(PER_DAY) if s not in used]
+        if not free:
+            raise ValueError(f"at most {PER_DAY} planned sessions a day ({day})")
+        return free[0]
+
+    # -- the changes --
+    def apply(self, change) -> tuple[dict, str]:
+        """Apply one change; returns it normalised and its one-line description."""
+        if not isinstance(change, dict):
+            raise ValueError("each change must be an object")
+        kind = change.get("type")
+        if kind not in CHANGE_TYPES:
+            raise ValueError(f"a change's type must be one of {CHANGE_TYPES}, got {kind!r}")
+        allowed = {"move": {"planned_id", "date", "slot"}, "remove": {"planned_id", "reason"},
+                   "add": {"session"}, "edit": {"planned_id", "title", "target"},
+                   "lighter": {"week", "sessions"}, "shift": {"days", "from_date"}}[kind]
+        unknown = set(change) - allowed - {"type"}
+        if unknown:
+            raise ValueError(f"unknown fields for a {kind} change: {sorted(unknown)}")
+        return getattr(self, f"_{kind}")(change)
+
+    def _move(self, c: dict) -> tuple[dict, str]:
+        r = self.session(c.get("planned_id"), "moved")
+        new_day = _date(c.get("date") or r["date"], "date").isoformat()
+        if new_day == r["date"] and c.get("slot") in (None, r["slot"]):
+            raise ValueError(f"moving {r['title']} on {r['date']} changes nothing")
+        self.check_day(new_day)
+        old = dict(r)
+        if week_index(self.view(), new_day) != week_index(self.view(), old["date"]):
+            self.lightened(week_index(self.view(), old["date"]))
+        r["slot"] = self.slot(new_day, r, c.get("slot"), strict=c.get("slot") is not None)
+        r["date"] = new_day
+        out = {"type": "move", "planned_id": r["id"], "date": new_day}
+        if c.get("slot") is not None:
+            out["slot"] = r["slot"]
+        if new_day == old["date"]:
+            text = f"Do {self.label(old)} {'first' if r['slot'] == 0 else 'second'} that day"
+        elif monday(_date(new_day, "date")) == monday(_date(old["date"], "date")):
+            text = f"Move {self.label(old)} to {WEEKDAYS[_date(new_day, 'date').weekday()].title()}"
+        else:
+            text = f"Move {self.label(old)} to {_when(new_day, self.today)}"
+        return out, text
+
+    def _remove(self, c: dict) -> tuple[dict, str]:
+        r = self.session(c.get("planned_id"), "removed")
+        reason = _text(c.get("reason"), "reason", 200, optional=True)
+        text = f"Skip {self.label(r)}"
+        self.lightened(week_index(self.view(), r["date"]))
+        r.update(status="skipped", skip_reason=reason)
+        out = {"type": "remove", "planned_id": r["id"]}
+        if reason:
+            out["reason"] = reason
+        return out, text
+
+    def _add(self, c: dict) -> tuple[dict, str]:
+        row = validate_planned(c.get("session"), self.templates, self.gyms, plan=self.view())
+        self.check_day(row["date"])
+        row = {**row, "id": None, "plan_id": self.plan["id"], "status": "planned", "skip_reason": None,
+               "session_id": None}
+        row["slot"] = self.slot(row["date"], row)
+        self.added.append(row)
+        out = {"type": "add", "session": {k: row[k] for k in ("date", "sport", "template_id", "title", "target")}}
+        return out, f"Add {row['title']} on {_when(row['date'], self.today)} ({_target_text(row['target'])})"
+
+    def _edit(self, c: dict) -> tuple[dict, str]:
+        r = self.session(c.get("planned_id"), "edited", open_only=False)
+        if c.get("title") is None and c.get("target") is None:
+            raise ValueError("an edit changes the title, the target or both")
+        merged = {k: r[k] for k in ("date", "sport", "template_id", "title", "target")}
+        merged |= {k: c[k] for k in ("title", "target") if c.get(k) is not None}
+        row = validate_planned(merged, self.templates, self.gyms, keep_template=r.get("template_id"))
+        if row["title"] == r["title"] and row["target"] == r["target"]:
+            raise ValueError(f"editing {r['title']} on {r['date']} changes nothing")
+        if row["title"] != r["title"] and row["target"] != r["target"]:
+            text = f"Rename {self.label(r)} to {row['title']}, {_target_text(row['target'])}"
+        elif row["title"] != r["title"]:
+            text = f"Rename {self.label(r)} to {row['title']}"
+        else:
+            text = f"Change {self.label(r)} to {_target_text(row['target'])}"
+        r.update(title=row["title"], target=row["target"])
+        out = {"type": "edit", "planned_id": r["id"]}
+        out |= {k: row[k] for k in ("title", "target") if c.get(k) is not None}
+        return out, text
+
+    def _lighter(self, c: dict) -> tuple[dict, str]:
+        """Fewer or shorter sessions at the same or lower effort (L2). How much
+        lighter has no sourced number (deload_factor), so none is applied: the
+        week only has to end up with less planned load than before."""
+        week = _int(c.get("week"), "week", 1, self.weeks)
+        week_start = self.start + timedelta(days=7 * (week - 1))
+        if week_start + timedelta(days=6) < self.today:
+            raise ValueError(f"week {week} is over")
+        items = c.get("sessions")
+        if not isinstance(items, list) or not items:
+            raise ValueError("a lighter week lists the sessions to skip or shorten")
+
+        def load() -> int:
+            return sum(planned_load(r["target"]) or 0 for r in self.all()
+                       if r.get("status") != "skipped" and week_index(self.view(), r["date"]) == week)
+
+        before, parts, out_items = load(), [], []
+        for it in items:
+            if not isinstance(it, dict) or set(it) - {"planned_id", "remove", "duration_min", "effort", "distance_km"}:
+                raise ValueError("each lighter-week session has planned_id and remove, or a shorter "
+                                 "duration_min, distance_km or a lower effort")
+            r = self.session(it.get("planned_id"), "made lighter")
+            if week_index(self.view(), r["date"]) != week:
+                raise ValueError(f"{r['title']} on {r['date']} isn't in week {week}")
+            if it.get("remove"):
+                parts.append(f"skip {self.label(r)}")
+                r.update(status="skipped", skip_reason="lighter week")
+                out_items.append({"planned_id": r["id"], "remove": True})
+                continue
+            target, changed, item = dict(r["target"]), [], {"planned_id": r["id"]}
+            for key in ("duration_min", "distance_km", "effort"):
+                if it.get(key) is None:
+                    continue
+                new = validate_target(r["sport"], {key: it[key]})[key]
+                old = target.get(key)
+                if old is None:
+                    raise ValueError(f"{r['title']} on {r['date']} has no planned {key} to lower")
+                if new > old:
+                    raise ValueError(f"a lighter week never raises {key} ({r['title']} on {r['date']}: "
+                                     f"{old:g} to {new:g})")
+                if new < old:
+                    unit = {"duration_min": " min", "distance_km": " km", "effort": ""}[key]
+                    changed.append(f"{'effort ' if key == 'effort' else ''}{old:g} → {new:g}{unit}")
+                    target[key] = new
+                    item[key] = new
+            if not changed:
+                raise ValueError(f"{r['title']} on {r['date']}: nothing gets lighter")
+            parts.append(f"{self.label(r)} {', '.join(changed)}")
+            r["target"] = target
+            out_items.append(item)
+        if before and load() >= before:
+            raise ValueError(f"week {week}'s planned load ({load()}) isn't below what it was ({before})")
+        if self.meta[week - 1]["kind"] == "build":
+            self.meta[week - 1] = {"index": week, "kind": "deload", "note": "lighter week"}
+        self.lightened(week)
+        return ({"type": "lighter", "week": week, "sessions": out_items},
+                f"Make week {week} lighter: {'; '.join(parts)}")
+
+    def _shift(self, c: dict) -> tuple[dict, str]:
+        """Move every remaining open session N days later, e.g. after a pause.
+        Done and skipped ones stay. The plan grows if it must (at most 12
+        weeks); a shift by whole weeks moves the week kinds too, and the
+        weeks it opens up are lighter weeks (the break)."""
+        days = _int(c.get("days"), "days", 1, MAX_SHIFT_DAYS)
+        frm = max(_date(c.get("from_date") or self.today, "from_date"), self.today)
+        moving = sorted((r for r in self.all() if _date(r["date"], "date") >= frm
+                         and not r.get("session_id") and r.get("status") != "skipped"),
+                        key=lambda r: (r["date"], r["slot"]))
+        if not moving:
+            raise ValueError(f"no open planned sessions from {frm.isoformat()} to shift")
+        last = max(_date(r["date"], "date") for r in moving) + timedelta(days=days)
+        need = (last - self.start).days // 7 + 1
+        if need > MAX_WEEKS:
+            raise ValueError(f"shifting by {days} days makes the plan {need} weeks long; at most {MAX_WEEKS}")
+        old_weeks, first_week = self.weeks, week_index(self.view(), moving[0]["date"])
+        self.weeks = max(self.weeks, need)
+        if days % 7 == 0:
+            # The break: lighter weeks where the shift opens a gap. A week that keeps
+            # some sessions (done, skipped or earlier) keeps its kind, and the gap
+            # follows it; otherwise the gap takes its place.
+            shifting = {id(r) for r in moving}
+            keeps = any(week_index(self.view(), r["date"]) == first_week
+                        for r in self.all() if id(r) not in shifting)
+            at = first_week if keeps else first_week - 1
+            k = days // 7
+            gap = [{"index": 0, "kind": "deload", "note": "break"}] * k
+            meta = self.meta[:at] + gap + self.meta[at:]
+            self.reduced = {(w + k if w > at else w): old for w, old in self.reduced.items()}
+            self.gaps = {g + k if g > at else g for g in self.gaps} | set(range(at + 1, at + k + 1))
+            if keeps:
+                self.lightened(first_week)
+        else:
+            meta = list(self.meta)
+            self.lightened(first_week)
+        meta += [{"index": 0, "kind": "build", "note": None}] * max(0, self.weeks - len(meta))
+        self.meta = [{**w, "index": i + 1} for i, w in enumerate(meta[:self.weeks])]
+        targets = [(_date(r["date"], "date") + timedelta(days=days)).isoformat() for r in moving]
+        for r in moving:  # off the calendar while they're placed again
+            r["date"] = ""
+        for r, day in zip(moving, targets):
+            self.check_day(day)
+            r["slot"] = self.slot(day, r, r["slot"])
+            r["date"] = day
+        when = ("a week" if days == 7 else f"{days // 7} weeks" if days % 7 == 0
+                else "a day" if days == 1 else f"{days} days")
+        text = f"Move the remaining {len(moving)} session{'s' if len(moving) != 1 else ''} {when} later"
+        if self.weeks > old_weeks:
+            end = plan_end(self.view())
+            text += f" (the plan now ends {end.day} {_MONTHS[end.month - 1]})"
+        out = {"type": "shift", "days": days}
+        if c.get("from_date"):
+            out["from_date"] = frm.isoformat()
+        return out, text
+
+    # -- the result --
+    def writes(self) -> tuple[dict, list[tuple[int, dict]], list[dict]]:
+        """What Accept stores: plan fields, session updates, new sessions."""
+        plan_changes = {}
+        if self.weeks != int(self.plan["weeks"]):
+            plan_changes["weeks"] = self.weeks
+        if self.meta != _week_meta(self.plan.get("week_meta"), int(self.plan["weeks"])):
+            plan_changes["week_meta"] = self.meta
+        updates = []
+        for p in self.original:
+            r = self.rows[p["id"]]
+            changed = {k: r.get(k) for k in _WRITABLE if r.get(k) != p.get(k)}
+            if changed:
+                updates.append((p["id"], changed))
+        inserts = [{k: r[k] for k in ("date", "slot", "sport", "template_id", "title", "target")}
+                   for r in self.added]
+        return plan_changes, updates, inserts
+
+
+def _per_week(plan: dict, rows: list[dict]) -> dict[int, int]:
+    out: dict[int, int] = {}
+    for r in rows:
+        w = week_index(plan, r["date"])
+        if w is not None:
+            out[w] = out.get(w, 0) + 1
+    return out
+
+
+def _guardrails(store, before_plan: dict, before: list[dict], after_plan: dict, after: list[dict],
+                ctx: dict, today: date, reduced: dict[int, int] | None = None) -> tuple[list[str], list[str]]:
+    """The new plan's checks (_check_proposal, the quality rule, L1a, L1b, L2)
+    on the plan before and after the changes. Returns the problems the changes
+    add, which refuse the proposal, and the new notes."""
+    before = [r for r in before if r.get("status") != "skipped"]
+    after = [r for r in after if r.get("status") != "skipped"]
+    reduced = reduced or {}
+    pain = _has_pain(ctx)
+    check_ctx = {"available_days": ctx["available_days"] or list(WEEKDAYS),
+                 "sessions_per_week": ctx["sessions_per_week"] or 14}
+    since = (min(_date(before_plan["start_date"], "start_date"), today) - timedelta(days=45)).isoformat()
+    history = store.sessions_since(since) if hasattr(store, "sessions_since") else []
+
+    def problems(plan, rows, reduced_km=None):
+        found = _check_proposal(rows, check_ctx, plan) + quality_check(rows, plan, pain, ctx["pain_level"])[0]
+        checks = check_rules(plan, rows, history, today, pain=pain, reduced=reduced_km, l2_in_a_row=True)
+        return found + checks["violations"], checks["notes"] + intensity(rows, plan)["notes"], checks
+
+    old_problems, old_notes, old_checks = problems(before_plan, before)
+    km_before = old_checks["weekly_running_km"]
+    reduced_km = {w: km_before[old - 1] if 0 < old <= len(km_before) else 0.0 for w, old in reduced.items()}
+    new_problems, new_notes, _ = problems(after_plan, after, reduced_km)
+    added = _new_ones(old_problems, new_problems)
+    if ctx["sessions_per_week"] is None:  # no week busier than the plan's busiest so far
+        was, now = _per_week(before_plan, before), _per_week(after_plan, after)
+        cap = max(was.values(), default=0)
+        added += [f"week {w} would have {n} sessions, more than the plan's busiest week ({cap})"
+                  for w, n in sorted(now.items()) if n > cap and n > was.get(w, 0)]
+    return added, _new_ones(old_notes, new_notes)
+
+
+def _new_ones(old: list[str], new: list[str]) -> list[str]:
+    """The messages in `new` that `old` didn't have, counted, with dates and
+    week numbers left out: moving a session that already broke a rule to
+    another day moves the problem, it doesn't add one; a second one does."""
+    def key(text: str) -> str:  # a shift renumbers weeks too
+        text = re.sub(r"\d{4}-\d{2}-\d{2}", "<day>", text)
+        return re.sub(r"(?<![a-z])weeks? \d+", "week <n>", text)
+    seen = Counter(map(key, old))
+    out = []
+    for text in new:
+        if seen[key(text)]:
+            seen[key(text)] -= 1
+        else:
+            out.append(text)
+    return out
+
+
+def _evaluate(store, plan: dict, changes, ctx: dict, today: date) -> dict:
+    if plan["status"] not in CURRENT:
+        raise ValueError("this plan has ended; changes only apply to the current plan")
+    if not isinstance(changes, list) or not changes:
+        raise ValueError("changes must be a list with at least one change")
+    if len(changes) > MAX_CHANGES:
+        raise ValueError(f"at most {MAX_CHANGES} changes at once")
+    draft = _Draft(store, plan, today)
+    before_plan = {**plan, "week_meta": list(draft.meta)}  # a lighter week edits draft.meta
+    applied = []
+    for i, change in enumerate(changes, 1):
+        try:
+            applied.append(draft.apply(change))
+        except ValueError as e:
+            raise ValueError(f"change {i}: {e}") from None
+    after_plan = draft.view()
+    problems, notes = _guardrails(store, before_plan, draft.original, after_plan, draft.all(), ctx, today,
+                                  draft.reduced)
+    if problems:
+        raise ValueError("the changes break the plan's rules; change only what the user asked, within "
+                         "the rules, or tell them plainly what can't be done: " + "; ".join(problems))
+    return {"draft": draft, "applied": applied, "before_plan": before_plan, "after_plan": after_plan,
+            "notes": notes}
+
+
+def propose_plan_change(store, today: date | None = None, *, changes=None, reason=None, plan_id=None,
+                        available_days=None, sessions_per_week=None, injury_or_pain=None,
+                        pain_level=None, user_said=None) -> dict:
+    """Changes to the current plan, as the coach proposes them: validated and
+    checked against the same guardrails as a new plan, never stored. The app
+    shows only the changes, each with a one-line description; Accept applies
+    all of them or the ones the user picked (apply_plan_change)."""
+    today = today or date.today()
+    current = current_plan(store) if hasattr(store, "plans") else None
+    if current is None:
+        raise ValueError("the user has no current plan, so there is nothing to change; propose a new "
+                         "plan with propose_program only if they ask for one")
+    if plan_id is not None and plan_id != current["id"]:
+        raise ValueError(f"plan {plan_id} isn't the current plan ({current['id']}, {current['name']!r})")
+    reason = _text(reason, "reason", 200)
+    ctx = _change_context(store, available_days, sessions_per_week, injury_or_pain, pain_level, user_said)
+    ev = _evaluate(store, current, changes, ctx, today)
+    draft, after = ev["draft"], ev["after_plan"]
+    version = plan_version(current, draft.original)
+    warnings = list(ev["notes"])
+    if any(c["type"] == "lighter" for c, _ in ev["applied"]):
+        warnings.append("How much lighter has no sourced number yet (L2b, needs source): this is "
+                        "fewer or shorter sessions at the same or lower effort.")
+    notes = ["only the changes listed here are proposed; never call them saved or applied until the "
+             "user accepts", "never change the goal without asking"]
+    if _has_pain(ctx):
+        notes.append("the user mentioned injury or pain: propose less, never more, never diagnose, and "
+                     "suggest a physiotherapist or doctor if it persists or gets worse")
+    public_ctx = {k: v for k, v in ctx.items() if v not in (None, [])}
+    return {
+        "change_proposal": True, "stored": False,
+        "plan": {"id": current["id"], "name": current["name"], "start_date": current["start_date"],
+                 "weeks": after["weeks"], "end_date": plan_end(after).isoformat()},
+        "version": version, "reason": reason,
+        "changes": [{"index": i, "type": c["type"], "label": CHANGE_LABEL[c["type"]], "description": text}
+                    for i, (c, text) in enumerate(ev["applied"])],
+        "warnings": warnings, "notes": notes,
+        "weekly_before": weekly_load(ev["before_plan"], draft.original),
+        "weekly_after": weekly_load(after, draft.all()),
+        # What the app sends to POST /plans/{id}/changes on Accept: all of
+        # `changes`, or the ones the user ticked in Review.
+        "accept": {"version": version, "changes": [c for c, _ in ev["applied"]], "context": public_ctx},
+        "context": public_ctx,
+        "rules_applied": [f"{v['rule']}: {v['text']} [{v['source']}]" for v in _SOURCED.values()],
+    }
+
+
+def apply_plan_change(store, plan_id: int, version: str, changes, context: dict | None = None,
+                      today: date | None = None) -> dict:
+    """Apply an accepted change proposal (all its changes, or the ones the user
+    picked) in one transaction. RuntimeError (409) if the plan changed since
+    the proposal; ValueError (422) if the changes, or the subset picked, break
+    the guardrails; LookupError (404) for an unknown plan."""
+    today = today or date.today()
+    plan = next((p for p in store.plans() if p["id"] == plan_id), None)
+    if plan is None:
+        raise LookupError(f"plan {plan_id} not found")
+    if plan_version(plan, store.planned_sessions(plan_id=plan_id)) != version:
+        raise RuntimeError("the plan has changed since this proposal; ask the coach again")
+    context = context or {}
+    if not isinstance(context, dict) or set(context) - {"available_days", "sessions_per_week", "injury_or_pain",
+                                                         "pain_level", "user_said"}:
+        raise ValueError("context has unknown fields")
+    ctx = _change_context(store, **context)
+    ev = _evaluate(store, plan, changes, ctx, today)
+    plan_changes, updates, inserts = ev["draft"].writes()
+    store.apply_plan_changes(plan_id, version, plan_version, plan_changes, updates, inserts)
+    return {"plan": get_plan(store, plan_id, today), "applied": [text for _, text in ev["applied"]]}

@@ -245,6 +245,8 @@ export type ChatResponse = {
   drafts?: Draft[];
   /** Plans the coach proposed this turn (#119): never stored until Accept (Q5). */
   proposals?: PlanProposal[];
+  /** Changes to the current plan the coach proposed this turn (#131): applied only on Accept. */
+  change_proposals?: PlanChangeProposal[];
   /** Profile changes the coach proposed this turn (#137): stored only on Save. */
   profile_updates?: ProfileUpdate[];
 };
@@ -392,6 +394,35 @@ export type PlanProposal = {
   /** Per week: runs, quality sessions and the easy share of running km (L8, needs source). */
   intensity?: { week: number; runs: number; quality_sessions: number; easy_share: number | null }[];
 };
+
+export type PlanChangeType = "move" | "remove" | "add" | "edit" | "lighter" | "shift";
+
+/** One change as the server normalised it; sent back as is on Accept. */
+export type PlanChange = { type: PlanChangeType } & Record<string, unknown>;
+
+/** propose_plan_change's result (#131, mockup 4): only the changes, each with a
+ *  one-line description. Nothing is applied until Accept (all of them) or
+ *  Review (the ones the user ticks). */
+export type PlanChangeProposal = {
+  change_proposal: true;
+  stored: false;
+  plan: { id: number; name: string; start_date: string; weeks: number; end_date: string };
+  version: string;
+  /** The coach's one calm line. */
+  reason: string;
+  changes: { index: number; type: PlanChangeType; label: string; description: string }[];
+  warnings: string[];
+  accept: { version: string; changes: PlanChange[]; context: Record<string, unknown> };
+};
+
+/** Apply an accepted change proposal (all its changes or the ones picked) in one
+ *  transaction. 409 when the plan changed since the proposal. */
+export function applyPlanChange(
+  planId: number,
+  body: PlanChangeProposal["accept"],
+): Promise<{ plan: Plan; applied: string[] }> {
+  return request(`/plans/${planId}/changes`, { method: "POST", body: JSON.stringify(body) });
+}
 
 export function getPlans(signal?: AbortSignal): Promise<{ current: Plan | null; plans: Omit<Plan, "sessions" | "weekly">[] }> {
   return request("/plans", { signal });

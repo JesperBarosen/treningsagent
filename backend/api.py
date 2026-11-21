@@ -76,6 +76,9 @@ class ChatResponse(BaseModel):
     # Plans propose_program made this turn (#119). Never stored, even with
     # auto_save (Q5): the app shows a card, and Accept POSTs `accept` to /plans.
     proposals: list[dict] = []
+    # Changes to the current plan propose_plan_change made this turn (#131):
+    # never stored; Accept POSTs `accept` to /plans/{id}/changes.
+    change_proposals: list[dict] = []
     # Profile changes propose_profile_update made this turn (#137): never stored
     # until the user's Save sends `changes` to PATCH /profile.
     profile_updates: list[dict] = []
@@ -119,6 +122,7 @@ def post_chat(
                         logged_sessions=logged_sessions(messages[turn_start:]),
                         drafts=tool_results(messages[turn_start:], "draft_session"),
                         proposals=tool_results(messages[turn_start:], "propose_program"),
+                        change_proposals=tool_results(messages[turn_start:], "propose_plan_change"),
                         profile_updates=tool_results(messages[turn_start:], "propose_profile_update"))
 
 
@@ -607,6 +611,14 @@ class PlanChange(BaseModel):
     status: Literal["active", "paused", "finished"] | None = None
 
 
+class PlanChangeAccept(BaseModel):
+    """An accepted change proposal (#131): its `version` and all its changes,
+    or the ones the user ticked in Review, as propose_plan_change returned them."""
+    version: str
+    changes: list[dict]
+    context: dict = {}
+
+
 class PlannedAdd(PlannedIn):
     # Left out: a one-off planned session with no plan (#38, Q3).
     plan_id: int | None = None
@@ -653,6 +665,15 @@ def get_plan(plan_id: int, store: db.PostgresStore = Depends(get_store)) -> dict
 def patch_plan(plan_id: int, body: PlanChange, store: db.PostgresStore = Depends(get_store)) -> dict:
     """Rename, change week kinds or the rationale, pause, resume or finish a plan."""
     return _plans_call(plans.update_plan, store, plan_id, body.model_dump(exclude_unset=True))
+
+
+@app.post("/plans/{plan_id}/changes")
+def post_plan_changes(plan_id: int, body: PlanChangeAccept,
+                      store: db.PostgresStore = Depends(get_store)) -> dict:
+    """Apply an accepted change proposal in one transaction (Q5: never without
+    the user's tap). 409 if the plan changed since the proposal; 422 if the
+    changes picked break the guardrails. Returns the plan and what changed."""
+    return _plans_call(plans.apply_plan_change, store, plan_id, body.version, body.changes, body.context)
 
 
 @app.post("/plans/{plan_id}/leave")

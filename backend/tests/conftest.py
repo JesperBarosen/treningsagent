@@ -28,6 +28,7 @@ class FakeStore:
         self.template_rows: list[dict] = []
         self.plan_rows: list[dict] = []
         self.planned_rows: list[dict] = []
+        self.fail_next_change = False
 
     def insert_session(self, row: dict, climbs: list[dict] = ()) -> int:
         session_id = len(self.rows) + 1
@@ -237,6 +238,31 @@ class FakeStore:
         self._one_current(plan_id, changes.get("status", plan["status"]))
         plan.update(json.loads(json.dumps(changes)))
         return json.loads(json.dumps(plan))
+
+    def apply_plan_changes(self, plan_id: int, version: str, fingerprint, plan_changes: dict,
+                           updates: list, inserts: list[dict]) -> dict:
+        """An accepted change proposal (#131), all or nothing, like the database's
+        transaction: refused if the plan's fingerprint no longer matches."""
+        plan = next((p for p in self.plan_rows if p["id"] == plan_id), None)
+        if plan is None:
+            raise LookupError(f"plan {plan_id} not found")
+        if fingerprint(json.loads(json.dumps(plan)), self.planned_sessions(plan_id=plan_id)) != version:
+            raise RuntimeError("the plan has changed since this proposal; ask the coach again")
+        saved = json.loads(json.dumps((self.plan_rows, self.planned_rows)))
+        try:
+            if self.fail_next_change:  # tests: a write fails halfway
+                self.fail_next_change = False
+                for planned_id, changes in updates[:1]:
+                    self.update_planned(planned_id, changes)
+                raise ValueError("a write failed")
+            for planned_id, changes in updates:
+                self.update_planned(planned_id, changes)
+            for row in inserts:
+                self.insert_planned({**row, "plan_id": plan_id})
+            return self.update_plan(plan_id, plan_changes)
+        except Exception:
+            self.plan_rows, self.planned_rows = saved
+            raise
 
     def planned_sessions(self, plan_id: int | None = None, since: str | None = None,
                          until: str | None = None) -> list[dict]:
