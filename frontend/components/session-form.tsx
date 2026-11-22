@@ -324,7 +324,7 @@ export function SessionForm({
                 if (templateId !== t.id) setValues(session?.template_id === t.id ? (session.custom_values ?? {}) : {});
                 setTemplateId(t.id);
               }}
-              className={tile}
+              className={`${tile} py-3`}
             >
               <SportBadge sport={t.sport} size="sm" />
               {/* Long names wrap to a second line instead of ending in "…". */}
