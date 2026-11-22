@@ -94,6 +94,9 @@ const field =
 const label = "mb-1 block text-sm font-medium";
 const tile =
   "flex min-h-14 min-w-0 items-center gap-3 rounded-md border border-control bg-surface px-3 text-left font-medium aria-checked:border-accent aria-checked:bg-accent-soft";
+/** Log form names longer than this take a whole row in the picker (at 375 px,
+ *  about 10 characters fit beside the badge in half the width). */
+const WIDE_TILE_AFTER = 10;
 /** Two equal columns that can shrink below their content's width. */
 const pair = "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3";
 
@@ -296,7 +299,8 @@ export function SessionForm({
     <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
       <fieldset className="min-w-0">
         <legend className={label}>What did you do?</legend>
-        <div role="radiogroup" aria-label="Sport" className="grid grid-cols-2 gap-2">
+        {/* dense: a short tile after a wide one fills the gap beside it. */}
+        <div role="radiogroup" aria-label="Sport" className="grid grid-flow-row-dense grid-cols-2 gap-2">
           {SPORTS.map((s) => (
             <button
               key={s.value}
@@ -324,11 +328,11 @@ export function SessionForm({
                 if (templateId !== t.id) setValues(session?.template_id === t.id ? (session.custom_values ?? {}) : {});
                 setTemplateId(t.id);
               }}
-              className={tile}
+              // A name too long for half the width gets the whole row instead of wrapping.
+              className={`${tile} ${t.name.length > WIDE_TILE_AFTER ? "col-span-2" : ""}`}
             >
               <SportBadge sport={t.sport} size="sm" />
-              {/* Long names wrap to a second line instead of ending in "…". */}
-              <span className="min-w-0 leading-tight break-words">{t.name}</span>
+              <span className="min-w-0 truncate">{t.name}</span>
             </button>
           ))}
           {!templatesLoaded && (

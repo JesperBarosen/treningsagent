@@ -50,6 +50,11 @@ def _num(value, what: str) -> float:
     return value
 
 
+# Short enough to fit on one line of the Log form's picker at phone width.
+# The database allows 40, so older, longer names still load.
+TEMPLATE_NAME_MAX = 24
+
+
 def _text(value, what: str, longest: int, *, optional: bool = False) -> str | None:
     if value is None and optional:
         return None
@@ -230,7 +235,7 @@ def validate_template(name: str, sport: str, fields: list, core_fields: list | N
     have values for), the edit rules apply: fixed properties stay, a used
     field or option can be archived but not removed, and a used template keeps
     its sport."""
-    name = _text(name, "template name", 40)
+    name = _text(name, "template name", TEMPLATE_NAME_MAX)
     if sport not in SPORTS:
         raise ValueError(f"sport must be one of {SPORTS}, got {sport!r}")
     core = list(core_fields or [])
