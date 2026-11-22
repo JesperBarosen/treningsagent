@@ -27,6 +27,8 @@ import { sportName } from "@/lib/format";
 // Keys, types and units are fixed once saved (the backend enforces it); used
 // fields and templates are archived, never deleted.
 
+/** Matches forms.TEMPLATE_NAME_MAX: one line in the Log form's picker. */
+const TEMPLATE_NAME_MAX = 24;
 const SPORT_LABEL: Record<Sport, string> = { running: "Running", climbing: "Climbing", strength: "Strength", other: "Other" };
 const BUILT_IN: Record<Sport, string> = {
   running: "Distance · Elevation",
@@ -345,7 +347,10 @@ function TemplateEditor({ start, onCancel, onSaved }: { start: Draft; onCancel: 
         <label htmlFor="template-name" className={small}>
           Name
         </label>
-        <input id="template-name" value={draft.name} maxLength={40} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className={input} />
+        <input id="template-name" value={draft.name} maxLength={TEMPLATE_NAME_MAX} aria-describedby="template-name-count" onChange={(e) => setDraft({ ...draft, name: e.target.value })} className={input} />
+        <p id="template-name-count" className="mt-1 text-right text-xs text-ink-muted tabular-nums">
+          {draft.name.length}/{TEMPLATE_NAME_MAX}
+        </p>
       </div>
       <fieldset className="min-w-0">
         <legend className={small}>Sport</legend>
