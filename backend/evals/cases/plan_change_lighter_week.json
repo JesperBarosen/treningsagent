@@ -1,0 +1,55 @@
+{
+  "id": "plan_change_lighter_week",
+  "note": "#131, docs/training-plans.md sections 5 (L2, L2b) and 6: a worn-out user asks for a lighter week; the coach proposes one lighter-week change (fewer or shorter sessions at the same or lower effort) for that week only, as a proposal, with calm wording and no invented number for how much lighter (deload_factor needs a source). Same seed as plan_change_only_diff; next week is week 1 (in-memory ids: Thursday's tempo run 2, Saturday's long run 3).",
+  "seed_from": "plan_change_only_diff",
+  "known_bad": {
+    "source": "Written for this case: an applied change with an invented research number.",
+    "why": "Says the plan is already updated and quotes a 40% cut as research-backed, although nothing changes before Accept and L2b has no sourced number.",
+    "should_fail": "must_not-1",
+    "answer": "No problem, I've cut next week by 40%, which research shows is optimal for recovery. Your plan is updated."
+  },
+  "question": "I'm really worn out lately. Can you make next week lighter?",
+  "expect": {
+    "tools_called": [
+      "get_plan",
+      "propose_plan_change"
+    ],
+    "tools_not_called": [
+      "propose_program"
+    ],
+    "change_types": [
+      "lighter"
+    ],
+    "tool_inputs": {
+      "propose_plan_change": {
+        "changes": [
+          {
+            "type": "lighter",
+            "week": 1,
+            "sessions": [
+              {
+                "planned_id": 2,
+                "remove": true
+              },
+              {
+                "planned_id": 3,
+                "duration_min": 30,
+                "distance_km": 5
+              }
+            ]
+          }
+        ],
+        "reason": "A lighter week while you're worn out."
+      }
+    },
+    "must": [
+      "Present the lighter week as a proposal the user accepts in the app, not as done",
+      "Respond to being worn out calmly and without blame"
+    ],
+    "must_not": [
+      "Say or imply the plan has already been changed or saved",
+      "Propose a new plan, or change weeks other than next week",
+      "Quote a percentage or number for how much lighter as if research backs it"
+    ]
+  }
+}

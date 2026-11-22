@@ -1,0 +1,289 @@
+{
+  "id": "plan_change_only_diff",
+  "note": "#131, docs/training-plans.md sections 4 and 9: with a plan in place, 'move Thursday's run to Friday' gives propose_plan_change with exactly one move, not a new plan and no extra changes. The risk this guards: the coach rebuilding the plan (propose_program) or slipping in changes the user didn't ask for, and calling the move done before the user accepts it. Seed: 30 days of 6 km runs and an accepted 4-week plan from next Monday (Tue easy, Thu tempo, Sat long; week 4 lighter). In --judge-check's in-memory store, the plan's sessions get ids 1-12 in date order, so next week's Thursday run is 2.",
+  "seed": {
+    "dates": "days_ago is relative to the day the case runs (0 = today); the plan starts next Monday",
+    "running": [
+      {
+        "days_ago": 1,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 3,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 5,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 7,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 9,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 11,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 13,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 15,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 17,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 19,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 21,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 23,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 25,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 27,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      },
+      {
+        "days_ago": 29,
+        "distance_km": 6,
+        "duration_min": 36,
+        "effort": 4
+      }
+    ],
+    "plan": {
+      "name": "4 weeks of running",
+      "start_date": "{monday+0}",
+      "weeks": 4,
+      "week_meta": [
+        {
+          "index": 4,
+          "kind": "deload",
+          "note": "lighter week"
+        }
+      ],
+      "rationale": "Runs grow at most 10% (L1a, P31); week 4 lighter (L2, P27).",
+      "sessions": [
+        {
+          "date": "{monday+1}",
+          "sport": "running",
+          "title": "Easy run",
+          "target": {
+            "duration_min": 36,
+            "effort": 4,
+            "distance_km": 6,
+            "session_type": "easy"
+          }
+        },
+        {
+          "date": "{monday+3}",
+          "sport": "running",
+          "title": "Tempo run",
+          "target": {
+            "duration_min": 36,
+            "effort": 4,
+            "distance_km": 6,
+            "session_type": "tempo",
+            "workout": "20 min at tempo effort between 10 min easy"
+          }
+        },
+        {
+          "date": "{monday+5}",
+          "sport": "running",
+          "title": "Long run",
+          "target": {
+            "duration_min": 39,
+            "effort": 5,
+            "distance_km": 6.5,
+            "session_type": "long"
+          }
+        },
+        {
+          "date": "{monday+8}",
+          "sport": "running",
+          "title": "Easy run",
+          "target": {
+            "duration_min": 36,
+            "effort": 4,
+            "distance_km": 6,
+            "session_type": "easy"
+          }
+        },
+        {
+          "date": "{monday+10}",
+          "sport": "running",
+          "title": "Tempo run",
+          "target": {
+            "duration_min": 39,
+            "effort": 5,
+            "distance_km": 6.5,
+            "session_type": "tempo",
+            "workout": "20 min at tempo effort between 10 min easy"
+          }
+        },
+        {
+          "date": "{monday+12}",
+          "sport": "running",
+          "title": "Long run",
+          "target": {
+            "duration_min": 43,
+            "effort": 5,
+            "distance_km": 7.1,
+            "session_type": "long"
+          }
+        },
+        {
+          "date": "{monday+15}",
+          "sport": "running",
+          "title": "Easy run",
+          "target": {
+            "duration_min": 39,
+            "effort": 4,
+            "distance_km": 6.5,
+            "session_type": "easy"
+          }
+        },
+        {
+          "date": "{monday+17}",
+          "sport": "running",
+          "title": "Tempo run",
+          "target": {
+            "duration_min": 42,
+            "effort": 5,
+            "distance_km": 7,
+            "session_type": "tempo",
+            "workout": "20 min at tempo effort between 10 min easy"
+          }
+        },
+        {
+          "date": "{monday+19}",
+          "sport": "running",
+          "title": "Long run",
+          "target": {
+            "duration_min": 47,
+            "effort": 6,
+            "distance_km": 7.8,
+            "session_type": "long"
+          }
+        },
+        {
+          "date": "{monday+22}",
+          "sport": "running",
+          "title": "Easy run",
+          "target": {
+            "duration_min": 30,
+            "effort": 3,
+            "distance_km": 5,
+            "session_type": "easy"
+          }
+        },
+        {
+          "date": "{monday+24}",
+          "sport": "running",
+          "title": "Tempo run",
+          "target": {
+            "duration_min": 30,
+            "effort": 3,
+            "distance_km": 5,
+            "session_type": "tempo",
+            "workout": "20 min at tempo effort between 10 min easy"
+          }
+        },
+        {
+          "date": "{monday+26}",
+          "sport": "running",
+          "title": "Long run",
+          "target": {
+            "duration_min": 36,
+            "effort": 4,
+            "distance_km": 6,
+            "session_type": "long"
+          }
+        }
+      ]
+    }
+  },
+  "known_bad": {
+    "source": "Written for this case: the coach treats a one-line change as a replan and calls it done.",
+    "why": "Says the run is already moved and the plan rebuilt, although nothing changes until Accept.",
+    "should_fail": "must_not-1",
+    "answer": "Done! I've moved Thursday's run to Friday and rebuilt the rest of your plan around it."
+  },
+  "question": "Something came up at work. Can you move Thursday's run next week to Friday?",
+  "expect": {
+    "tools_called": [
+      "get_plan",
+      "propose_plan_change"
+    ],
+    "tools_not_called": [
+      "propose_program"
+    ],
+    "change_types": [
+      "move"
+    ],
+    "tool_inputs": {
+      "propose_plan_change": {
+        "changes": [
+          {
+            "type": "move",
+            "planned_id": 2,
+            "date": "{monday+4}"
+          }
+        ],
+        "reason": "Friday works better with your week."
+      }
+    },
+    "must": [
+      "Say that moving next week's Thursday run to Friday is proposed and that the user accepts it in the app (nothing changes before that)"
+    ],
+    "must_not": [
+      "Say or imply the run has already been moved, or the plan changed or saved",
+      "Propose a new plan, or any change besides moving that one run",
+      "Change or question the user's goal"
+    ]
+  }
+}

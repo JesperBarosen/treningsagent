@@ -135,3 +135,26 @@ def test_deleting_the_goal_keeps_the_plan(conn):
     plan = store.insert_plan({**PLAN, "goal_id": g["id"]}, [])
     store.delete_goal(g["id"])
     assert store.plans()[0]["id"] == plan["id"] and store.plans()[0]["goal_id"] is None
+
+
+def test_a_change_proposal_is_applied_in_one_transaction_and_refused_when_stale(conn):
+    """#131: apply_plan_changes locks the plan, checks its fingerprint again
+    and writes everything or nothing."""
+    import plans
+    store = make_store(conn)
+    plan = store.insert_plan(PLAN, [PLANNED])
+    [p] = store.planned_sessions(plan_id=plan["id"])
+    version = plans.plan_version(plan, [p])
+    store.apply_plan_changes(plan["id"], version, plans.plan_version, {"weeks": 7},
+                             [(p["id"], {"date": "2026-11-25"})],
+                             [{**PLANNED, "date": "2026-11-26", "slot": 0}])
+    assert [r["date"] for r in store.planned_sessions(plan_id=plan["id"])] == ["2026-11-25", "2026-11-26"]
+    assert store.plans()[0]["weeks"] == 7
+    with pytest.raises(RuntimeError, match="changed since"):
+        store.apply_plan_changes(plan["id"], version, plans.plan_version, {}, [(p["id"], {"date": "2026-11-27"})], [])
+    # A failing write rolls back the whole change.
+    fresh = plans.plan_version(store.plans()[0], store.planned_sessions(plan_id=plan["id"]))
+    with pytest.raises(ValueError):
+        store.apply_plan_changes(plan["id"], fresh, plans.plan_version, {},
+                                 [(p["id"], {"date": "2026-11-28"})], [{**PLANNED, "title": ""}])
+    assert store.planned_sessions(plan_id=plan["id"])[0]["date"] == "2026-11-25"

@@ -28,6 +28,26 @@ const PLAN = {
     session_id: null, week: 1, planned_load: null, done: null, ...s })),
 };
 
+/** A change proposal (#131) with long lines, as the chat returns it. */
+const CHANGES = {
+  reply: "Here's what I'd change. Nothing changes until you accept it.",
+  history: [{ role: "user", content: "x" }, { role: "assistant", content: [{ type: "text", text: "…" }] }],
+  conversation_id: "00000000-0000-0000-0000-000000000001",
+  logged_sessions: [],
+  change_proposals: [{
+    change_proposal: true, stored: false, version: "v1",
+    plan: { id: 1, name: PLAN.name, start_date: PLAN.start_date, weeks: 13, end_date: "2027-02-21" },
+    reason: "I'd ease back in this week and push the rest of the plan back a week. If anything hurts, see a physiotherapist.",
+    changes: [
+      { index: 0, type: "shift", label: "Shift", description: "Move the remaining 31 sessions a week later (the plan now ends 21 Feb)" },
+      { index: 1, type: "lighter", label: "Lighter", description: "Make week 2 lighter: skip the Hangboard max hangs on Thursday 3 Dec; the Limit bouldering on the steep wall on Saturday 5 Dec 90 → 60 min, effort 8 → 6" },
+      { index: 2, type: "move", label: "Move", description: "Move the Strides on Wednesday 25 Nov to Friday" },
+    ],
+    warnings: ["How much lighter has no sourced number yet (L2b, needs source): this is fewer or shorter sessions at the same or lower effort."],
+    accept: { version: "v1", changes: [], context: {} },
+  }],
+};
+
 /** Answer every API call from the fixture (made by the backend's own tools). */
 async function mockApi(page: Page) {
   await page.route(`${API}/**`, async (route) => {
@@ -45,6 +65,7 @@ async function mockApi(page: Page) {
       "/gyms": DATA.gyms,
       "/templates": DATA.templates,
       "/plans": { current: PLAN, plans: [] },
+      "/chat": CHANGES,
     };
     return route.fulfill({ headers: cors, json: body[url.pathname] ?? {} });
   });
@@ -123,6 +144,24 @@ test("Coach: the document never scrolls, only the messages do (#144)", async ({ 
   expect(await docScrolls()).toBe(false);
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
   await expectFits(page, "Coach column while typing");
+});
+
+test("Coach: a change proposal, and its Review (#131)", async ({ page }) => {
+  await open(page, "/");
+  await page.getByLabel("Message").fill("I was ill last week, can you adjust my plan?");
+  await page.getByLabel("Message").press("Enter");
+  const card = page.getByRole("region", { name: /Proposed change/ });
+  await expect(card).toBeVisible();
+  // Opaque: nothing of the conversation shows through behind it.
+  expect(await card.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toMatch(/rgba\(.*, 0\)|transparent/);
+  for (const name of ["Accept", "Review", "Not now"]) {
+    const box = await card.getByRole("button", { name }).boundingBox();
+    expect(box!.height, name).toBeGreaterThanOrEqual(44);
+  }
+  await expectFits(page, "Coach, change proposal");
+  await card.getByRole("button", { name: "Review" }).click();
+  await expect(card.getByRole("checkbox")).toHaveCount(3);
+  await expectFits(page, "Coach, change proposal in Review");
 });
 
 test("Sessions, every filter", async ({ page }) => {

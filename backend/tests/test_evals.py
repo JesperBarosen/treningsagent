@@ -121,3 +121,30 @@ def test_draft_cases_expect_a_draft_dated_today():
         draft = json.loads(tools.run_tool(None, "draft_session",
                                           case["expect"]["tool_inputs"]["draft_session"]))
         assert draft["draft"] is True and draft["date"] == date.today().isoformat()
+
+
+def test_plan_change_cases_seed_a_plan_and_propose_only_the_asked_change():
+    for case_id, kind in (("plan_change_only_diff", "move"), ("plan_change_lighter_week", "lighter")):
+        case = run.load_case(run.CASES_DIR / f"{case_id}.json")
+        store = run.MemoryStore()
+        run.seed(store, case["seed"], date.today())
+        near = json.loads(tools.run_tool(store, "get_plan", {}))["this_and_next_week"]
+        assert [s["title"] for s in near[:3]] == ["Easy run", "Tempo run", "Long run"]  # ids 1-3, week 1
+        out = json.loads(tools.run_tool(store, "propose_plan_change",
+                                        case["expect"]["tool_inputs"]["propose_plan_change"]))
+        assert [c["type"] for c in out["changes"]] == case["expect"]["change_types"] == [kind]
+
+
+def test_structural_checks_catch_a_new_plan_and_extra_changes():
+    case = {"expect": {"tools_not_called": ["propose_program"], "change_types": ["move"]}}
+
+    def blocks(name, types):
+        return [{"type": "tool_use", "id": "t1", "name": name, "input": {}},
+                {"type": "tool_result", "tool_use_id": "t1",
+                 "content": json.dumps({"changes": [{"type": t} for t in types]})}]
+
+    assert run.structural_checks(case, blocks("propose_plan_change", ["move"])) == []
+    [extra] = run.structural_checks(case, blocks("propose_plan_change", ["move", "remove"]))
+    assert extra.id == "change_types" and not extra.passed
+    ids = {c.id for c in run.structural_checks(case, blocks("propose_program", []))}
+    assert ids == {"tools_not_called", "change_types"}
