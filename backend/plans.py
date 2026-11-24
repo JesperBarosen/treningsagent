@@ -387,8 +387,14 @@ def with_sessions(plan: dict, planned: list[dict]) -> dict:
             "weekly": weekly_load(plan, mine)}
 
 
+def weekday(day) -> str:
+    """"Tuesday": given to the coach next to every date, so it never works one out itself (#158)."""
+    return WEEKDAYS[_date(day, "date").weekday()].title()
+
+
 def decorate(planned: dict, plan: dict | None = None) -> dict:
-    return {**planned, "week": week_index(plan, planned["date"]) if plan else None,
+    return {**planned, "weekday": weekday(planned["date"]),
+            "week": week_index(plan, planned["date"]) if plan else None,
             "planned_load": planned_load(planned.get("target") or {})}
 
 
@@ -1553,8 +1559,7 @@ def propose_plan_change(store, today: date | None = None, *, changes=None, reaso
         "plan": {"id": current["id"], "name": current["name"], "start_date": current["start_date"],
                  "weeks": after["weeks"], "end_date": plan_end(after).isoformat()},
         "version": version, "reason": reason,
-        "changes": [{"index": i, "type": c["type"], "label": CHANGE_LABEL[c["type"]], "description": text}
-                    for i, (c, text) in enumerate(ev["applied"])],
+        "changes": [_shown(i, c, text) for i, (c, text) in enumerate(ev["applied"])],
         "warnings": warnings, "notes": notes,
         "weekly_before": weekly_load(ev["before_plan"], draft.original),
         "weekly_after": weekly_load(after, draft.all()),
@@ -1564,6 +1569,15 @@ def propose_plan_change(store, today: date | None = None, *, changes=None, reaso
         "context": public_ctx,
         "rules_applied": [f"{v['rule']}: {v['text']} [{v['source']}]" for v in _SOURCED.values()],
     }
+
+
+def _shown(i: int, change: dict, text: str) -> dict:
+    """A change as the card and the coach see it; a new day comes with its weekday."""
+    out = {"index": i, "type": change["type"], "label": CHANGE_LABEL[change["type"]], "description": text}
+    day = change.get("date") or (change.get("session") or {}).get("date")
+    if day:
+        out |= {"date": day, "weekday": weekday(day)}
+    return out
 
 
 def apply_plan_change(store, plan_id: int, version: str, changes, context: dict | None = None,
