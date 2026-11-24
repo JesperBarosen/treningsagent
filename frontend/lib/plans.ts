@@ -110,6 +110,13 @@ export function weekDays(startDate: string, index: number): string[] {
   return Array.from({ length: 7 }, (_, i) => new Date(start + i * 86_400_000).toISOString().slice(0, 10));
 }
 
+/** The week (1-based) of a plan that contains `today`, or null before the start or after the end. */
+export function weekContaining(startDate: string, weeks: number, today: string): number | null {
+  const days = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / 86_400_000;
+  const week = Math.floor(days / 7) + 1;
+  return days >= 0 && week <= weeks ? week : null;
+}
+
 // --- Logging a planned session (#117, #132) ------------------------------------------
 
 /** "Log this" shows on a planned session that isn't done, skipped or paused. */

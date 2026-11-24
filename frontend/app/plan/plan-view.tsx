@@ -233,7 +233,8 @@ export function PlanView() {
 }
 
 /** Week chips and the week's day rows (#118); also the proposal preview (#135).
- *  Opens on `current` (this week), or the first week before the plan starts. */
+ *  Opens on `current` (this week), else on `opensOn` when given, else on the
+ *  first week before the plan starts and the last one after it. */
 export function PlanCalendar({
   startDate,
   weeks,
@@ -241,6 +242,7 @@ export function PlanCalendar({
   sessions,
   today,
   current,
+  opensOn,
   onLog,
 }: {
   startDate: string;
@@ -249,11 +251,13 @@ export function PlanCalendar({
   sessions: PlannedSession[];
   today: string;
   current: number | null;
+  /** The week to open on when no week is the current one. */
+  opensOn?: number;
   /** "Log this" on a planned session; left out in the proposal preview, where nothing is stored yet. */
   onLog?: (s: PlannedSession) => void;
 }) {
   const [week, setWeek] = useState<number | null>(null);
-  const shown = week ?? current ?? (today < startDate ? 1 : weeks);
+  const shown = week ?? current ?? opensOn ?? (today < startDate ? 1 : weeks);
   const days = weekDays(startDate, shown);
   return (
     <>
