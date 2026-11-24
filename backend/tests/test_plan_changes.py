@@ -72,7 +72,8 @@ def test_move_thursdays_run_to_friday_is_one_change_and_nothing_is_stored(store)
     assert out["change_proposal"] is True and out["stored"] is False
     assert json.dumps(store.planned_rows) == before  # nothing stored
     assert out["changes"] == [{"index": 0, "type": "move", "label": "Move",
-                               "description": "Move the Tempo run on Thursday 26 Nov to Friday"}]
+                               "description": "Move the Tempo run on Thursday 26 Nov to Friday",
+                               "date": friday, "weekday": "Friday"}]
     assert out["accept"]["changes"] == [{"type": "move", "planned_id": thu["id"], "date": friday}]
     assert out["version"] == out["accept"]["version"] == plans.plan_version(store.plans()[0], store.planned_rows)
     assert out["reason"] == "Friday suits you better this week."
@@ -349,3 +350,34 @@ def test_the_changes_endpoint_applies_refuses_stale_and_rechecks(http, store):
                                               "target": {**tue["target"], "distance_km": 14}}]}
     r = http.post(url, json=other)
     assert r.status_code == 422 and "L1a" in r.json()["detail"]
+
+
+# --- What the coach sees (#158) ------------------------------------------------------------
+
+def test_every_planned_session_the_coach_sees_has_its_weekday(store):
+    plan = build(store)
+    monday = date.fromisoformat(plan["start_date"])
+    # get_plan: 24 Nov 2026 is a Tuesday.
+    near = plans.plan_for_coach(store, today=TODAY)["this_and_next_week"]
+    assert (near[0]["date"], near[0]["weekday"]) == ("2026-11-24", "Tuesday")
+    for s in near:
+        assert s["weekday"] == date.fromisoformat(s["date"]).strftime("%A")
+    # propose_plan_change: the new day of a move.
+    thu = session(plan, "Tempo run")
+    out = propose(store, [{"type": "move", "planned_id": thu["id"], "date": (monday + timedelta(days=4)).isoformat()}])
+    assert (out["changes"][0]["date"], out["changes"][0]["weekday"]) == ("2026-11-27", "Friday")
+
+
+def test_a_new_plans_sessions_have_their_weekday(store):
+    from test_propose_program import propose as propose_new
+    from test_propose_program import history
+    history(store)
+    shown = propose_new(store)["plan"]["sessions"]
+    assert shown and all(s["weekday"] == date.fromisoformat(s["date"]).strftime("%A") for s in shown)
+    assert shown[0]["weekday"] == "Tuesday"
+
+
+def test_the_coach_acknowledges_tiredness_and_reads_weekdays():
+    prompt = chat.SYSTEM_PROMPT
+    assert "tired, worn out, sick or sore" in prompt and "one calm sentence" in prompt
+    assert "`weekday` field" in prompt and "never work out a\nweekday from a date" in prompt

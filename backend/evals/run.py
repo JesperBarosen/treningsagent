@@ -5,7 +5,8 @@
 
 For each case in evals/cases/: seed its sessions for a new throwaway user,
 ask its question through the chat loop, check which tools were called, have a
-cheap Claude judge grade the answer against the case's must / must_not lists,
+cheap Claude judge grade the answer against the case's must / must_not lists
+(must_not checks shown as "The answer avoids: ...", so passed always means good),
 then delete every row that user has. Prints pass/fail per run, a pass rate
 per case with --repeat, and the cost.
 
@@ -46,9 +47,17 @@ PRICES = limits.PRICES
 
 JUDGE_SYSTEM = """You grade a training assistant's answer against a checklist.
 The tool results are the ground truth for every number and grade. Grade each
-check on its own. A "must" check passes only if the answer clearly does it.
-A "must_not" check passes only if the answer does not do the forbidden thing.
-Keep each reason to one sentence and quote the answer where it matters."""
+check on its own. Every check describes a good answer, so passed = true always
+means the answer is good on that point. A check passes only if the answer
+clearly does what it says; a check that starts "The answer avoids:" passes
+when the answer never does the thing that follows, and fails when it does.
+Keep each reason to one sentence, quote the answer where it matters, and make
+the reason agree with passed."""
+
+# must_not checks are shown to the judge as "The answer avoids: ...", so
+# passed = true always means good. Asked "must not X, passed?", the judge
+# sometimes answered with whether X happened (#158).
+AVOIDS = "The answer avoids: "
 
 
 class Check(BaseModel):
@@ -146,11 +155,19 @@ def cost(usage: dict) -> float | None:
     return (tokens_in * price_in + usage["output_tokens"] * price_out) / 1e6
 
 
+def judge_checklist(case: dict) -> list[tuple[str, str]]:
+    """(id, text) per check, as the judge sees it. The ids stay must-n and
+    must_not-n (known_bad.should_fail names them); must_not texts read as
+    what a good answer avoids."""
+    checklist = [(f"must-{i}", text) for i, text in enumerate(case["expect"].get("must", []), 1)]
+    checklist += [(f"must_not-{i}", AVOIDS + text)
+                  for i, text in enumerate(case["expect"].get("must_not", []), 1)]
+    return checklist
+
+
 def judge(client: anthropic.Anthropic, case: dict, answer: str,
           tool_results: list[str]) -> tuple[list[Check], dict]:
-    checklist = [(f"must-{i}", text) for i, text in enumerate(case["expect"].get("must", []), 1)]
-    checklist += [(f"must_not-{i}", text)
-                  for i, text in enumerate(case["expect"].get("must_not", []), 1)]
+    checklist = judge_checklist(case)
     prompt = (
         f"<question>{case['question']}</question>\n"
         f"<tool_results>\n{chr(10).join(tool_results)}\n</tool_results>\n"

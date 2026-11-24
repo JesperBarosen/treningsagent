@@ -148,3 +148,10 @@ def test_structural_checks_catch_a_new_plan_and_extra_changes():
     assert extra.id == "change_types" and not extra.passed
     ids = {c.id for c in run.structural_checks(case, blocks("propose_program", []))}
     assert ids == {"tools_not_called", "change_types"}
+
+
+def test_the_judge_sees_must_not_checks_as_what_a_good_answer_avoids():
+    case = {"expect": {"must": ["Tap Accept"], "must_not": ["Say it is saved"]}}
+    assert run.judge_checklist(case) == [("must-1", "Tap Accept"),
+                                         ("must_not-1", "The answer avoids: Say it is saved")]
+    assert "passed = true always" in run.JUDGE_SYSTEM and "The answer avoids:" in run.JUDGE_SYSTEM
