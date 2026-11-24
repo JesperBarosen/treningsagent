@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Plan, PlanProposal } from "@/lib/api";
 
 // #135: the proposal preview, the card's week bars, and what the user said.
@@ -22,7 +22,7 @@ vi.mock("@/lib/api", async (importOriginal) => ({
 const { Chat } = await import("@/app/chat");
 const { ProposalPreview } = await import("@/app/plan/proposal/proposal-preview");
 const { PlanProposalCard } = await import("@/components/plan-proposal-card");
-const { weekVolume, targetText } = await import("@/lib/plans");
+const { weekVolume, targetText, weekContaining } = await import("@/lib/plans");
 const preview = await import("@/lib/plan-preview");
 
 const run = (date: string, km: number, type: "easy" | "tempo" | "long", workout?: string) => ({
@@ -55,13 +55,20 @@ const PROPOSAL: PlanProposal = {
 const STORED = { id: 9, name: "4 weeks of running", weeks: 4, start_date: "2026-11-23" } as Plan;
 const REF = { itemId: "item-1", key: "k1" };
 
+// Today is fixed, the Friday before the plan starts, so the tests can't break
+// with the calendar. Only the clock is faked; timers stay real for userEvent.
+const setToday = (y: number, m: number, d: number) => vi.setSystemTime(new Date(y, m - 1, d, 10));
+
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  setToday(2026, 11, 20);
   vi.clearAllMocks();
   localStorage.clear();
   sessionStorage.clear();
   window.HTMLElement.prototype.scrollIntoView = vi.fn();
   api.createPlan.mockResolvedValue(STORED);
 });
+afterEach(() => vi.useRealTimers());
 
 describe("the week bars on the proposal card (#135 bug)", () => {
   it("draws each week's planned load, not flat lines", () => {
@@ -120,6 +127,36 @@ describe("the proposal preview (/plan/proposal)", () => {
     await userEvent.click(screen.getByRole("radio", { name: "W2" }));
     expect(within(screen.getByRole("list", { name: "Week 2" })).getByText("Easy run")).toBeInTheDocument();
     expect(api.createPlan).not.toHaveBeenCalled();
+  });
+
+  it("opens on the week containing today once the plan has started, never on the last week", async () => {
+    setToday(2026, 11, 24); // the plan started yesterday
+    preview.handProposalToPreview(REF, PROPOSAL);
+    const { unmount } = render(<ProposalPreview />);
+    expect(within(screen.getByRole("list", { name: "Week 1" })).getByText("Tempo run")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /W1/ })).toHaveAccessibleName(/this week/);
+    unmount();
+
+    setToday(2026, 12, 2); // in week 2
+    preview.handProposalToPreview(REF, PROPOSAL);
+    render(<ProposalPreview />);
+    expect(screen.getByRole("list", { name: "Week 2" })).toBeInTheDocument();
+  });
+
+  it("opens on week 1 when today is past the plan's end", () => {
+    setToday(2027, 1, 15);
+    preview.handProposalToPreview(REF, PROPOSAL);
+    render(<ProposalPreview />);
+    expect(screen.getByRole("list", { name: "Week 1" })).toBeInTheDocument();
+  });
+
+  it("finds the week containing a day, or none outside the plan", () => {
+    expect(weekContaining("2026-11-23", 4, "2026-11-22")).toBeNull();
+    expect(weekContaining("2026-11-23", 4, "2026-11-23")).toBe(1);
+    expect(weekContaining("2026-11-23", 4, "2026-11-29")).toBe(1);
+    expect(weekContaining("2026-11-23", 4, "2026-11-30")).toBe(2);
+    expect(weekContaining("2026-11-23", 4, "2026-12-20")).toBe(4);
+    expect(weekContaining("2026-11-23", 4, "2026-12-21")).toBeNull();
   });
 
   it("stores the plan on Accept and tells the chat", async () => {

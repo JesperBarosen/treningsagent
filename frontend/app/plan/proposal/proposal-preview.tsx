@@ -6,7 +6,7 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import { PlanIcon } from "@/components/icons";
 import { Button, EmptyState } from "@/components/states";
 import { ApiError, createPlan, type PlannedSession } from "@/lib/api";
-import { dateRange, goalLine } from "@/lib/plans";
+import { dateRange, goalLine, weekContaining } from "@/lib/plans";
 import { parsePreview, peekPreview, reportProposalSettled, subscribePreview } from "@/lib/plan-preview";
 import { PlanCalendar } from "../plan-view";
 
@@ -46,6 +46,7 @@ export function ProposalPreview() {
   const { ref, proposal } = handed;
   const { plan } = proposal;
   const said = proposal.context?.user_said ?? [];
+  const now = today();
 
   async function accept() {
     setBusy(true);
@@ -95,8 +96,11 @@ export function ProposalPreview() {
         weeks={plan.weeks}
         weekMeta={plan.week_meta}
         sessions={plan.sessions as PlannedSession[]}
-        today={today()}
-        current={null}
+        today={now}
+        // The week containing today once the plan has started, otherwise week 1;
+        // never the last week just because the start date has passed.
+        current={weekContaining(plan.start_date, plan.weeks, now)}
+        opensOn={1}
       />
 
       {error && (
