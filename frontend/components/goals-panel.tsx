@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { DateInput } from "@/components/date-input";
 import {
   addGoal,
@@ -484,9 +484,18 @@ const EMPTY_TEXT: Record<SportFilter, string> = {
 };
 
 /** The Goals section at the top of the Dashboard. Goals the user let go are
- *  hidden; with a sport filter (#46) only that sport's goals show. */
-export function GoalsSection({ sport = "all" }: { sport?: SportFilter }) {
-  const [goals, setGoals] = useState<Goal[] | null>(null);
+ *  hidden; with a sport filter (#46) only that sport's goals show. The
+ *  Dashboard passes `initialGoals` from its own load, so they show at once;
+ *  without them the section fetches the goals itself. */
+export function GoalsSection({
+  sport = "all",
+  initialGoals = null,
+}: {
+  sport?: SportFilter;
+  initialGoals?: Goal[] | null;
+}) {
+  const [goals, setGoals] = useState<Goal[] | null>(initialGoals);
+  const hadInitial = useRef(initialGoals !== null);
   const [adding, setAdding] = useState(false);
 
   const load = useCallback((signal?: AbortSignal) => {
@@ -498,6 +507,7 @@ export function GoalsSection({ sport = "all" }: { sport?: SportFilter }) {
   }, []);
 
   useEffect(() => {
+    if (hadInitial.current) return;
     const controller = new AbortController();
     load(controller.signal);
     return () => controller.abort();

@@ -251,7 +251,7 @@ function newField(type: FieldType): FieldDraft {
   const base = { uid: uid(), saved: false, key: "", label: "", type, required: false };
   switch (type) {
     case "number":
-      return { ...base, unit: "", decimals: 0 };
+      return { ...base, unit: "", decimals: 1 };
     case "select":
       return { ...base, options: [{ value: "", label: "" }, { value: "", label: "" }], multiple: false };
     case "text":
@@ -618,7 +618,7 @@ function MeasuresSettings({ f, onChange }: { f: FieldDraft; onChange: (patch: Pa
 
   return (
     <fieldset className="flex min-w-0 flex-col gap-2">
-      <legend className={small}>Measures (up to 4)</legend>
+      <legend className={small}>Measures (up to 4). Step 1 takes whole numbers, 0.1 and 0.01 take decimals.</legend>
       {list.map((m, i) => (
         <div key={m.uid} className="flex min-w-0 items-center gap-1">
           <input
@@ -672,7 +672,7 @@ function MeasuresSettings({ f, onChange }: { f: FieldDraft; onChange: (patch: Pa
           ))}
           <button
             type="button"
-            onClick={() => add("", 0)}
+            onClick={() => add("", 1)}
             className="inline-flex min-h-11 items-center gap-1 rounded-full border border-dashed border-control px-3 text-sm font-medium text-accent"
           >
             <PlusIcon size={14} /> Custom

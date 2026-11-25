@@ -195,7 +195,7 @@ describe("measures in the template editor", () => {
     const rest = api.updateTemplate.mock.calls[0][1].fields.find((f: { key?: string }) => f.key === "rest");
     expect(rest.measures).toEqual([
       { key: "value", label: "s", decimals: 0 },
-      { label: "rounds", decimals: 0 },
+      { label: "rounds", decimals: 1 },
       { label: "sets", decimals: 0 },
     ]);
     expect(rest.unit).toBeUndefined();

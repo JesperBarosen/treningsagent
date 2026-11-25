@@ -5,10 +5,12 @@
 // right after the first load.
 
 import {
+  getGoals,
   getProgression,
   getTrainingLoad,
   getTrainingLoadBySport,
   SPORTS,
+  type Goal,
   type Progression,
   type Sport,
   type TrainingLoad,
@@ -16,17 +18,21 @@ import {
 import type { SportFilter } from "./sport-filter";
 
 export type Loads = Partial<Record<SportFilter, TrainingLoad>>;
-export type DashboardData = { loads: Loads; progression: Progression };
+/** `goals` is null when they failed to load; the Goals section then fetches them itself. */
+export type DashboardData = { loads: Loads; progression: Progression; goals: Goal[] | null };
 
-/** The load per filter and the progression, from one load request when the backend can. */
+/** The load per filter, the progression and the goals, fetched in parallel, so
+ *  the goals show together with the rest of the Dashboard. */
 export async function fetchDashboard(weeks: number, signal?: AbortSignal): Promise<DashboardData> {
-  const [load, progression] = await Promise.all([
+  const [load, progression, goals] = await Promise.all([
     getTrainingLoadBySport(weeks, signal),
     getProgression(weeks, signal),
+    // A goals error shouldn't hide the training numbers.
+    getGoals(signal).catch(() => null),
   ]);
   const { by_sport, ...all } = load;
   const loads: Loads = { all, ...(by_sport ?? {}) };
-  return { loads, progression };
+  return { loads, progression, goals };
 }
 
 /** The filters `loads` has no numbers for yet. */

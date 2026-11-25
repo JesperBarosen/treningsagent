@@ -166,7 +166,7 @@ describe("Log forms page", () => {
         name: "Yoga",
         sport: "other",
         core_fields: [],
-        fields: [{ label: "Poses", type: "number", required: false, decimals: 0 }],
+        fields: [{ label: "Poses", type: "number", required: false, decimals: 1 }],
       }),
     );
   });
