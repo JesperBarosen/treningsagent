@@ -281,14 +281,16 @@ def test_injury_details_belong_to_an_injury(conn):
 
 # --- Goals (N2; needs migration 20261115130000_create_goals.sql) -----------------------
 
-GOAL = {"kind": "climb_grade", "grade": "red", "climb_mode": "send", "band": None,
-        "target_pace": None, "target_date": None, "created_on": "2026-11-15"}
+# A V-scale goal: since #98 a climb goal needs a grade system, and a gym colour
+# also needs a gym (those are tested in test_db_gyms.py).
+GOAL = {"kind": "climb_grade", "grade": "V4", "climb_mode": "send", "grade_system": "v",
+        "band": None, "target_pace": None, "target_date": None, "created_on": "2026-11-15"}
 
 
 def test_goals_are_private_and_changeable(conn):
     alice, bob = make_store(conn), make_store(conn)
     goal = alice.insert_goal(GOAL)
-    assert goal["status"] == "active" and alice.goals()[0]["grade"] == "red"
+    assert goal["status"] == "active" and alice.goals()[0]["grade"] == "V4"
     assert bob.goals() == [] and bob.update_goal(goal["id"], {"status": "paused"}) is None
     assert alice.update_goal(goal["id"], {"target_date": "2027-03-01"})["target_date"] == "2027-03-01"
     assert bob.delete_goal(goal["id"]) is False and alice.delete_goal(goal["id"]) is True
