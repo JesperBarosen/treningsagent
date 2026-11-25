@@ -1,0 +1,15 @@
+# Local Supabase for the CI database tests (#163). Only the database is used:
+# `supabase db start` builds it from scratch with the auth schema, auth.uid()
+# and the anon and authenticated roles, then applies supabase/migrations/ in
+# order. Production is managed in the Supabase dashboard, not from this file.
+# The CLI version is pinned in .github/workflows/checks.yml.
+project_id = "treningsagent"
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.seed]
+# No seed data: the tests create and delete their own rows.
+enabled = false
