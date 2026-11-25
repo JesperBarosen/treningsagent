@@ -301,11 +301,13 @@ In order, each small enough for one PR. #40 is the parent.
 
 | # | Issue | Area | Size |
 |---|---|---|---|
-| 1 | Research library tables, YAML format and loader (migrations, `research_load.py`, validation test, RLS tests) | database, backend | L |
-| 2 | Convert P25–P33 into library records (batch 1) and link them to rules (`rule_sources`, `plans.RULES[...]["sources"]`) | backend, docs | M |
-| 3 | `search_research` tool with hybrid search, citation markers and validation, prompt rules, evals | agent, backend, evals | L |
-| 4 | Citation chips and the paper sheet in Coach, and sources on plan warnings | frontend | M |
-| 5 | Batch 2 papers (taper and intensity first), and update the rules they close | backend, docs | M, per gap |
-| 6 | Live search in Europe PMC: filters, ranking, cap, `pmid:` citations, "not reviewed" chip, Suggest for the library, evals | backend, agent, frontend, evals | L |
+| 1 | [#168 Research library tables, YAML format and loader](https://github.com/JesperBarosen/treningsagent/issues/168) (migrations, `research_load.py`, validation test, RLS tests) | database, backend | L |
+| 2 | [#169 Convert P25–P33 into library records and link them to the rules](https://github.com/JesperBarosen/treningsagent/issues/169) (batch 1: `rule_sources`, `plans.RULES[...]["sources"]`) | backend, docs | M |
+| 3 | [#170 search_research tool with hybrid search, citation markers, prompt rules and evals](https://github.com/JesperBarosen/treningsagent/issues/170) | agent, backend, evals | L |
+| 4 | [#171 Citation chips and the paper sheet in Coach, and sources on plan warnings](https://github.com/JesperBarosen/treningsagent/issues/171) | frontend | M |
+| 5 | [#172 Batch 2 papers, taper and intensity first, and update the rules they close](https://github.com/JesperBarosen/treningsagent/issues/172) | backend, docs | M, per gap |
+| 6 | [#173 Live search in Europe PMC with filters, ranking, a daily cap and not-reviewed citations](https://github.com/JesperBarosen/treningsagent/issues/173) (`pmid:` citations, Suggest for the library, evals) | backend, agent, frontend, evals | L |
 
-Issue 6 builds on 3 and 4 and can come before 5. Afterwards, in their own milestones: #37 onboarding (uses the paper sheet and adds `user_research_choices`), #34 return-to-training plan (needs return-to-running papers), and the weekly new-research check.
+#173 builds on #170 and #171 and can come before #172. Afterwards, in their own milestones: #37 onboarding (uses the paper sheet and adds `user_research_choices`), #34 return-to-training plan (needs return-to-running papers), and the weekly new-research check.
+
+All six are on the board under this milestone (P2, phase "Research (Phase 3)"; #168 is Next) and are sub-issues of #40.
