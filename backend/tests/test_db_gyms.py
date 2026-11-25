@@ -56,7 +56,8 @@ def test_cannot_set_a_goal_at_another_users_gym(conn):
     alice, bob = make_store(conn), make_store(conn)
     gym = my_gym(alice)
     red = next(g for g in gym["grades"] if g["name"] == "red")
-    with pytest.raises(ValueError):
+    # The RLS policy refuses it (tools.set_goal already checks the gym is the user's own).
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
         bob.insert_goal({"kind": "climb_grade", "grade": "red", "climb_mode": "send",
                          "grade_system": "gym", "gym_id": gym["id"], "gym_grade_id": red["id"],
                          "created_on": "2026-11-16"})
