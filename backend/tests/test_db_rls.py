@@ -167,8 +167,8 @@ def test_every_table_in_public_has_rls_enabled(world):
     assert missing == []
 
 
-def test_app_roles_hold_no_truncate_references_or_trigger(world):
-    """#150: RLS doesn't apply to TRUNCATE, so these must stay revoked."""
+def test_app_roles_hold_no_truncate_references_trigger_or_maintain(world):
+    """#150 and #163: RLS doesn't apply to TRUNCATE or MAINTAIN, so these must stay revoked."""
     conn = world[0]
     granted = conn.execute(
         "select grantee, table_name, privilege_type from information_schema.role_table_grants"
@@ -180,7 +180,7 @@ def test_app_roles_hold_no_truncate_references_or_trigger(world):
         "select r.rolname, c.relname, p.priv from pg_class c"
         " join pg_namespace n on n.oid = c.relnamespace"
         " cross join (values ('anon'), ('authenticated')) as r (rolname)"
-        " cross join (values ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')) as p (priv)"
+        " cross join (values ('TRUNCATE'), ('REFERENCES'), ('TRIGGER'), ('MAINTAIN')) as p (priv)"
         " where n.nspname = 'public' and c.relkind in ('r', 'p', 'v')"
         " and has_table_privilege(r.rolname, c.oid, p.priv)").fetchall()
     assert held == []
