@@ -78,10 +78,7 @@ jobs:
           version: 2.122.1
       - name: Start the database and apply every migration from scratch
         working-directory: .
-        run: |
-          echo "Listening on 54322 before the start (the CLI default, taken on this runner):"
-          sudo ss -ltnp 'sport = :54322' || true
-          supabase db start
+        run: supabase db start
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
@@ -89,6 +86,8 @@ jobs:
       - name: Install (Python from backend/.python-version)
         run: uv sync --locked
       - name: Database tests (none may skip)
+        # shell: bash adds pipefail, so a failing pytest fails the step despite tee.
+        shell: bash
         run: |
           uv run python -m pytest -q -rs tests/test_db*.py | tee pytest.out
           if grep -q skipped pytest.out; then echo "::error::database tests were skipped"; exit 1; fi
