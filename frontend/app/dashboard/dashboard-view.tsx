@@ -188,9 +188,9 @@ export function DashboardView() {
           <LoadingDashboard />
         ) : (
           <>
-            {/* N2: what the user is aiming for comes first. Goals follow the
-                filter at once; they are already loaded. */}
-            <GoalsSection sport={sport} />
+            {/* N2: what the user is aiming for comes first. The goals come
+                with the Dashboard's own load and follow the filter at once. */}
+            <GoalsSection sport={sport} initialGoals={data.goals} />
             <div
               data-testid="dashboard-content"
               aria-busy={pending}

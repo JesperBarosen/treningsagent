@@ -321,6 +321,14 @@ describe("goals follow the filter", () => {
   const goalNames = () =>
     within(screen.getByRole("region", { name: "Goals" })).queryAllByRole("listitem").map((li) => li.getAttribute("aria-label"));
 
+  it("shows the goals together with the rest of the Dashboard, not after it", async () => {
+    api.getGoals.mockResolvedValue([GRADE]);
+    render(<DashboardView />);
+    await screen.findByTestId("dashboard-content");
+    // Same render: no wait for a second request.
+    expect(goalNames()).toEqual(["Send a red"]);
+  });
+
   it("All shows every goal, Running only pace goals, Climbing only grade goals", async () => {
     api.getGoals.mockResolvedValue([GRADE, PACE]);
     const user = userEvent.setup();
