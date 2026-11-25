@@ -6,7 +6,8 @@
 project_id = "treningsagent"
 
 [db]
-port = 54322
+# Not the CLI default 54322: something on the GitHub runner already listens there.
+port = 55322
 shadow_port = 54320
 major_version = 17
 
