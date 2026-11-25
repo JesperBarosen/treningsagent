@@ -2,7 +2,7 @@
 
 Design for the milestone **Research and citations (Phase 3)**: a curated library of sports-science papers, stored in Postgres with pgvector, that the coach searches and cites, plus a filtered live search in PubMed through Europe PMC for questions the library doesn't cover. It covers #40 (the library and retrieval), and prepares #37 (onboarding: pick the research you train by), #34 (a research-based return to training after a pause) and the load rules in `docs/training-plans.md` section 5 that are still marked **needs source**. **Nothing here is built yet.**
 
-The work is split into six issues (section 11). Section 10 lists the decisions, each with a recommendation.
+The work is split into six issues (section 11). Section 10 lists the decisions, all made on 2026-11-25.
 
 ---
 
@@ -283,7 +283,7 @@ Offline tests: YAML validation, loader upserts and deletes, the live-search filt
 
 ## 10. Decisions
 
-Recommendations first; alternatives kept short.
+Decided on 2026-11-25: Q9 was chosen first, and every other recommendation was accepted. The alternatives are kept briefly for the record.
 
 1. **Q1. Claims only, no full text, for now.** Store our own claims and summaries; skip abstracts and full text. *Alternative:* chunk the full text of open-access (CC BY) papers into `research_chunks`. Worth revisiting when the library is large enough that hand-written claims miss things.
 2. **Q2. Voyage embeddings plus Postgres full-text search (hybrid).** *Alternatives:* (a) full-text search only, no embeddings, which would work at this size but loses paraphrase matching and the pgvector part of the portfolio story; (b) a local embedding model in the backend, which is too large for the Vercel function.
