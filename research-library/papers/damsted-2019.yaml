@@ -1,0 +1,35 @@
+key: damsted-2019
+title: "The Association Between Changes in Weekly Running Distance and Running-Related Injury: Preparing for a Half Marathon"
+authors: ["Damsted C", "Parner ET", "Sørensen H", "Malisoux L", "Hulme A", "Nielsen RO"]
+year: 2019
+journal: "Journal of Orthopaedic & Sports Physical Therapy"
+doi: null                # filled from PubMed when the record is written
+pmid: "30526231"
+url: "https://pubmed.ncbi.nlm.nih.gov/30526231/"
+open_access: false
+licence: null            # filled only when we might store full text
+study_type: prospective_cohort
+sample_size: 261
+population: "Recreational runners preparing for a half marathon, Denmark"
+evidence: moderate
+evidence_reason: "Prospective with GPS data, but small, wide interval, effect only early."
+sports: [running]
+categories: [load, progression, injury]
+recommended: true
+summary: >
+  Runners preparing for a half marathon were followed with GPS data for 14 weeks.
+  Those who increased weekly distance by 20-60% were injured more often in the
+  first three weeks than those who changed it by less than 20%.
+why_recommended: >
+  Prospective, objective distance data, and the same goal as our first real user.
+limits: >
+  Small; the difference was no longer significant at 8 and 14 weeks.
+claims:
+  - id: c1
+    text: "Increasing weekly running distance by 20-60% went with more injuries in the first three weeks than changes under 20% (risk difference about 23 percentage points, wide interval)."
+    numbers: {threshold_pct: 20, risk_difference_pp: 23}
+    where: "Results"
+    categories: [load, progression]
+    supports_rules: [L1b]
+reviewed_by: JesperBarosen
+reviewed_on: 2026-11-26
