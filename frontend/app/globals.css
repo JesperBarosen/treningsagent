@@ -5,27 +5,27 @@
    into anything. */
 
 :root {
-  --canvas: #f5f4ef;
+  --canvas: #f2f3f8;
   --surface: #ffffff;
   --elevated: #ffffff; /* sheets, dialogs, composer (#57) */
-  --sunken: #eceae3;
-  --line: #d9d6cc; /* decorative hairlines only */
-  --control: #8a857a; /* edges of fields, chips, outlined buttons: 3.67:1 surface, 3.34:1 canvas */
-  --ink: #15191b;
-  --ink-muted: #474e53; /* 7:1 or more on surface, canvas and sunken (#54) */
-  --accent: #0f6b5c;
+  --sunken: #e6e8f1;
+  --line: #d2d6e3; /* decorative hairlines only */
+  --control: #787f95; /* edges of fields, chips, outlined buttons: 3.99:1 surface, 3.6:1 canvas */
+  --ink: #11142a;
+  --ink-muted: #434862; /* 7:1 or more on surface, canvas and sunken (#54) */
+  --accent: #9a4d14;
   --on-accent: #ffffff;
-  --accent-soft: #dcefea;
-  --climb: #9a5a17;
-  --climb-soft: #f6e8d6;
-  --danger: #b42318;
-  --danger-soft: #fdecea;
-  --grade-ring: #857f72;
+  --accent-soft: #fbe7d9;
+  --climb: #006e78;
+  --climb-soft: #dcf1f1;
+  --danger: #a3133f;
+  --danger-soft: #fde8ee;
+  --grade-ring: #7d8399;
   /* Chart series: the sport colours, re-stepped to pass the chart palette checks. */
-  --chart-run: #008571;
-  --chart-climb: #a85f12;
-  --chart-strength: #4a5bb5; /* the third sport, strength (#58, #100) */
-  --chart-other: #4a463f; /* a neutral fourth for Other training (#100) */
+  --chart-run: #b8581c;
+  --chart-climb: #00808a;
+  --chart-strength: #5b4fc4; /* the third sport, strength (#58, #100) */
+  --chart-other: #3c4057; /* a neutral fourth for Other training (#100) */
   --sheet-shadow: 0 -8px 32px rgb(21 25 27 / 0.12);
   /* Height of the phone tab bar's row (components/nav.tsx), without the safe area. */
   --tab-bar-h: 3.5rem;
@@ -40,52 +40,52 @@
    lib/theme.ts), and once for System when the OS is dark, unless the user
    chose Light. */
 :root[data-theme="dark"] {
-  --canvas: #121618;
-  --surface: #191f22;
-  --elevated: #222a2e;
-  --sunken: #222a2e;
-  --line: #30393e;
-  --control: #6b767c;
-  --ink: #e8ebe9;
-  --ink-muted: #b0b8bc;
-  --accent: #4fd1b5;
-  --on-accent: #062621;
-  --accent-soft: #13312c;
-  --climb: #e5a15a;
-  --climb-soft: #33271a;
-  --danger: #f97066;
-  --danger-soft: #3a1c1a;
-  --grade-ring: #6b767c;
-  --chart-run: #21a589;
-  --chart-climb: #c98030;
-  --chart-strength: #7083e0;
-  --chart-other: #cfc9bd;
+  --canvas: #0e1020;
+  --surface: #161a2e;
+  --elevated: #20253c;
+  --sunken: #20253c;
+  --line: #2f3550;
+  --control: #6d7593;
+  --ink: #eceef7;
+  --ink-muted: #b4b9cf;
+  --accent: #ff9b7a;
+  --on-accent: #2a0d04;
+  --accent-soft: #3a2220;
+  --climb: #5fd4d6;
+  --climb-soft: #12303a;
+  --danger: #ff7a9a;
+  --danger-soft: #3a1726;
+  --grade-ring: #6d7593;
+  --chart-run: #f08060;
+  --chart-climb: #2fb3b6;
+  --chart-strength: #8f86ec;
+  --chart-other: #cdd0e0;
   --sheet-shadow: 0 -8px 32px rgb(0 0 0 / 0.5);
   color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --canvas: #121618;
-    --surface: #191f22;
-    --elevated: #222a2e;
-    --sunken: #222a2e;
-    --line: #30393e;
-    --control: #6b767c;
-    --ink: #e8ebe9;
-    --ink-muted: #b0b8bc;
-    --accent: #4fd1b5;
-    --on-accent: #062621;
-    --accent-soft: #13312c;
-    --climb: #e5a15a;
-    --climb-soft: #33271a;
-    --danger: #f97066;
-    --danger-soft: #3a1c1a;
-    --grade-ring: #6b767c;
-    --chart-run: #21a589;
-    --chart-climb: #c98030;
-    --chart-strength: #7083e0;
-    --chart-other: #cfc9bd;
+    --canvas: #0e1020;
+    --surface: #161a2e;
+    --elevated: #20253c;
+    --sunken: #20253c;
+    --line: #2f3550;
+    --control: #6d7593;
+    --ink: #eceef7;
+    --ink-muted: #b4b9cf;
+    --accent: #ff9b7a;
+    --on-accent: #2a0d04;
+    --accent-soft: #3a2220;
+    --climb: #5fd4d6;
+    --climb-soft: #12303a;
+    --danger: #ff7a9a;
+    --danger-soft: #3a1726;
+    --grade-ring: #6d7593;
+    --chart-run: #f08060;
+    --chart-climb: #2fb3b6;
+    --chart-strength: #8f86ec;
+    --chart-other: #cdd0e0;
     --sheet-shadow: 0 -8px 32px rgb(0 0 0 / 0.5);
     color-scheme: dark;
   }
@@ -97,22 +97,22 @@
    dark versions match (tests/contrast-more.test.ts). */
 @media (prefers-contrast: more) {
   :root {
-    --line: #5a6166;
-    --control: #5a6166;
-    --ink-muted: #15191b;
+    --line: #575d75;
+    --control: #575d75;
+    --ink-muted: #11142a;
   }
   :root[data-theme="dark"] {
-    --line: #9aa3a7;
-    --control: #9aa3a7;
-    --ink-muted: #e8ebe9;
+    --line: #9aa0bb;
+    --control: #9aa0bb;
+    --ink-muted: #eceef7;
   }
 }
 
 @media (prefers-contrast: more) and (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --line: #9aa3a7;
-    --control: #9aa3a7;
-    --ink-muted: #e8ebe9;
+    --line: #9aa0bb;
+    --control: #9aa0bb;
+    --ink-muted: #eceef7;
   }
 }
 
@@ -120,24 +120,24 @@
    Account page (lib/chart-prefs.ts sets data-chart-palette on <html> before the
    first paint). Blue, orange and plum keep every pair apart for protan, deutan
    and tritan vision (worst ΔE 22.3 light / 15.7 dark; the default palette's
-   worst is 7.5 / 5.7, for tritan). Charts only: sport icons keep their colours.
+   worst is 8.4 / 10.0, for tritan). Running is orange in both palettes. Charts only: sport icons keep their colours.
    tests/chart-prefs.test.ts checks the dataviz rules for both themes. */
 :root[data-chart-palette="cvd"] {
-  --chart-run: #0046ee;
-  --chart-climb: #e5753c;
+  --chart-run: #e5753c;
+  --chart-climb: #0046ee;
   --chart-strength: #96285a;
   --chart-other: #36332e;
 }
 :root[data-chart-palette="cvd"][data-theme="dark"] {
-  --chart-run: #6446ff;
-  --chart-climb: #f25a00;
+  --chart-run: #f25a00;
+  --chart-climb: #6446ff;
   --chart-strength: #a85e9c;
   --chart-other: #cfc9bd;
 }
 @media (prefers-color-scheme: dark) {
   :root[data-chart-palette="cvd"]:not([data-theme="light"]) {
-    --chart-run: #6446ff;
-    --chart-climb: #f25a00;
+    --chart-run: #f25a00;
+    --chart-climb: #6446ff;
     --chart-strength: #a85e9c;
     --chart-other: #cfc9bd;
   }

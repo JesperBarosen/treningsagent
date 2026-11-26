@@ -1,9 +1,11 @@
 # treningsagent design
 
-Calm, sporty, clean. The look borrows from a climbing gym and a trail at dawn:
-chalk-white paper, slate ink, a single spruce-green accent, and the gym's
-colour grades as the only loud colours. Nothing here is borrowed from another
-training app; there are no orange gradients and no heat maps.
+Calm, sporty, outdoors. The palette is "Alpenglød", the mountains at dusk:
+neutrals with a cool blue-violet cast (snow in light mode, blue night in dark
+mode), deep night-indigo ink, apricot/copper alpenglow for actions and running,
+and glacier teal for climbing. A warm accent on a cool ground stands out
+without shouting. The gym's grades stay the loudest colours on a climbing
+card. There are no gradients and no heat maps.
 
 All tokens live in `app/globals.css` (`:root` variables, mapped into Tailwind
 with `@theme`). The default Tailwind palette is switched off
@@ -24,69 +26,70 @@ checked against the background each token sits on (WCAG AA: 4.5:1 for body
 text, 3:1 for large text and UI outlines).
 
 With the system's Increase Contrast setting (`prefers-contrast: more`),
-`--line` and `--control` become `#5A6166` light / `#9AA3A7` dark (5.2:1 or more on
+`--line` and `--control` become `#575D75` light / `#9AA0BB` dark (5.2:1 or more on
 every background; Apple HIG asks for a higher-contrast scheme, WCAG 1.4.11),
 and `--ink-muted` takes the ink colour. The block comes after the dark tokens;
 `tests/contrast-more.test.ts` measures it.
 
 | Token | Tailwind | Light | Dark | Use |
 | --- | --- | --- | --- | --- |
-| `--canvas` | `bg-canvas` | `#F5F4EF` chalk | `#121618` night slate | page background |
-| `--surface` | `bg-surface` | `#FFFFFF` | `#191F22` | cards, inputs |
-| `--elevated` | `bg-elevated` | `#FFFFFF` | `#222A2E` | sheets, dialogs, chart tooltips, the chat composer: one step above the page, since dark mode cannot use shadows for depth |
-| `--sunken` | `bg-sunken` | `#ECEAE3` | `#222A2E` | user bubbles, chips, skeletons |
-| `--line` | `border-line` | `#D9D6CC` | `#30393E` | decorative hairlines, card borders, dividers (1.45:1, never a control's only edge) |
-| `--control` | `border-control` | `#8A857A` | `#6B767C` | edges of text fields, chips, segmented toggles and outlined buttons (≥ 3:1 on surface, canvas and sunken, WCAG 1.4.11) |
-| `--ink` | `text-ink` | `#15191B` | `#E8EBE9` | primary text (16:1 light; 15.2:1 on dark canvas, 12.2:1 on elevated) |
-| `--ink-muted` | `text-ink-muted` | `#474E53` | `#B0B8BC` | secondary text, at least 7:1 on canvas, surface and sunken in both themes (Apple's aim for small text; `tests/token-contrast.test.ts`) |
-| `--accent` | `bg-accent`, `text-accent` | `#0F6B5C` spruce | `#4FD1B5` | primary actions, focus, running |
-| `--on-accent` | `text-on-accent` | `#FFFFFF` | `#062621` | text on accent (6.4:1 / 8.5:1) |
-| `--accent-soft` | `bg-accent-soft` | `#DCEFEA` | `#13312C` | selected states, logged-session card |
-| `--climb` | `text-climb` | `#9A5A17` ochre | `#E5A15A` | climbing (sport colour) |
-| `--climb-soft` | `bg-climb-soft` | `#F6E8D6` | `#33271A` | climbing icon backgrounds |
-| `--danger` | `text-danger` | `#B42318` | `#F97066` | errors |
-| `--danger-soft` | `bg-danger-soft` | `#FDECEA` | `#3A1C1A` | error banners |
+| `--canvas` | `bg-canvas` | `#F2F3F8` snow | `#0E1020` blue night | page background |
+| `--surface` | `bg-surface` | `#FFFFFF` | `#161A2E` | cards, inputs |
+| `--elevated` | `bg-elevated` | `#FFFFFF` | `#20253C` | sheets, dialogs, chart tooltips, the chat composer: one step above the page, since dark mode cannot use shadows for depth |
+| `--sunken` | `bg-sunken` | `#E6E8F1` | `#20253C` | user bubbles, chips, skeletons |
+| `--line` | `border-line` | `#D2D6E3` | `#2F3550` | decorative hairlines, card borders, dividers (never a control's only edge) |
+| `--control` | `border-control` | `#787F95` | `#6D7593` | edges of text fields, chips, segmented toggles and outlined buttons (≥ 3:1 on surface, canvas and sunken, WCAG 1.4.11) |
+| `--ink` | `text-ink` | `#11142A` night indigo | `#ECEEF7` | primary text (16.4:1 light; 16.3:1 on dark canvas, 13:1 on elevated) |
+| `--ink-muted` | `text-ink-muted` | `#434862` | `#B4B9CF` | secondary text, at least 7:1 on canvas, surface and sunken in both themes (Apple's aim for small text; `tests/token-contrast.test.ts`) |
+| `--accent` | `bg-accent`, `text-accent` | `#9A4D14` copper | `#FF9B7A` apricot | primary actions, focus, running |
+| `--on-accent` | `text-on-accent` | `#FFFFFF` | `#2A0D04` | text on accent (6.1:1 / 8.8:1) |
+| `--accent-soft` | `bg-accent-soft` | `#FBE7D9` | `#3A2220` | selected states, logged-session card |
+| `--climb` | `text-climb` | `#006E78` glacier | `#5FD4D6` | climbing (sport colour) |
+| `--climb-soft` | `bg-climb-soft` | `#DCF1F1` | `#12303A` | climbing icon backgrounds |
+| `--danger` | `text-danger` | `#A3133F` raspberry | `#FF7A9A` | errors (raspberry, so they never read as the copper accent) |
+| `--danger-soft` | `bg-danger-soft` | `#FDE8EE` | `#3A1726` | error banners |
 | `--focus` | `ring-focus` | = accent | = accent | 2px focus ring, 2px offset |
 
-Two sport colours, spruce for running and ochre for climbing, are used for
-icons and chart series. Neither is a gym grade colour, so a sport can never
-be mistaken for a grade.
+Two sport colours, copper/apricot for running and glacier teal for climbing,
+are used for icons and chart series (ΔE 14.7 apart under deuteranopia in light,
+12.8 in dark). Neither is a gym grade colour: the light copper is ΔE 9.2 from
+grade red (25.8 in dark), and the teal is 15.4 or more from grade blue and
+green. The grade's name is always next to its dot.
 
 ### Chart colours
 
-Chart series use their own steps of the sport colours. `--accent` and
-`--climb` failed the chart palette checks (the light spruce reads too grey,
-and both dark values are too light for the dark band), so the series are
-re-stepped. Both pairs pass every check in the dataviz validator: lightness
-band, chroma floor, colour-blind separation (ΔE 11.5 light / 11.0 dark),
-normal-vision separation and 3:1 contrast with the surface.
+Chart series use their own, brighter steps of the sport colours, so bars read
+as filled shapes rather than text colours. They pass every check in the
+dataviz validator: colour-blind separation, normal-vision separation and 3:1
+contrast with the surface.
 
 | Token | Tailwind | Light | Dark | Use |
 | --- | --- | --- | --- | --- |
-| `--chart-run` | `bg-chart-run` | `#008571` | `#21A589` | running series |
-| `--chart-climb` | `bg-chart-climb` | `#A85F12` | `#C98030` | climbing series |
-| `--chart-strength` | `bg-chart-strength` | `#4A5BB5` | `#7083E0` | strength series (#100) |
-| `--chart-other` | `bg-chart-other` | `#4A463F` | `#CFC9BD` | other training series, a warm neutral (#100) |
+| `--chart-run` | `bg-chart-run` | `#B8581C` | `#F08060` | running series |
+| `--chart-climb` | `bg-chart-climb` | `#00808A` | `#2FB3B6` | climbing series |
+| `--chart-strength` | `bg-chart-strength` | `#5B4FC4` | `#8F86EC` | strength series, violet (#58, #100) |
+| `--chart-other` | `bg-chart-other` | `#3C4057` | `#CDD0E0` | other training series, a cool neutral (#100) |
 
 The order is fixed: running, climbing, strength, other. A filter that hides a sport
-never repaints the others. The third colour passes the same checks with the
-other two in both themes (worst protan/deutan ΔE 11.5 light / 11.0 dark, worst
-normal 18.9 / 19.6; `tests/sport-colours.test.ts`). Two limits:
+never repaints the others. All four pass the checks in both themes (worst
+protan/deutan ΔE 14.0 light / 11.1 dark, worst normal 18.6 / 18.3;
+`tests/sport-colours.test.ts`). Two limits:
 
-- It is ΔE 6.9 from grade blue in light mode, so sports and grades never share
-  a chart. If they ever must, the strength series takes a 45° hatch texture.
-- Under simulated tritanopia it is close to running (ΔE 7.5 light / 5.7 dark),
-  so a chart with all three keeps its legend and gaps between segments.
+- Strength is ΔE 8.7 from grade blue in light mode, so sports and grades never
+  share a chart. If they ever must, the strength series takes a 45° hatch
+  texture.
+- Under simulated tritanopia the light series come within ΔE 8.4, so a chart
+  with all three keeps its legend and gaps between segments.
 
 People can switch charts to a **colour-blind friendly** palette on the Account
 page (`lib/chart-prefs.ts`, saved per device and set as
 `data-chart-palette="cvd"` on `<html>` before the first paint; design-visual
-V-L1). Only the chart tokens change; sport icons keep spruce and ochre.
+V-L1). Only the chart tokens change; sport icons keep copper and teal.
 
 | Token | Light | Dark |
 | --- | --- | --- |
-| `--chart-run` | `#0046EE` blue | `#6446FF` |
-| `--chart-climb` | `#E5753C` orange | `#F25A00` |
+| `--chart-run` | `#E5753C` orange | `#F25A00` |
+| `--chart-climb` | `#0046EE` blue | `#6446FF` |
 | `--chart-strength` | `#96285A` plum | `#A85E9C` |
 | `--chart-other` | `#36332E` near-black | `#CFC9BD` |
 
@@ -130,9 +133,9 @@ deuteranopia (was 4.7) and blue↔purple ΔE 16.8 for normal vision (was 11.9,
 OKLab ×100). Blue↔purple is still close for deutans, so the name stays the
 signal. `tests/grade-colours.test.ts` checks these.
 
-`--grade-ring` is `#857F72` in light (3.9:1 on white) and `#6B767C` in dark (3.7:1 on black): every dot gets a
+`--grade-ring` is `#7D8399` in light (3.8:1 on white) and `#6D7593` in dark (4.6:1 on black): every dot gets a
 1px ring in that colour, which keeps white visible on white and black on
-night slate without changing the hold's colour.
+blue night without changing the hold's colour.
 
 Climb outcome is shown on the chip, not by colour:
 
@@ -185,7 +188,7 @@ desktop.
 ## Elevation
 
 Flat by default; separation comes from `--line` borders. Dark mode lifts
-its greys off near-black (canvas `#121618`) so layers read by lightness:
+its greys off near-black (canvas `#0E1020`) so layers read by lightness:
 canvas, then surface, then elevated (Apple's base and elevated backgrounds,
 Material 3 tonal elevation; design-visual V-M1). One shadow,
 `shadow-sheet`, for the bottom sheet and the fixed chat composer.
@@ -220,7 +223,7 @@ Material 3 tonal elevation; design-visual V-M1). One shadow,
 | Composer | `app/chat.tsx` | auto-growing textarea + send button, fixed to the bottom |
 | SessionSheet | `app/sessions/session-sheet.tsx` | details as a bottom sheet (mobile) / dialog (desktop), with Edit and a two-tap Delete |
 | SessionForm | `components/session-form.tsx` | the Log tab and the sheet's edit mode: sport first (radio cards), then date, duration, distance with live pace (runs), effort slider, climbs (style toggle, grade chips to add, tap a row to cycle not sent / sent / flash, +/- attempts) and notes; today's date is read only after mount |
-| App icon | `scripts/icon.svg` | white peak and dawn sun on spruce, full bleed with the art inside the maskable safe zone; `node scripts/make-icons.mjs` renders the PNGs, and `app/manifest.ts` uses the canvas colour |
+| App icon | `scripts/icon.svg` | "Fremgang": two upward chevrons, white and light glacier teal, on glacier teal `#006E78`, full bleed with the art inside the maskable safe zone; `node scripts/make-icons.mjs` renders the PNGs, and `app/manifest.ts` uses the canvas colour |
 | States | `components/states.tsx` | Skeleton, EmptyState, ErrorState (with retry) |
 | Dashboard charts | `app/dashboard/charts.tsx` | weekly load (stacked columns), pace per band (line), hardest send / flash (grade dots on a grade axis) |
 | PlanProposalCard | `components/plan-proposal-card.tsx` | a plan the coach proposed (#119): dashed like a draft, weeks and dates, sessions a week, planned load per week as outlined bars (lighter weeks dashed in accent, numbers blurred in discreet mode), the reason, Accept and Dismiss. Only Accept stores it, whatever "Save without asking" says |

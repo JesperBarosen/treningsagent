@@ -25,8 +25,8 @@ export const PALETTE_LABELS: Record<ChartPalette, { title: string; hint: string 
  *  Account page (the live tokens follow the active palette, so they can't show
  *  the other one). tests/chart-prefs.test.ts keeps these equal to globals.css. */
 export const PALETTE_PREVIEW: Record<ChartPalette, { light: [string, string]; dark: [string, string] }> = {
-  standard: { light: ["#008571", "#a85f12"], dark: ["#21a589", "#c98030"] },
-  cvd: { light: ["#0046ee", "#e5753c"], dark: ["#6446ff", "#f25a00"] },
+  standard: { light: ["#b8581c", "#00808a"], dark: ["#f08060", "#2fb3b6"] },
+  cvd: { light: ["#e5753c", "#0046ee"], dark: ["#f25a00", "#6446ff"] },
 };
 
 export const DENSITY_LABELS: Record<DashboardDensity, { title: string; hint: string }> = {

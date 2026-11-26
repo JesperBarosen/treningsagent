@@ -14,7 +14,7 @@ const DARK_QUERY = "(prefers-color-scheme: dark)";
 const CHANGE_EVENT = "treningsagent:theme";
 
 /** The --canvas colour of each theme, used for the browser's theme-color. */
-export const THEME_COLORS = { light: "#f5f4ef", dark: "#121618" } as const;
+export const THEME_COLORS = { light: "#f2f3f8", dark: "#0e1020" } as const;
 
 const isExplicit = (t: unknown): t is "light" | "dark" => t === "light" || t === "dark";
 
