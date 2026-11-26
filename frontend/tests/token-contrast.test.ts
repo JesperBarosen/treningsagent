@@ -18,6 +18,7 @@ const PAIRS: [string, string, number][] = [
   ["control", "canvas", 3], ["control", "surface", 3], ["control", "sunken", 3],
   ["grade-ring", "surface", 3],
   ["chart-run", "surface", 3], ["chart-climb", "surface", 3],
+  ["chart-strength", "surface", 3], ["chart-other", "surface", 3],
   // Sheets, dialogs and the composer sit on --elevated (#57).
   ["ink", "elevated", 7], ["ink-muted", "elevated", 7], ["accent", "elevated", 4.5],
   ["danger", "elevated", 4.5], ["control", "elevated", 3],
@@ -34,7 +35,7 @@ describe("token contrast", () => {
   }
 
   it("would catch the old muted greys (#54), checked on an in-memory copy", () => {
-    const old = css.replace("--ink-muted: #474e53", "--ink-muted: #5a6166");
+    const old = css.replace("--ink-muted: #434862", "--ink-muted: #5a6166");
     const t = tokens(":root", old);
     expect(ratio(t["ink-muted"], t.sunken)).toBeLessThan(7); // 5.23:1 before #54
   });
