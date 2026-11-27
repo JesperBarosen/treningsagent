@@ -49,7 +49,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* The chosen chart palette (#61), also before the first paint. */}
         <script dangerouslySetInnerHTML={{ __html: CHART_PREFS_SCRIPT }} />
       </head>
-      <body className="min-h-dvh font-sans">
+      {/* Below md the page is an app shell: the body is exactly the
+          screen tall and never scrolls; <main> is the scroll area. A scrolling
+          document on iOS (home-screen app, iOS 26+) can leave the layout
+          viewport out of step with the screen, which drags the fixed tab bar
+          up into the middle of the page and the sticky top bar off it. */}
+      <body className="min-h-dvh font-sans max-md:flex max-md:h-dvh max-md:flex-col max-md:overflow-hidden">
         <a
           href="#main"
           className="sr-only z-50 rounded-full bg-accent px-4 py-2 text-on-accent focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
@@ -58,8 +63,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </a>
         <TopBar />
         {/* Below md the fixed tab bar covers the bottom of the screen; pb-tab-bar
-            keeps every page's last row clear of it (and of the home indicator). */}
-        <main id="main" className="mx-auto w-full px-4 pb-tab-bar sm:px-6 md:pb-0">
+            keeps every page's last row clear of it (and of the home indicator).
+            There <main> is also the one scroll area (see <body>). */}
+        <main
+          id="main"
+          className="mx-auto w-full px-4 pb-tab-bar sm:px-6 max-md:min-h-0 max-md:flex-1 max-md:overflow-y-auto max-md:overscroll-contain md:pb-0"
+        >
           {children}
         </main>
         <TabBar />

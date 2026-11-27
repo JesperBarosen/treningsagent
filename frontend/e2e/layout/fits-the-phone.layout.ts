@@ -174,6 +174,22 @@ test("Sessions, every filter", async ({ page }) => {
   }
 });
 
+test("Sessions and Dashboard: only <main> scrolls, so the bars stay at the screen edges", async ({ page }) => {
+  for (const path of ["/sessions", "/dashboard"]) {
+    await open(page, path);
+    const main = page.locator("main#main");
+    expect(await main.evaluate((el) => getComputedStyle(el).overflowY), path).toBe("auto");
+    expect(await page.evaluate(() => document.documentElement.scrollHeight <= document.documentElement.clientHeight), path).toBe(true);
+    await main.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    expect(await page.evaluate(() => window.scrollY), path).toBe(0);
+    const height = page.viewportSize()!.height;
+    const tabs = await page.locator("[data-tab-bar]").boundingBox();
+    expect(Math.round(tabs!.y + tabs!.height), `${path}: tab bar at the bottom`).toBe(height);
+    const top = await page.locator("header").first().boundingBox();
+    expect(top!.y, `${path}: top bar at the top`).toBe(0);
+  }
+});
+
 test("Dashboard, every filter", async ({ page }) => {
   await open(page, "/dashboard");
   const filter = page.getByRole("radiogroup", { name: "Show sport" });
