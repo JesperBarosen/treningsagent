@@ -67,7 +67,20 @@ describe("date field", () => {
 
 describe("tab bar room", () => {
   it("is set once on <main> in the shared layout, for phones only", () => {
-    expect(src("app/layout.tsx")).toMatch(/<main id="main" className="[^"]*\bpb-tab-bar\b[^"]*\bmd:pb-0\b/);
+    expect(src("app/layout.tsx")).toMatch(/<main\s+id="main"\s+className="[^"]*\bpb-tab-bar\b[^"]*\bmd:pb-0\b/);
+  });
+});
+
+describe("phone app shell", () => {
+  // On iPhone a scrolling document can leave the layout viewport out of step
+  // with the screen, which pulls the fixed tab bar up into the page. Below md
+  // the body is one screen tall and only <main> scrolls.
+  it("keeps the document still and scrolls <main>", () => {
+    const layout = src("app/layout.tsx");
+    expect(layout).toMatch(/<body className="[^"]*\bmax-md:h-dvh\b[^"]*\bmax-md:overflow-hidden\b/);
+    expect(layout).toMatch(/<body className="[^"]*\bmax-md:flex-col\b/);
+    expect(layout).toMatch(/<main\s+id="main"\s+className="[^"]*\bmax-md:flex-1\b[^"]*\bmax-md:overflow-y-auto\b[^"]*\bmax-md:overscroll-contain\b/);
+    expect(layout).toMatch(/<main\s+id="main"\s+className="[^"]*\bmax-md:min-h-0\b/);
   });
 
   it("is no longer guessed per page", () => {

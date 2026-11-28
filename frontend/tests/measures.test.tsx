@@ -166,12 +166,13 @@ describe("measures in Sessions", () => {
     ],
   } as unknown as Session;
 
-  it("names the field and blurs only its values", () => {
+  it("names the field, and the list row leaves the values to the details sheet", () => {
     expect(valueLines(session)).toEqual(["Hangboard 5 kg · 10 s · 6 sets", "180 s"]);
     render(<SessionRow session={session} onOpen={() => {}} />);
-    expect(screen.getByText("Hangboard")).not.toHaveAttribute("data-sensitive");
-    expect(screen.getByText("5 kg · 10 s · 6 sets")).toHaveAttribute("data-sensitive");
-    expect(screen.getByText("180 s")).toHaveAttribute("data-sensitive");
+    expect(screen.getByText("Board and bar")).toBeInTheDocument();
+    expect(screen.queryByText("Hangboard")).toBeNull();
+    expect(screen.queryByText("5 kg · 10 s · 6 sets")).toBeNull();
+    expect(screen.queryByText("180 s")).toBeNull();
   });
 });
 

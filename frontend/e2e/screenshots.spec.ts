@@ -75,7 +75,11 @@ async function shot(page: Page, name: string, project: string, fullPage = false)
   if (fullPage) {
     // Grow the viewport to the whole page, so fixed bars sit at its edges
     // instead of over the middle of a stitched full-page image.
-    const height = await page.evaluate(() => document.documentElement.scrollHeight);
+    // On a phone <main> is the scroll area (app/layout.tsx), so add what it hides.
+    const height = await page.evaluate(() => {
+      const main = document.getElementById("main")!;
+      return document.documentElement.scrollHeight + Math.max(0, main.scrollHeight - main.clientHeight);
+    });
     await page.setViewportSize({ width, height });
     await page.waitForTimeout(400);
   }

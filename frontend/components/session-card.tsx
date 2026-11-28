@@ -167,7 +167,9 @@ function stats(s: Session): string[] {
   return out;
 }
 
-/** A row in the sessions list. The whole row opens the details. */
+/** A row in the sessions list: sport, date, the key numbers and which climbs
+ *  were sent. A template's values (Hangboard 5 kg · 10 s …) stay in the
+ *  details sheet, which the whole row opens, so the list stays short. */
 export function SessionRow({ session, onOpen }: { session: Session; onOpen: () => void }) {
   return (
     <button
@@ -186,10 +188,6 @@ export function SessionRow({ session, onOpen }: { session: Session; onOpen: () =
         <p {...SENSITIVE} className="mt-0.5 text-sm text-ink-muted tabular-nums">
           {stats(session).join(" · ")}
         </p>
-        {valueParts(session).slice(0, 2).map((part, i) => (
-          // A template's values (#101), e.g. "6 × 10 s · 20 mm · +10 kg".
-          <ValueLine key={i} part={part} as="p" className="truncate text-sm text-ink tabular-nums" />
-        ))}
         {session.climbs && session.climbs.length > 0 && (
           <div className="mt-2">
             <ClimbChips climbs={session.climbs} max={5} />

@@ -126,14 +126,14 @@ describe("Log form with a template", () => {
 });
 
 describe("Sessions show template values", () => {
-  it("titles the row with the template and shows its values", () => {
+  it("titles the row with the template and keeps its values for the details sheet", () => {
     const s = {
       id: 1, sport: "other", date: "2026-11-10", duration_min: 40, effort: 7, template: "Fingerboard",
       fields: [{ key: "hangs", label: "Hangs", type: "sets", value: [], text: "6 × 10 s · 20 mm · +10 kg" }],
     } as unknown as Session;
     render(<SessionRow session={s} onOpen={() => {}} />);
     expect(screen.getByText("Fingerboard")).toBeInTheDocument();
-    expect(screen.getByText("6 × 10 s · 20 mm · +10 kg")).toHaveAttribute("data-sensitive");
+    expect(screen.queryByText("6 × 10 s · 20 mm · +10 kg")).toBeNull();
   });
 });
 
